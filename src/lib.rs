@@ -19,13 +19,14 @@ use std::mem;
 use xkbcommon::xkb;
 
 mod keyevent;
+
 use keyevent::KeyEvent;
 use keyevent::KeyEventSeq;
 
 /// TBD 'Rule' applier
 struct InputConverter {
     rule: Rule,
-    unprocessed: String,
+    unprocessed: KeyEventSeq,
 }
 
 #[derive(Deserialize)]
@@ -45,14 +46,57 @@ struct RuleMeta {
 #[derive(Deserialize)]
 struct RuleConvert {
     command: HashMap<KeyEvent, String>,
-    kana: HashMap<KeyEventSeq, Vec<String>>,
+    kana: HashMap<KeyEventSeq, (Unprocessed, Converted)>,
 }
 
+enum Command {
+    Abort,
+}
+
+enum Instruction {
+    Operation { operation: Command },
+    Kana { kana: String, keyevent: String },
+}
+
+type Unprocessed = String; // Mikakutei string TODO: Might not String but KeyEventRep? Fix when implement here.
+type Converted = String; // Kakutei string
 
 impl InputConverter {
     pub fn convert() {}
     pub fn reset() {}
-    pub fn add() {}
+
+    ///
+    /// Consume one KeyEvent and make the next unconverted string and converted string.
+    ///
+    pub fn process_key_event(&mut self, key_event: KeyEvent, mut unprocessed: &KeyEventSeq) -> Result<(Option<Unprocessed>, Option<Converted>), String> {
+        let convert = &self.rule.convert;
+
+        match convert.command.get(&key_event) {
+            Some(x) => {
+                match x.as_ref() {
+                    "abort" => {
+                        // TODO: abort and input the unprocessed key as is
+                        ;
+                    }
+                    _ => {
+                        ;// Do nothing
+                    }
+                }
+            }
+            None => {
+                ;// Do nothing
+            }
+        }
+
+        self.unprocessed.append(key_event.clone());
+
+        return Err("".to_string());
+    }
+
+    fn keyevent_to_instruction(keyevent: KeyEvent, convert: RuleConvert) -> Instruction {
+        Instruction::Operation { operation: Command::Abort }
+    }
+
     pub fn output() {}
 
     pub fn create(filename: &str) -> InputConverter {
@@ -60,25 +104,18 @@ impl InputConverter {
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
 
-//        let config :Rule = toml::from_str(&contents).expect("toml content error");
-        let config :Rule = toml::from_str(&contents).expect("toml content error");
+        let config: Rule = toml::from_str(&contents).expect("toml content error");
 
-
-        InputConverter{
+        InputConverter {
             rule: config,
-            unprocessed: String::new()
+            unprocessed: KeyEventSeq::new(),
         }
     }
-
-
 }
-
-
 
 
 /// Rough design prototype yet
 pub(crate) enum InputMode {
-    //Hiragana { converter: InputConverter{} },
     Hiragana,
     Katakana,
     HankakuKatakana,
@@ -91,10 +128,8 @@ pub(crate) enum CompositionState {
     Direct,
     PreComposition,
     CompositionSelection,
-    // Sub-mode of PreComposition in ddskk
-    Abbreviation,
-    // Sub-mode of CompositionSelection in ddskk
-    Register(Box<CompositionState>),
+    Abbreviation, // Sub-mode of PreComposition in ddskk
+    Register(Box<CompositionState>), // Sub-mode of CompositionSelection in ddskk
 }
 
 /// Rough design prototype yet
@@ -102,6 +137,8 @@ pub(crate) struct CskkContext {
     input_mode: InputMode,
     composition_state: CompositionState,
     pre_composition: Option<String>,
+    unconverted: String,
+    converted: String,
 }
 
 impl CskkContext {
@@ -114,7 +151,7 @@ impl CskkContext {
                 // Input as is for each mode
                 match self.input_mode {
                     InputMode::Hiragana => {
-                        //Hiragana.converter.add();
+                        // Hiragana.converter.add();
                         return false;
                     }
                     InputMode::Katakana => {
@@ -155,6 +192,8 @@ impl CskkContext {
             input_mode,
             composition_state,
             pre_composition,
+            unconverted: "".to_string(), // TODO
+            converted: "".to_string(), // TODO
         }
     }
 }
@@ -188,6 +227,5 @@ mod tests {
         env_logger::init();
 
         let converter = InputConverter::create("src/rule/default.toml");
-
     }
 }

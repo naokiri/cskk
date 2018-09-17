@@ -6,7 +6,7 @@ use serde::de::Error;
 bitmask! {
     ///
     /// modifier mask ported from fcitx-skk and libskk.
-    /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (unimplemented in cskk)
+    /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
     pub mask SkkKeyModifier: u32 where flags SkkKeyModifierFlag {
         None = 0,
@@ -43,6 +43,13 @@ pub struct KeyEventSeq {
 }
 
 impl KeyEventSeq {
+    pub fn new() -> KeyEventSeq {
+        KeyEventSeq{
+            value: Vec::new(),
+        }
+    }
+
+    // TODO: Specify the error type
     pub fn from_str(keys: &str) -> Result<KeyEventSeq, String> {
         match KeyEventSeq::from_str_inner(keys, Vec::new()) {
             Ok(result) => {
@@ -54,6 +61,11 @@ impl KeyEventSeq {
         }
     }
 
+    pub fn append(&mut self, keyevent: KeyEvent) {
+        self.value.push(keyevent);
+    }
+
+    // TODO: Specify the error type
     fn from_str_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<Vec<KeyEvent>, String> {
         let keys = keys.trim();
         if keys.len() == 0 {
@@ -128,14 +140,14 @@ impl<'de> Deserialize<'de> for KeyEventSeq {
 /// String representation of key event is paren enclosed LongModifiers and single KeyName, or just one ShortModifier and one KeyName joined, or single KeyName.
 /// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift"
 /// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 repectively
-/// KeyName :=
+/// KeyName := ↓
 /// https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h
 /// https://xkbcommon.org/doc/current/xkbcommon_8h.html#a79e604a22703391bdfe212cfc10ea007
 ///
 /// e.g.
 /// "(control a)" "C-a" "M-Left" "l"
 ///
-#[derive(Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
     symbol: xkb::Keysym,
     modifiers: SkkKeyModifier,
@@ -151,6 +163,7 @@ impl KeyEvent {
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
+    // TODO: specify and restrict the error type
     pub fn from_str(key: &str) -> Result<KeyEvent, String> {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::none();
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
