@@ -1,0 +1,19 @@
+language: rust
+rust:
+- stable
+- beta
+- nightly
+matrix:
+  allow_failures:
+  - rust: nightly
+  fast_finish: true
+cache: cargo
+before_install:
+- sudo apt update
+- sudo apt install -y libxkbcommon-dev
+before_script:
+- rustup component add clippy-preview
+script:
+- cargo build --verbose --all
+- cargo clippy
+- cargo test --verbose --all
