@@ -1,19 +1,27 @@
 language: rust
-rust:
-- stable
-- beta
-- nightly
+sudo: false
 matrix:
+  fast_finish: true
   allow_failures:
   - rust: nightly
-  fast_finish: true
+  include:
+  - name: "Stable"
+    rust: stable
+    env: EXTRA_LINT_CHECK=1
+  - name: "Beta"
+    rust: beta
+    env: EXTRA_LINT_CHECK=0
+  - name: "Nightly"
+    rust: nightly
+    env: EXTRA_LINT_CHECK=0
 cache: cargo
-before_install:
-- sudo apt update
-- sudo apt install -y libxkbcommon-dev
+addons:
+  apt:
+    packages:
+    - libxkbcommon-dev
 before_script:
 - rustup component add clippy-preview
 script:
 - cargo build --verbose --all
-- cargo clippy
+- if [ EXTRA_LINT_CHECK -gt 0 ]; then cargo clippy; fi
 - cargo test --verbose --all
