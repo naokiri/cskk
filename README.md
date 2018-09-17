@@ -1,4 +1,5 @@
 # LibCSKK
+[![Build Status](https://travis-ci.org/naokiri/cskk.svg?branch=master)](https://travis-ci.org/naokiri/cskk)
 Cobalt SKK library. 
 
 CSKK is a library to implement Simple Kana-Kanji henkan.
