@@ -1,8 +1,4 @@
 language: rust
-rust:
-- stable
-- beta
-- nightly
 sudo: false
 matrix:
   fast_finish: true
