@@ -3,6 +3,8 @@ use xkbcommon::xkb::keysyms;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error;
 
+type KeyEventError = String; // TODO: Make better error structure?
+
 bitmask! {
     ///
     /// modifier mask ported from fcitx-skk and libskk.
@@ -49,8 +51,7 @@ impl KeyEventSeq {
         }
     }
 
-    // TODO: Specify the error type
-    pub fn from_str(keys: &str) -> Result<KeyEventSeq, String> {
+    pub fn from_str(keys: &str) -> Result<KeyEventSeq, KeyEventError> {
         match KeyEventSeq::from_str_inner(keys, Vec::new()) {
             Ok(result) => {
                 Ok(KeyEventSeq { value: result })
@@ -65,8 +66,7 @@ impl KeyEventSeq {
         self.value.push(keyevent);
     }
 
-    // TODO: Specify the error type
-    fn from_str_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<Vec<KeyEvent>, String> {
+    fn from_str_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<Vec<KeyEvent>, KeyEventError> {
         let keys = keys.trim();
         if keys.len() == 0 {
             return Ok(current);
@@ -163,8 +163,7 @@ impl KeyEvent {
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
-    // TODO: specify and restrict the error type
-    pub fn from_str(key: &str) -> Result<KeyEvent, String> {
+    pub fn from_str(key: &str) -> Result<KeyEvent, KeyEventError> {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::none();
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
         let key = key.trim();
