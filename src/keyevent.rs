@@ -139,7 +139,7 @@ impl<'de> Deserialize<'de> for KeyEventSeq {
 ///
 /// String representation of key event is paren enclosed LongModifiers and single KeyName, or just one ShortModifier and one KeyName joined, or single KeyName.
 /// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift"
-/// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 repectively
+/// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 respectively
 /// KeyName := ↓
 /// https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h
 /// https://xkbcommon.org/doc/current/xkbcommon_8h.html#a79e604a22703391bdfe212cfc10ea007
@@ -238,6 +238,10 @@ impl KeyEvent {
             })
         }
     }
+
+    pub fn to_string(&self) -> String {
+        return xkb::keysym_to_utf8(self.symbol).trim_right_matches("\u{0}").to_owned();
+    }
 }
 
 impl<'de> Deserialize<'de> for KeyEvent {
@@ -308,5 +312,11 @@ mod tests {
         assert_eq!(abc.value, vec![KeyEvent::from_str("(control a)").unwrap(),
                                    KeyEvent::from_str("M-b").unwrap(),
                                    KeyEvent::from_str("c").unwrap()]);
+    }
+
+    #[test]
+    fn keyevent_to_string() {
+        let a = KeyEvent::from_str("a").unwrap();
+        assert_eq!("a", a.to_string());
     }
 }
