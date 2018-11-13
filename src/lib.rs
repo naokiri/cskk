@@ -10,7 +10,7 @@ extern crate toml;
 extern crate xkbcommon;
 
 use keyevent::KeyEvent;
-
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 //use std::mem;
@@ -30,9 +30,10 @@ enum Command {
     Abort,
 }
 
-enum Instruction {
-    Operation { operation: Command },
-    Input { converted: String, unconverted: String },
+enum Instruction<'a> {
+    Operation { operation: &'a Command },
+    Input { converted: &'a String },
+    //Input { converted: String, unconverted: String },
 }
 
 /// Rough design prototype yet
@@ -69,7 +70,7 @@ pub(crate) enum CompositionMode {
 
 /// Rough design prototype yet
 pub(crate) struct CskkContext {
-    state_stack: Vec<CskkState>,
+    state_stack: Vec<RefCell<CskkState>>,
     handler: AHandler,
 }
 
@@ -88,7 +89,7 @@ struct AHandler {
 impl AHandler {
     pub fn new() -> AHandler {
         let mut process_list = HashMap::new();
-        process_list.insert(KeyEvent::from_str("a").unwrap(),"あ".to_string());
+        process_list.insert(KeyEvent::from_str("a").unwrap(), "あ".to_string());
         AHandler {
             process_list,
         }
@@ -96,6 +97,17 @@ impl AHandler {
 
     pub fn can_process(&self, key_event: &KeyEvent) -> bool {
         self.process_list.contains_key(key_event)
+    }
+
+    pub fn get_instruction(&self, key_event: &KeyEvent) -> Option<Instruction> {
+        match self.process_list.get(key_event) {
+            Some(result) => {
+                Some(Instruction::Input { converted: result })
+            }
+            None => {
+                None
+            }
+        }
     }
 }
 
@@ -143,16 +155,52 @@ impl CskkContext {
 //        self.input_mode = new_mode;
 //    }
 
+    fn append_input(&self, result: &str) {
+        let current_state = self.current_state();
+        current_state.borrow_mut().converted.push_str(result);
+    }
+
     ///
-    /// Returns if that key event can be processed by current IM
+    /// process that key event and change the internal states.
+    /// if key_event is not processable by current CSKK state, then return false
+    ///
+    pub fn process_key_event(&self, key_event: &KeyEvent) -> bool {
+        if !self.will_process(key_event) {
+            false
+        } else {
+            let current_state = self.current_state();
+            let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
+            let instruction = handler.get_instruction(key_event);
+            match instruction {
+                Some(Instruction::Input { converted }) => {
+                    self.append_input(converted);
+                    true
+                }
+                Some(Instruction::Operation { operation }) => {
+                    true
+                }
+                None => {
+                    false
+                }
+            }
+        }
+    }
+
+    fn current_state(&self) -> &RefCell<CskkState> {
+        self.state_stack.last().expect("State stack is empty!")
+    }
+
+    ///
+    /// Returns if that key event can be processed by current CSKK
+    /// Only checking, doesn't change internal states
     ///
     pub fn will_process(&self, key_event: &KeyEvent) -> bool {
-        let current_state = self.state_stack.last().unwrap();
-        let handler = self.get_handler(&current_state.input_mode, &current_state.composition_mode);
+        let current_state = self.current_state();
+        let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
         handler.can_process(key_event)
     }
 
-    fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode ) -> &AHandler {
+    fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &AHandler {
         return &self.handler;
     }
 
@@ -162,13 +210,14 @@ impl CskkContext {
         let handler = AHandler::new();
 
         let mut initial_stack = Vec::new();
-        initial_stack.push(CskkState {
-            input_mode,
-            composition_mode,
-            pre_composition,
-            unconverted: "".to_string(), // TODO
-            converted: "".to_string(), // TODO
-        });
+        initial_stack.push(RefCell::new(
+            CskkState {
+                input_mode,
+                composition_mode,
+                pre_composition,
+                unconverted: "".to_string(), // TODO
+                converted: "".to_string(), // TODO
+            }));
         CskkContext {
             state_stack: initial_stack,
             handler,
@@ -199,7 +248,6 @@ mod tests {
     use keyevent::KeyEvent;
     use super::*;
 
-
     #[test]
     fn will_process() {
         let cskkcontext = CskkContext::new(
@@ -213,9 +261,21 @@ mod tests {
         assert!(!cskkcontext.will_process(&copy));
     }
 
+    #[test]
+    fn process_key_event() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Ascii,
+            CompositionMode::Direct,
+            None,
+        );
+
+        let a = KeyEvent::from_str("a").unwrap();
+        let result = cskkcontext.process_key_event(&a);
+        assert!(result);
+    }
 
 //    #[test]
-//    fn process_key_event() {
+//    fn poll_output() {
 //        skkcontext.process_key_event("a");
 //        let actual = skkcontext.poll_output();
 //        assert_eq!("あ", actual);
