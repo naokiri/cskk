@@ -155,6 +155,20 @@ impl CskkContext {
 //        self.input_mode = new_mode;
 //    }
 
+    ///
+    /// Retrieve and remove the current output string
+    /// 
+    fn poll_output(&mut self) -> Option<String> {
+        let current_state = self.current_state();
+        if current_state.borrow().converted.is_empty() {
+            None
+        } else {
+            let out = current_state.borrow().converted.clone();
+            current_state.borrow_mut().converted.clear();
+            Some(out)
+        }
+    }
+
     fn append_input(&self, result: &str) {
         let current_state = self.current_state();
         current_state.borrow_mut().converted.push_str(result);
@@ -274,10 +288,19 @@ mod tests {
         assert!(result);
     }
 
-//    #[test]
-//    fn poll_output() {
-//        skkcontext.process_key_event("a");
-//        let actual = skkcontext.poll_output();
-//        assert_eq!("あ", actual);
-//    }
+    #[test]
+    fn poll_output() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Ascii,
+            CompositionMode::Direct,
+            None,
+        );
+        let a = KeyEvent::from_str("a").unwrap();
+        cskkcontext.process_key_event(&a);
+        let mut cskkcontext = cskkcontext;
+        let actual = cskkcontext.poll_output().unwrap();
+        assert_eq!("あ", actual);
+        let after = cskkcontext.poll_output();
+        assert_eq!(None, after);
+    }
 }
