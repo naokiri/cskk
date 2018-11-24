@@ -23,5 +23,5 @@ before_script:
 - rustup component add clippy-preview
 script:
 - cargo build --verbose --all
-- if [ $EXTRA_LINT_CHECK -gt 0 ]; then cargo clippy -- -D warnings; fi
+- if [ $EXTRA_LINT_CHECK -gt 0 ]; then cargo clippy -- -D warnings -A dead_code; else; cargo clippy; fi;
 - cargo test --verbose --all

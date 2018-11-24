@@ -10,7 +10,7 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 log = "0.4"
 xkbcommon = "0.3"
-bitmask = "0.4"
+bitflags = "1.0.4"
 toml = "0.4.6"
 serde = "1.0.65"
 serde_derive = "1.0.66"
