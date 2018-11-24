@@ -1,7 +1,10 @@
-use xkbcommon::xkb;
-use xkbcommon::xkb::keysyms;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error;
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use xkbcommon::xkb;
+use xkbcommon::xkb::keysyms;
 
 type KeyEventError = String; // TODO: Make better error structure?
 
@@ -36,103 +39,7 @@ bitmask! {
     }
 }
 
-///
-/// Just a Vec of KeyEvents, but makes string representation a space separated single string that can be a key for toml table.
-///
-#[derive(Hash, PartialEq, Eq)]
-pub struct KeyEventSeq {
-    value: Vec<KeyEvent>,
-}
-
-impl KeyEventSeq {
-    pub fn new() -> KeyEventSeq {
-        KeyEventSeq{
-            value: Vec::new(),
-        }
-    }
-
-    pub fn from_str(keys: &str) -> Result<KeyEventSeq, KeyEventError> {
-        match KeyEventSeq::from_str_inner(keys, Vec::new()) {
-            Ok(result) => {
-                Ok(KeyEventSeq { value: result })
-            }
-            Err(e) => {
-                Err(e)
-            }
-        }
-    }
-
-    pub fn append(&mut self, keyevent: KeyEvent) {
-        self.value.push(keyevent);
-    }
-
-    fn from_str_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<Vec<KeyEvent>, KeyEventError> {
-        let keys = keys.trim();
-        if keys.len() == 0 {
-            return Ok(current);
-        }
-        match KeyEventSeq::next_tok(keys) {
-            Some(tok) => {
-                let left = &keys[tok.len()..];
-                match KeyEvent::from_str(tok) {
-                    Ok(keyevent) => {
-                        current.push(keyevent);
-                        KeyEventSeq::from_str_inner(left, current)
-                    }
-                    Err(e) => {
-                        Err(e)
-                    }
-                }
-            }
-            _ => {
-                Err(format!("Syntax error. keys: {}", keys))
-            }
-        }
-    }
-
-    /// '''
-    /// let str = "(foo bar) other string"
-    /// let result = KeyEventSeq::next_tok(str)
-    /// assert_eq!(result, Ok("(foo bar)")
-    /// '''
-    /// '''
-    /// let str = "foo bar baz"
-    /// let result = KeyEventSeq::next_tok(str)
-    /// assert_eq!(result, Ok("foo")
-    /// '''
-    fn next_tok(keys: &str) -> Option<&str> {
-        if keys.starts_with('(') {
-            let len = keys.find(')');
-            match len {
-                Some(x) => {
-                    Some(&keys[0..x + 1])
-                }
-                _ => {
-                    None
-                }
-            }
-        } else {
-            let len = keys.find(' ');
-            match len {
-                Some(x) => {
-                    Some(&keys[0..x])
-                }
-                _ => {
-                    Some(keys)
-                }
-            }
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for KeyEventSeq {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>,
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        KeyEventSeq::from_str(s).map_err(D::Error::custom)
-    }
-}
+type KeyEventSeq = Vec<KeyEvent>;
 
 ///
 /// In-lib structure of key event
@@ -238,9 +145,86 @@ impl KeyEvent {
             })
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        return xkb::keysym_to_utf8(self.symbol).trim_right_matches("\u{0}").to_owned();
+
+///
+/// KeyEventSeq related functions
+///
+impl KeyEvent {
+    pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
+        match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
+            Ok(result) => {
+                Ok(result)
+            }
+            Err(e) => {
+                Err(e)
+            }
+        }
+    }
+
+    fn deserialize_seq_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<KeyEventSeq, KeyEventError> {
+        let keys = keys.trim();
+        if keys.len() == 0 {
+            return Ok(current);
+        }
+        match KeyEvent::next_tok(keys) {
+            Some(tok) => {
+                let left = &keys[tok.len()..];
+                match KeyEvent::from_str(tok) {
+                    Ok(keyevent) => {
+                        current.push(keyevent);
+                        KeyEvent::deserialize_seq_inner(left, current)
+                    }
+                    Err(e) => {
+                        Err(e)
+                    }
+                }
+            }
+            _ => {
+                Err(format!("Syntax error. keys: {}", keys))
+            }
+        }
+    }
+
+    /// '''
+    /// let str = "(foo bar) other string"
+    /// let result = KeyEventSeq::next_tok(str)
+    /// assert_eq!(result, Ok("(foo bar)")
+    /// '''
+    /// '''
+    /// let str = "foo bar baz"
+    /// let result = KeyEventSeq::next_tok(str)
+    /// assert_eq!(result, Ok("foo")
+    /// '''
+    fn next_tok(keys: &str) -> Option<&str> {
+        if keys.starts_with('(') {
+            let len = keys.find(')');
+            match len {
+                Some(x) => {
+                    Some(&keys[0..x + 1])
+                }
+                _ => {
+                    None
+                }
+            }
+        } else {
+            let len = keys.find(' ');
+            match len {
+                Some(x) => {
+                    Some(&keys[0..x])
+                }
+                _ => {
+                    Some(keys)
+                }
+            }
+        }
+    }
+}
+
+impl Display for KeyEvent {
+    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
+        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_right_matches("\u{0}"))
     }
 }
 
@@ -299,24 +283,25 @@ mod tests {
     }
 
     #[test]
-    fn keyeventseq_from_str() {
-        let a = KeyEventSeq::from_str("a").unwrap();
-        assert_eq!(a.value, vec![KeyEvent::from_str("a").unwrap()]);
-
-        let abc = KeyEventSeq::from_str("a b c").unwrap();
-        assert_eq!(abc.value, vec![KeyEvent::from_str("a").unwrap(),
-                                   KeyEvent::from_str("b").unwrap(),
-                                   KeyEvent::from_str("c").unwrap()]);
-
-        let abc = KeyEventSeq::from_str("C-a (meta b) c").unwrap();
-        assert_eq!(abc.value, vec![KeyEvent::from_str("(control a)").unwrap(),
-                                   KeyEvent::from_str("M-b").unwrap(),
-                                   KeyEvent::from_str("c").unwrap()]);
-    }
-
-    #[test]
     fn keyevent_to_string() {
         let a = KeyEvent::from_str("a").unwrap();
         assert_eq!("a", a.to_string());
+    }
+
+    #[test]
+    fn deserialize_seq() {
+        let result = KeyEvent::deserialize_seq("a b c").unwrap();
+        assert_eq!(result.get(0).unwrap(), &KeyEvent::from_str("a").unwrap());
+        assert_eq!(result.get(1).unwrap(), &KeyEvent::from_str("b").unwrap());
+        assert_eq!(result.get(2).unwrap(), &KeyEvent::from_str("c").unwrap());
+    }
+
+    #[test]
+    fn from_keysym() {
+        let mut modifier = SkkKeyModifier::none();
+        modifier.set(SkkKeyModifierFlag::LShift);
+        let result = KeyEvent::from_keysym(keysyms::KEY_s, modifier);
+        assert_eq!(result.symbol, keysyms::KEY_s);
+        assert_eq!(result.modifiers, modifier);
     }
 }
