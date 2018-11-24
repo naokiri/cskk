@@ -63,7 +63,7 @@ pub struct KeyEvent {
 
 impl KeyEvent {
     fn from_keysym(keysym: xkb::Keysym,
-                       modifier: SkkKeyModifier) -> KeyEvent {
+                   modifier: SkkKeyModifier) -> KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
 
@@ -75,34 +75,27 @@ impl KeyEvent {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::None;
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
         let key = key.trim();
-        if key.starts_with("(") & &key.ends_with(")") {
-            let mut words = key.trim_left_matches("(").trim_right_matches(")").split(' ');
-            loop {
-                match words.next() {
-                    Some(word) => {
-                        match word {
-                            "control" => {
-                                modifier.set(SkkKeyModifier::Control, true);
-                            }
-                            "meta" => {
-                                modifier.set(SkkKeyModifier::Meta, true);
-                            }
-                            "alt" => {
-                                modifier.set(SkkKeyModifier::Mod1, true);
-                            }
-                            "lshift" => {
-                                modifier.set(SkkKeyModifier::LShift, true);
-                            }
-                            "rshift" => {
-                                modifier.set(SkkKeyModifier::RShift, true);
-                            }
-                            _ => {
-                                keysym = xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
-                            }
-                        }
+        if key.starts_with('(') && key.ends_with(')') {
+            let words = key.trim_left_matches('(').trim_right_matches(')').split(' ');
+            for word in words {
+                match word {
+                    "control" => {
+                        modifier.set(SkkKeyModifier::Control, true);
                     }
-                    None => {
-                        break;
+                    "meta" => {
+                        modifier.set(SkkKeyModifier::Meta, true);
+                    }
+                    "alt" => {
+                        modifier.set(SkkKeyModifier::Mod1, true);
+                    }
+                    "lshift" => {
+                        modifier.set(SkkKeyModifier::LShift, true);
+                    }
+                    "rshift" => {
+                        modifier.set(SkkKeyModifier::RShift, true);
+                    }
+                    _ => {
+                        keysym = xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
                     }
                 }
             }
@@ -166,7 +159,7 @@ impl KeyEvent {
 
     fn deserialize_seq_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<KeyEventSeq, KeyEventError> {
         let keys = keys.trim();
-        if keys.len() == 0 {
+        if keys.is_empty() {
             return Ok(current);
         }
         match KeyEvent::next_tok(keys) {
@@ -203,7 +196,7 @@ impl KeyEvent {
             let len = keys.find(')');
             match len {
                 Some(x) => {
-                    Some(&keys[0..x + 1])
+                    Some(&keys[0..=x])
                 }
                 _ => {
                     None
@@ -225,7 +218,7 @@ impl KeyEvent {
 
 impl Display for KeyEvent {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_right_matches("\u{0}"))
+        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_right_matches('\u{0}'))
     }
 }
 
