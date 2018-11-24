@@ -28,3 +28,5 @@ script:
   else cargo clippy;
   fi
 - cargo test --verbose --all
+after_script:
+- codecov
