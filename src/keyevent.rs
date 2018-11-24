@@ -1,11 +1,11 @@
-use serde::{Deserialize, Deserializer};
-use serde::de::Error;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+
+use serde::{Deserialize, Deserializer};
+use serde::de::Error;
 use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
-
 
 type KeyEventError = String; // TODO: Make better error structure?
 
@@ -32,7 +32,6 @@ bitflags! {
         /// Reserved for nicola
         /// works specially that sleeps (int)keysym usec for simulating non-double key press event.
         const USleep = 1 << 24;
-
         const Super = 1 << 26;
         const Hyper = 1 << 27;
         const Meta = 1 << 28;
@@ -40,7 +39,7 @@ bitflags! {
     }
 }
 
-type KeyEventSeq = Vec<KeyEvent>;
+pub type KeyEventSeq = Vec<KeyEvent>;
 
 ///
 /// In-lib structure of key event
@@ -138,6 +137,10 @@ impl KeyEvent {
                 symbol: keysym,
             })
         }
+    }
+
+    pub fn get_symbol_char(&self) -> Option<char> {
+        xkb::keysym_to_utf8(self.symbol).chars().next()
     }
 }
 
@@ -294,5 +297,17 @@ mod tests {
         let result = KeyEvent::from_keysym(keysyms::KEY_s, modifier);
         assert_eq!(result.symbol, keysyms::KEY_s);
         assert_eq!(result.modifiers, modifier);
+    }
+
+    #[test]
+    fn get_symbol_char() {
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::None);
+        assert_eq!('0' ,key_event.get_symbol_char().unwrap());
+    }
+
+    #[test]
+    fn get_symbol_char_no_display() {
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::None);
+        assert_eq!(None ,key_event.get_symbol_char());
     }
 }

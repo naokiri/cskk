@@ -1,21 +1,22 @@
 #[macro_use]
 extern crate bitflags;
-//#[macro_use]
-//extern crate log;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
-//extern crate libc;
 extern crate xkbcommon;
+extern crate sequence_trie;
 
+use handler::Handler;
 use keyevent::KeyEvent;
+use keyevent::KeyEventSeq;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 //use std::mem;
 
 mod keyevent;
+mod handler;
 
 #[derive(Deserialize)]
 struct RuleMeta {
@@ -26,14 +27,15 @@ struct RuleMeta {
 }
 
 #[derive(Debug, PartialEq)]
-enum Command {
+pub(crate) enum Command {
     Abort,
 }
 
-enum Instruction<'a> {
+#[derive(Debug)]
+pub(crate) enum Instruction<'a> {
     Operation { operation: &'a Command },
-    Input { converted: &'a String },
-    //Input { converted: String, unconverted: String },
+    //Input { converted: &'a String },
+    Input { converted: &'a str, unconverted: &'a Vec<char> },
 }
 
 /// Rough design prototype yet
@@ -69,9 +71,11 @@ pub(crate) enum CompositionMode {
 }
 
 /// Rough design prototype yet
+///
+/// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
 pub(crate) struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
-    handler: AHandler,
+    handler: Handler,
 }
 
 struct CskkState {
@@ -82,34 +86,6 @@ struct CskkState {
     converted: String,
 }
 
-struct AHandler {
-    process_list: HashMap<KeyEvent, String>,
-}
-
-impl AHandler {
-    pub fn new() -> AHandler {
-        let mut process_list = HashMap::new();
-        process_list.insert(KeyEvent::from_str("a").unwrap(), "あ".to_string());
-        AHandler {
-            process_list,
-        }
-    }
-
-    pub fn can_process(&self, key_event: &KeyEvent) -> bool {
-        self.process_list.contains_key(key_event)
-    }
-
-    pub fn get_instruction(&self, key_event: &KeyEvent) -> Option<Instruction> {
-        match self.process_list.get(key_event) {
-            Some(result) => {
-                Some(Instruction::Input { converted: result })
-            }
-            None => {
-                None
-            }
-        }
-    }
-}
 
 impl CskkContext {
     ///
@@ -184,9 +160,9 @@ impl CskkContext {
         } else {
             let current_state = self.current_state();
             let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
-            let instruction = handler.get_instruction(key_event);
+            let instruction = handler.get_instruction(key_event, &vec![]);
             match instruction {
-                Some(Instruction::Input { converted }) => {
+                Some(Instruction::Input { converted, unconverted: _ }) => {
                     self.append_input(converted);
                     true
                 }
@@ -200,6 +176,16 @@ impl CskkContext {
         }
     }
 
+    #[cfg(test)]
+    fn process_key_events(&mut self, key_event_seq: &KeyEventSeq) -> bool {
+        for key_event in key_event_seq {
+            if !self.process_key_event(key_event) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     fn current_state(&self) -> &RefCell<CskkState> {
         self.state_stack.last().expect("State stack is empty!")
     }
@@ -211,17 +197,18 @@ impl CskkContext {
     pub fn will_process(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
-        handler.can_process(key_event)
+        handler.can_process(key_event, &vec![])
     }
 
-    fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &AHandler {
+
+    fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &Handler {
         &self.handler
     }
 
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode,
                pre_composition: Option<String>) -> CskkContext {
-        let handler = AHandler::new();
+        let handler = Handler::defalt_handler();
 
         let mut initial_stack = Vec::new();
         initial_stack.push(RefCell::new(
@@ -302,5 +289,34 @@ mod tests {
         assert_eq!("あ", actual);
         let after = cskkcontext.poll_output();
         assert_eq!(None, after);
+    }
+
+    #[test]
+    fn basic_hiragana() {
+        let mut cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+            None,
+        );
+
+        let a_gyou = KeyEvent::deserialize_seq("a i u e o").unwrap();
+        cskkcontext.process_key_events(&a_gyou);
+        let actual = cskkcontext.poll_output().unwrap();
+        assert_eq!("あいうえお", actual);
+    }
+
+
+    #[test]
+    fn skip_on_impossible_hiragana() {
+        let mut cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+            None,
+        );
+
+        let a_gyou = KeyEvent::deserialize_seq("b n y a").unwrap();
+        cskkcontext.process_key_events(&a_gyou);
+        let actual = cskkcontext.poll_output().unwrap();
+        assert_eq!("にゃ", actual);
     }
 }
