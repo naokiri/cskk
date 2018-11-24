@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate bitmask;
+extern crate bitflags;
 //#[macro_use]
 //extern crate log;
 extern crate serde;
@@ -190,7 +190,7 @@ impl CskkContext {
                     self.append_input(converted);
                     true
                 }
-                Some(Instruction::Operation { operation }) => {
+                Some(Instruction::Operation { .. }) => {
                     true
                 }
                 None => {
@@ -215,7 +215,7 @@ impl CskkContext {
     }
 
     fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &AHandler {
-        return &self.handler;
+        &self.handler
     }
 
     pub fn new(input_mode: InputMode,
