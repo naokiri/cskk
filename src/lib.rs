@@ -215,7 +215,7 @@ impl CskkContext {
     }
 
     fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &AHandler {
-        return &self.handler;
+        &self.handler
     }
 
     pub fn new(input_mode: InputMode,
