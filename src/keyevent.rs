@@ -39,9 +39,6 @@ bitmask! {
     }
 }
 
-///
-/// Just a Vec of KeyEvents, but makes string representation a space separated single string that can be a key for toml table.
-///
 type KeyEventSeq = Vec<KeyEvent>;
 
 ///
@@ -148,8 +145,13 @@ impl KeyEvent {
             })
         }
     }
+}
 
 
+///
+/// KeyEventSeq related functions
+///
+impl KeyEvent {
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
         match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
             Ok(result) => {
