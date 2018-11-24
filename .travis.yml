@@ -1,5 +1,7 @@
 language: rust
 sudo: false
+env:
+  - KCOV_VERSION="v36"
 matrix:
   fast_finish: true
   allow_failures:
@@ -29,16 +31,11 @@ script:
   fi
 - cargo test --verbose --all
 after_script: |
-  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-  tar xzf master.tar.gz &&
-  cd kcov-master &&
-  mkdir build &&
-  cd build &&
-  cmake .. &&
-  make &&
-  make install DESTDIR=../../kcov-build &&
-  cd ../.. &&
-  rm -rf kcov-master &&
-  for file in target/debug/examplerust-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+  docker pull ragnaroek/kcov:${KCOV_VERSION}
+  for file in target/debug/cskk-*[^\.d];
+  do
+    mkdir -p "target/cov/$(basename $file)";
+    docker run --security-opt seccomp=unconfined -v $(pwd):/source kcov:${KCOV_VERSION} --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file";
+  done &&
   bash <(curl -s https://codecov.io/bash) &&
   echo "Uploaded code coverage"
