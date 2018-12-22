@@ -14,7 +14,7 @@ bitflags! {
     /// modifier mask ported from fcitx-skk and libskk.
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
-    struct SkkKeyModifier: u32 {
+    pub(crate) struct SkkKeyModifier: u32 {
         const None = 0;
         const Shift = 1;
         const Lock = 1 << 1;
@@ -61,7 +61,8 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
-    fn from_keysym(keysym: xkb::Keysym,
+    #[cfg(test)]
+    pub(crate) fn from_keysym(keysym: xkb::Keysym,
                    modifier: SkkKeyModifier) -> KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
@@ -141,6 +142,10 @@ impl KeyEvent {
 
     pub fn get_symbol_char(&self) -> Option<char> {
         xkb::keysym_to_utf8(self.symbol).chars().next()
+    }
+
+    pub(crate) fn get_modifier(&self) -> SkkKeyModifier {
+        self.modifiers
     }
 }
 
@@ -272,7 +277,7 @@ mod tests {
         assert_eq!(short_ctrl_a.modifiers, control_modifier, "C-a works");
 
         let meta_left = KeyEvent::from_str("M-Left").unwrap();
-        let mut meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
+        let meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
     }
@@ -293,7 +298,7 @@ mod tests {
 
     #[test]
     fn from_keysym() {
-        let mut modifier = SkkKeyModifier::LShift;
+        let modifier = SkkKeyModifier::LShift;
         let result = KeyEvent::from_keysym(keysyms::KEY_s, modifier);
         assert_eq!(result.symbol, keysyms::KEY_s);
         assert_eq!(result.modifiers, modifier);
