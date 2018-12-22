@@ -2,7 +2,7 @@
 name = "cskk"
 version = "0.0.1"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
-
+license = "GPL-3.0-or-later"
 
 [lib]
 crate-type = ["cdylib", "lib"]
