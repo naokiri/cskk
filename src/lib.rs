@@ -3,6 +3,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate enum_display_derive;
 extern crate env_logger;
+#[cfg(test)]
 #[macro_use]
 extern crate log;
 extern crate sequence_trie;
@@ -14,14 +15,13 @@ extern crate xkbcommon;
 
 
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
 use kana_handler::KanaHandler;
 use keyevent::KeyEvent;
+#[cfg(test)]
 use keyevent::KeyEventSeq;
 
 //use std::mem;
@@ -166,7 +166,7 @@ impl CskkContext {
         current_state.borrow_mut().converted.push_str(result);
     }
 
-    fn set_carry_over(&self, unconv: &Vec<char>) {
+    fn set_carry_over(&self, unconv: &[char]) {
         let current_state = self.current_state();
         current_state.borrow_mut().unconverted = unconv.to_owned();
     }
@@ -237,7 +237,7 @@ impl CskkContext {
     pub fn will_process(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
-        handler.can_process(key_event, &vec![])
+        handler.can_process(key_event, &[])
     }
 
 
@@ -278,7 +278,7 @@ impl Display for CskkState {
         for c in self.unconverted.to_vec() {
             write!(f, "{}", c);
         }
-        write!(f, "'\n");
+        writeln!(f);
         writeln!(f, "}}");
         Ok(())
     }
