@@ -1,11 +1,11 @@
-use serde::{Deserialize, Deserializer};
-use serde::de::Error;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+
+use serde::{Deserialize, Deserializer};
+use serde::de::Error;
 use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
-
 
 type KeyEventError = String; // TODO: Make better error structure?
 
@@ -14,7 +14,7 @@ bitflags! {
     /// modifier mask ported from fcitx-skk and libskk.
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
-    struct SkkKeyModifier: u32 {
+    pub(crate) struct SkkKeyModifier: u32 {
         const None = 0;
         const Shift = 1;
         const Lock = 1 << 1;
@@ -32,7 +32,6 @@ bitflags! {
         /// Reserved for nicola
         /// works specially that sleeps (int)keysym usec for simulating non-double key press event.
         const USleep = 1 << 24;
-
         const Super = 1 << 26;
         const Hyper = 1 << 27;
         const Meta = 1 << 28;
@@ -40,7 +39,7 @@ bitflags! {
     }
 }
 
-type KeyEventSeq = Vec<KeyEvent>;
+pub type KeyEventSeq = Vec<KeyEvent>;
 
 ///
 /// In-lib structure of key event
@@ -62,7 +61,8 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
-    fn from_keysym(keysym: xkb::Keysym,
+    #[cfg(test)]
+    pub(crate) fn from_keysym(keysym: xkb::Keysym,
                    modifier: SkkKeyModifier) -> KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
@@ -138,6 +138,14 @@ impl KeyEvent {
                 symbol: keysym,
             })
         }
+    }
+
+    pub fn get_symbol_char(&self) -> Option<char> {
+        xkb::keysym_to_utf8(self.symbol).chars().next()
+    }
+
+    pub(crate) fn get_modifier(&self) -> SkkKeyModifier {
+        self.modifiers
     }
 }
 
@@ -269,7 +277,7 @@ mod tests {
         assert_eq!(short_ctrl_a.modifiers, control_modifier, "C-a works");
 
         let meta_left = KeyEvent::from_str("M-Left").unwrap();
-        let mut meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
+        let meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
     }
@@ -290,9 +298,21 @@ mod tests {
 
     #[test]
     fn from_keysym() {
-        let mut modifier = SkkKeyModifier::LShift;
+        let modifier = SkkKeyModifier::LShift;
         let result = KeyEvent::from_keysym(keysyms::KEY_s, modifier);
         assert_eq!(result.symbol, keysyms::KEY_s);
         assert_eq!(result.modifiers, modifier);
+    }
+
+    #[test]
+    fn get_symbol_char() {
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::None);
+        assert_eq!('0' ,key_event.get_symbol_char().unwrap());
+    }
+
+    #[test]
+    fn get_symbol_char_no_display() {
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::None);
+        assert_eq!(None ,key_event.get_symbol_char());
     }
 }
