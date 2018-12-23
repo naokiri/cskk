@@ -13,21 +13,18 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
-
 use std::cell::RefCell;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use kana_handler::KanaHandler;
+use input_handler::kana_handler::KanaHandler;
 use keyevent::KeyEvent;
 #[cfg(test)]
 use keyevent::KeyEventSeq;
 
-//use std::mem;
-
 mod keyevent;
-mod kana_handler;
+mod input_handler;
 
 #[derive(Deserialize)]
 struct RuleMeta {

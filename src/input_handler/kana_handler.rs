@@ -124,6 +124,10 @@ impl KanaHandler {
     }
 }
 
+impl InputHandler for KanaHandler {
+
+}
+
 #[cfg(test)]
 mod tests {
     use xkbcommon::xkb::keysyms;
