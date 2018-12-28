@@ -4,23 +4,109 @@ use std::io::Read;
 
 use sequence_trie::SequenceTrie;
 
-use Instruction;
-use keyevent::KeyEvent;
+use crate::input_handler::InputHandler;
+use crate::Instruction;
+use crate::keyevent::KeyEvent;
+use crate::keyevent::SkkKeyModifier;
 
 type Converted = String;
 type CarryOver = Vec<char>;
 
-#[derive(Deserialize)]
-struct RuleConvert {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct KanaHandler {
     // Maybe change value to input-kana-* command etc?
     process_map: SequenceTrie<char, (Converted, CarryOver)>
 }
 
 impl KanaHandler {
-    #[cfg(test)]
+    fn handler_from_string(contents: &str) -> Self {
+        let mut process_map = SequenceTrie::new();
+        let map: HashMap<String, (String, String)> = serde_json::from_str(&contents).expect("content error");
+        for (k, (carry, conv)) in &map {
+            let mut key = vec![];
+            for c in k.chars() {
+                key.push(c);
+            }
+
+            let mut carry_over = vec![];
+            for c in carry.chars() {
+                carry_over.push(c);
+            }
+
+            let converted = conv.to_owned();
+
+            process_map.insert(&key, (converted, carry_over));
+        }
+
+        Self {
+            process_map
+        }
+    }
+
+    fn handler_from_file(filename: &str) -> Self {
+        let mut file = File::open(filename).expect("file not found");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("file read error");
+
+        KanaHandler::handler_from_string(&contents)
+    }
+
+    pub fn default_handler() -> Self {
+        KanaHandler::handler_from_file("src/rule/hiragana.json")
+    }
+
+    fn next_key(key_char: char, unprocessed: &[char]) -> Vec<char> {
+        let mut next_key = vec![];
+        next_key.extend_from_slice(unprocessed);
+        next_key.push(key_char);
+        next_key
+    }
+
+    fn get_node(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
+        match key_event.get_symbol_char() {
+            None => { None }
+            Some(key_char) => {
+                self.process_map.get_node(&KanaHandler::next_key(key_char, unprocessed))
+            }
+        }
+    }
+}
+
+impl InputHandler for KanaHandler {
+    fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
+        match (self.get_node(key_event, unprocessed), self.get_node(key_event, &[])) {
+            (None, None) => { false }
+            _ => { true }
+        }
+    }
+
+    fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<Instruction> {
+        match self.get_node(key_event, &unprocessed) {
+            Some(node) => {
+                match node.value() {
+                    None => {
+                        Some(Instruction::FlushUnconverted { new_start: key_event.get_symbol_char().expect("Should be safe to unwrap when right after get_node is not None") })
+                    }
+                    Some((converted, carry_over)) => {
+                        let modifier = key_event.get_modifier();
+                        if modifier.contains(SkkKeyModifier::Shift) {
+                            Some(Instruction::InputKana { converted, carry_over })
+                        } else {
+                            Some(Instruction::StartComposition { converted, carry_over })
+                        }
+                    }
+                }
+            }
+            None => {
+                None
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+impl KanaHandler {
     fn test_handler() -> KanaHandler {
         let mut process_list = SequenceTrie::new();
 
@@ -40,98 +126,12 @@ impl KanaHandler {
             process_map: process_list,
         }
     }
-
-    fn handler_from_string(contents: &str) -> KanaHandler {
-        let mut process_map = SequenceTrie::new();
-        let map: HashMap<String, (String, String)> = serde_json::from_str(&contents).expect("content error");
-        for (k, (carry, conv)) in &map {
-            let mut key = vec![];
-            for c in k.chars() {
-                key.push(c);
-            }
-
-            let mut carry_over = vec![];
-            for c in carry.chars() {
-                carry_over.push(c);
-            }
-
-            let converted = conv.to_owned();
-
-            process_map.insert(&key, (converted, carry_over));
-        }
-
-        KanaHandler {
-            process_map
-        }
-    }
-
-    fn handler_from_file(filename: &str) -> KanaHandler {
-        let mut file = File::open(filename).expect("file not found");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("file read error");
-
-        KanaHandler::handler_from_string(&contents)
-    }
-
-    pub(crate) fn default_handler() -> KanaHandler {
-        KanaHandler::handler_from_file("src/rule/hiragana.json")
-    }
-
-    fn next_key(key_char: char, unprocessed: &[char]) -> Vec<char> {
-        let mut next_key = vec![];
-        next_key.extend_from_slice(unprocessed);
-        next_key.push(key_char);
-        next_key
-    }
-
-    fn get_node(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
-        match key_event.get_symbol_char() {
-            None => { None }
-            Some(key_char) => {
-                self.process_map.get_node(&KanaHandler::next_key(key_char, unprocessed))
-            }
-        }
-    }
-
-    pub(crate) fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
-        let key_event_mod = key_event.get_modifier();
-        if key_event_mod.is_empty() {
-            match (self.get_node(key_event, unprocessed), self.get_node(key_event, &[])) {
-                (None, None) => { false }
-                _ => { true }
-            }
-        } else {
-            false
-        }
-    }
-
-    pub(crate) fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<Instruction> {
-        match self.get_node(key_event, &unprocessed) {
-            Some(node) => {
-                match node.value() {
-                    None => {
-                        Some(Instruction::InputStopOver { stop_over: key_event.get_symbol_char().expect("Should be safe when right after get_node is not None") })
-                    }
-                    Some((converted, carry_over)) => {
-                        Some(Instruction::InputKana { converted, carry_over })
-                    }
-                }
-            }
-            None => {
-                None
-            }
-        }
-    }
-}
-
-impl InputHandler for KanaHandler {
-
 }
 
 #[cfg(test)]
 mod tests {
     use xkbcommon::xkb::keysyms;
-    use keyevent::SkkKeyModifier;
+
     use super::*;
 
     #[test]
@@ -200,19 +200,19 @@ mod tests {
 
         let result = handler.get_instruction(&KeyEvent::from_str("b").unwrap(), &vec![]);
         match result {
-            Some(Instruction::InputStopOver { stop_over: _ }) => {}
+            Some(Instruction::FlushUnconverted { new_start: _ }) => {}
             _ => assert!(false)
         }
 
         let result = handler.get_instruction(&KeyEvent::from_str("y").unwrap(), &vec!['b']);
         match result {
-            Some(Instruction::InputStopOver { stop_over: _ }) => {}
+            Some(Instruction::FlushUnconverted { new_start: _ }) => {}
             _ => assert!(false)
         }
 
         let result = handler.get_instruction(&KeyEvent::from_str("y").unwrap(), &vec!['n']);
         match result {
-            Some(Instruction::InputStopOver { stop_over: _ }) => {}
+            Some(Instruction::FlushUnconverted { new_start: _ }) => {}
             _ => assert!(false)
         }
 

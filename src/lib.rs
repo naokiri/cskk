@@ -18,13 +18,18 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use input_handler::kana_handler::KanaHandler;
-use keyevent::KeyEvent;
+use crate::input_handler::InputHandler;
+use crate::input_handler::kana_handler::KanaHandler;
+use crate::input_handler::kana_precomposition_handler::KanaPrecompositionHandler;
+use crate::keyevent::KeyEvent;
 #[cfg(test)]
-use keyevent::KeyEventSeq;
+use crate::keyevent::KeyEventSeq;
+use crate::skk_modes::CompositionMode;
+use crate::skk_modes::InputMode;
 
 mod keyevent;
 mod input_handler;
+mod skk_modes;
 
 #[derive(Deserialize)]
 struct RuleMeta {
@@ -35,110 +40,36 @@ struct RuleMeta {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Command {
-    Abort,
-}
-
-#[derive(Debug, PartialEq)]
 pub(crate) enum Instruction<'a> {
-    Operation { operation: &'a Command },
-    //Input { converted: &'a String },
-    InputStopOver { stop_over: char },
+    Abort,
+    //ChangeInputMode(InputMode),
+    //StackRegisterMode,
+    FlushUnconverted { new_start: char },
     InputKana { converted: &'a str, carry_over: &'a Vec<char> },
-
+    StartComposition { converted: &'a str, carry_over: &'a Vec<char> },
 }
 
-/// Rough design prototype yet
-/// SKKの入力モード
-/// DDSKK 16.2 マニュアル 4.2 に依る
-#[derive(Debug, Display)]
-pub(crate) enum InputMode {
-    // かなモード
-    Hiragana,
-    // カナモード
-    Katakana,
-    // JIS X 0201 カナ、 いわゆる半角カナ。 DDSKKでは独立したモード扱いではないので実装未定
-    HankakuKatakana,
-    // 全英モード
-    Zenkaku,
-    // アスキーモード
-    Ascii,
-}
-
-/// Rough design prototype yet
-/// SKKの変換モード
-/// DDSKK 16.2 マニュアル 4.3 に依る
-#[derive(Debug, Display)]
-pub(crate) enum CompositionMode {
-    // ■モード
-    Direct,
-    // ▽モード
-    PreComposition,
-    // ▼モード
-    CompositionSelection,
-    // SKK abbrev mode: Sub-mode of PreComposition
-    Abbreviation,
-    // Sub-mode of CompositionSelection
-    Register(Box<CompositionMode>),
-}
 
 /// Rough design prototype yet
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
-pub(crate) struct CskkContext {
+struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
-    handler: KanaHandler,
+    //handlers: HashMap<InputMode, HashMap<CompositionMode, InputHandlerType<KanaHandler>>>,
+    kana_handler: KanaHandler,
+    kana_precomposition_handler: KanaPrecompositionHandler,
 }
 
 #[derive(Debug)]
 struct CskkState {
     input_mode: InputMode,
     composition_mode: CompositionMode,
-    pre_composition: Option<String>,
     unconverted: Vec<char>,
     converted: String,
 }
 
-
 impl CskkContext {
-    ///
-    /// Not sure of params yet.
-    ///
-//    fn key_press(&self, keysym: xkb::Keysym, keycode: xkb::Keycode) -> bool {
-//        match self.composition_state {
-//            CompositionState::Direct => {
-//                // Input as is for each mode
-//                match self.input_mode {
-//                    InputMode::Hiragana => {
-//                        // Hiragana.converter.add();
-//                        return false;
-//                    }
-//                    InputMode::Katakana => {
-//                        return true;
-//                    }
-//                    InputMode::HankakuKatakana => {
-//                        return true;
-//                    }
-//                    InputMode::Zenkaku => {
-//                        return true;
-//                    }
-//                    InputMode::Ascii => {
-//                        return true;
-//                    }
-//                }
-//            }
-//            _ => {
-//                return false;
-//            }
-//        }
-//    }
-
-
     fn key_release() {}
-
-//    fn set_state(&mut self, new_state: CompositionState) {
-//        self.composition_state = new_state;
-//    }
 
 //    fn set_mode(&mut self, new_mode: InputMode) {
 //        self.input_mode = new_mode;
@@ -146,15 +77,29 @@ impl CskkContext {
 
     ///
     /// Retrieve and remove the current output string
-    /// 
-    fn poll_output(&mut self) -> Option<String> {
+    ///
+    pub fn poll_output(&self) -> Option<String> {
+        self.retrieve_output(true)
+    }
+
+    pub fn get_preedit(&self) -> Option<String> {
+        self.retrieve_output(false)
+    }
+
+    fn retrieve_output(&self, is_polling: bool) -> Option<String> {
         let current_state = self.current_state();
-        if current_state.borrow().converted.is_empty() {
-            None
+        if current_state.borrow().composition_mode == CompositionMode::Direct {
+            if current_state.borrow().converted.is_empty() {
+                None
+            } else {
+                let out = current_state.borrow().converted.clone();
+                if is_polling {
+                    current_state.borrow_mut().converted.clear();
+                }
+                Some(out)
+            }
         } else {
-            let out = current_state.borrow().converted.clone();
-            current_state.borrow_mut().converted.clear();
-            Some(out)
+            None
         }
     }
 
@@ -180,6 +125,11 @@ impl CskkContext {
         do_reset
     }
 
+    fn move_to_pre_composition(&self) {
+        let mut current_state = self.current_state().borrow_mut();
+        current_state.composition_mode = CompositionMode::PreComposition;
+    }
+
     ///
     /// process that key event and change the internal states.
     /// if key_event is not processable by current CSKK state, then return false
@@ -194,20 +144,27 @@ impl CskkContext {
                 self.set_carry_over(carry_over);
                 true
             }
-            Some(Instruction::InputStopOver { stop_over }) => {
-                self.append_unconverted(stop_over);
+            Some(Instruction::StartComposition { converted, carry_over }) => {
+                self.append_input(converted);
+                self.set_carry_over(carry_over);
+                self.move_to_pre_composition();
                 true
             }
-            Some(Instruction::Operation { .. }) => {
+            Some(Instruction::FlushUnconverted { new_start }) => {
+                self.append_unconverted(new_start);
                 true
             }
-            None => {
-                if self.reset_carry_over() {
-                    self.process_key_event(key_event)
-                } else {
-                    false
-                }
+            _ => {
+                self.flush_and_retry(key_event)
             }
+        }
+    }
+
+    fn flush_and_retry(&self, key_event: &KeyEvent) -> bool {
+        if self.reset_carry_over() {
+            self.process_key_event(key_event)
+        } else {
+            false
         }
     }
 
@@ -238,27 +195,29 @@ impl CskkContext {
     }
 
 
-    fn get_handler(&self, _input_mode: &InputMode, _composition_mode: &CompositionMode) -> &KanaHandler {
-        &self.handler
+    fn get_handler<'a>(&'a self, input_mode: &InputMode, composition_mode: &CompositionMode) -> Box<InputHandler + 'a> {
+        Box::new(&self.kana_handler)
     }
 
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode,
-               pre_composition: Option<String>) -> CskkContext {
-        let handler = KanaHandler::default_handler();
+               pre_composition: Option<String>) -> Self {
+        let kana_handler = KanaHandler::default_handler();
+        // TODO: Make ref to kana handler using rental crate or find something more simple.
+        let kana_precomposition_handler = KanaPrecompositionHandler::new(Box::new(kana_handler.clone()));
 
         let mut initial_stack = Vec::new();
         initial_stack.push(RefCell::new(
             CskkState {
                 input_mode,
                 composition_mode,
-                pre_composition,
                 unconverted: vec![], // TODO
                 converted: "".to_string(), // TODO
             }));
-        CskkContext {
+        Self {
             state_stack: initial_stack,
-            handler,
+            kana_handler: kana_handler,
+            kana_precomposition_handler,
         }
     }
 }
@@ -281,29 +240,9 @@ impl Display for CskkState {
     }
 }
 
-/// Prototype just checking ffi yet.
-///
-/// Makes initial context and returns the pointer to the context.
-/// This library does not own the structure. It's callers' responsibility to retain them.
-///
-/// # parameter
-/// opt_logger: Rust logger. If no logging, null.
-///
-fn new_context() -> Box<CskkContext> {
-    Box::new(
-        CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-            None,
-        ))
-//    mem::transmute(initial_context)
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Once, ONCE_INIT};
-
-    use keyevent::KeyEvent;
 
     use super::*;
 
@@ -339,6 +278,24 @@ mod tests {
         let a = KeyEvent::from_str("a").unwrap();
         let result = cskkcontext.process_key_event(&a);
         assert!(result);
+    }
+
+    #[test]
+    fn retrieve_output() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Ascii,
+            CompositionMode::Direct,
+            None,
+        );
+        let a = KeyEvent::from_str("a").unwrap();
+        cskkcontext.process_key_event(&a);
+        let mut cskkcontext = cskkcontext;
+        let actual = cskkcontext.retrieve_output(false).unwrap();
+        assert_eq!("あ", actual);
+        let actual = cskkcontext.retrieve_output(true).unwrap();
+        assert_eq!("あ", actual);
+        let after = cskkcontext.retrieve_output(true);
+        assert_eq!(None, after);
     }
 
     #[test]
@@ -385,5 +342,59 @@ mod tests {
         cskkcontext.process_key_events(&a_gyou);
         let actual = cskkcontext.poll_output().unwrap();
         assert_eq!("にゃ", actual);
+    }
+
+    #[test]
+    fn simple_composition() {
+        init();
+        let mut cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+            None,
+        );
+
+        let pre_love = KeyEvent::deserialize_seq("A i").unwrap();
+        cskkcontext.process_key_events(&pre_love);
+        let actual_output = cskkcontext.poll_output().unwrap();
+        assert_eq!("", actual_output);
+        let cskkcontext = cskkcontext;
+        let actual_preedit = cskkcontext.get_preedit().unwrap();
+        assert_eq!("▽あい", actual_preedit);
+    }
+
+    #[test]
+    fn get_preedit() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Ascii,
+            CompositionMode::Direct,
+            None,
+        );
+        let a = KeyEvent::from_str("a").unwrap();
+        cskkcontext.process_key_event(&a);
+        let actual = cskkcontext.get_preedit().unwrap();
+        assert_eq!("", actual);
+
+        let large_a = KeyEvent::from_str("A").unwrap();
+        cskkcontext.process_key_event(&large_a);
+        let after = cskkcontext.get_preedit().unwrap();
+        assert_eq!("▽あ", actual);
+    }
+
+    #[test]
+    fn get_preedit_precompostion_from_mid() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Ascii,
+            CompositionMode::Direct,
+            None,
+        );
+        let a = KeyEvent::from_str("k").unwrap();
+        cskkcontext.process_key_event(&a);
+        let actual = cskkcontext.get_preedit().unwrap();
+        assert_eq!("", actual);
+
+        let large_a = KeyEvent::from_str("I").unwrap();
+        cskkcontext.process_key_event(&large_a);
+        let after = cskkcontext.get_preedit().unwrap();
+        assert_eq!("▽き", actual);
     }
 }
