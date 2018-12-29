@@ -19,7 +19,10 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::iter::FromIterator;
 
-use log::{debug, log};
+// FIXIT: log related use doesn't work well with current Rust2018 + clippy etc.
+use log::debug;
+#[allow(unused_imports)]
+use log::log;
 
 use crate::input_handler::InputHandler;
 use crate::input_handler::kana_direct_handler::KanaDirectHandler;
