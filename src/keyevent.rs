@@ -147,6 +147,10 @@ impl KeyEvent {
     pub(crate) fn get_modifier(&self) -> SkkKeyModifier {
         self.modifiers
     }
+
+    pub(crate) fn get_symbol(&self) -> xkb::Keysym {
+        self.symbol
+    }
 }
 
 
@@ -260,14 +264,13 @@ mod tests {
         assert_eq!(b.symbol, keysyms::KEY_B, "equals large B");
         assert_eq!(b.modifiers, SkkKeyModifier::None, "No modifier for B");
 
-        let shift_b = KeyEvent::from_str("(control b)").unwrap();
+        let control_b = KeyEvent::from_str("(control b)").unwrap();
         let control_modifier: SkkKeyModifier = SkkKeyModifier::Control;
-        assert_eq!(shift_b.symbol, keysyms::KEY_b, "equals small b");
-        assert_eq!(shift_b.modifiers, control_modifier, "long modifier control");
+        assert_eq!(control_b.symbol, keysyms::KEY_b, "equals small b");
+        assert_eq!(control_b.modifiers, control_modifier, "long modifier control");
 
-
-        let notu = KeyEvent::from_str("LATIN SMALL LETTER U WITH ACUTE");
-        assert!(notu.is_err());
+        let not_u = KeyEvent::from_str("LATIN SMALL LETTER U WITH ACUTE");
+        assert!(not_u.is_err());
 
         let u = KeyEvent::from_str("uacute").unwrap();
         assert_eq!(u.symbol, keysyms::KEY_uacute, "latin small u acute");
@@ -308,6 +311,9 @@ mod tests {
     fn get_symbol_char() {
         let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::None);
         assert_eq!('0' ,key_event.get_symbol_char().unwrap());
+
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::None);
+        assert_eq!('C' ,key_event.get_symbol_char().unwrap());
     }
 
     #[test]
