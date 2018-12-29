@@ -75,8 +75,6 @@ struct CskkState {
 }
 
 impl CskkContext {
-    fn key_release() {}
-
 //    fn set_mode(&mut self, new_mode: InputMode) {
 //        self.input_mode = new_mode;
 //    }
@@ -178,15 +176,6 @@ impl CskkContext {
         }
         true
     }
-
-    fn flush_and_retry(&self, key_event: &KeyEvent) -> bool {
-        if self.reset_carry_over() {
-            self.process_key_event(key_event)
-        } else {
-            false
-        }
-    }
-
 
     fn current_state(&self) -> &RefCell<CskkState> {
         self.state_stack.last().expect("State stack is empty!")

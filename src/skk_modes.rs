@@ -35,9 +35,3 @@ pub(crate) enum CompositionMode {
     // Sub-mode of CompositionSelection
     Register(Box<CompositionMode>),
 }
-
-pub(crate) struct SkkMode {
-    input_mode: InputMode,
-    composition_mode: CompositionMode,
-}
-
