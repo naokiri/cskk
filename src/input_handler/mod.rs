@@ -1,12 +1,18 @@
-use crate::keyevent::KeyEvent;
-use crate::Instruction;
+use std::fmt::Debug;
 
-pub mod kana_handler;
+use crate::Instruction;
+use crate::keyevent::KeyEvent;
+
+pub mod kana_direct_handler;
 pub mod kana_precomposition_handler;
 
-pub(crate) trait InputHandler {
+pub(crate) trait InputHandler: Debug {
+    ///
+    /// True if key_event should be consumed by current handler.
+    /// FIXME: Should this be in this trait?
+    ///
     fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool;
-    fn get_instruction<'a>(&'a self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<Instruction<'a>>;
+    fn get_instruction<'a>(&'a self, key_event: &KeyEvent, unprocessed: &[char]) -> Vec<Instruction<'a>>;
 }
 
 //// Union to put handlers in same collection. Will not be required when Rust expands the usage of return impl Trait
@@ -33,7 +39,7 @@ impl<T> InputHandler for &T where T: InputHandler {
         (*self).can_process(key_event, unprocessed)
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<Instruction> {
+    fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Vec<Instruction> {
         (*self).get_instruction(key_event, unprocessed)
     }
 }

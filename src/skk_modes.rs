@@ -26,6 +26,8 @@ pub(crate) enum CompositionMode {
     Direct,
     // ▽モード
     PreComposition,
+    // ▽モードの送り仮名開始時
+    PreCompositionOkurigana,
     // ▼モード
     CompositionSelection,
     // SKK abbrev mode: Sub-mode of PreComposition
