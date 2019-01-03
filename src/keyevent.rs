@@ -52,7 +52,7 @@ pub type KeyEventSeq = Vec<KeyEvent>;
 /// https://xkbcommon.org/doc/current/xkbcommon_8h.html#a79e604a22703391bdfe212cfc10ea007
 ///
 /// e.g.
-/// "(control a)" "C-a" "M-Left" "l"
+/// "(control a)" "C-a" "M-Left" "l" "space"
 ///
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
@@ -283,6 +283,9 @@ mod tests {
         let meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
+
+        let space = KeyEvent::from_str("space").unwrap();
+        assert_eq!(space.symbol, keysyms::KEY_space);
     }
 
     #[test]

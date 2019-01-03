@@ -3,8 +3,8 @@ use xkbcommon::xkb;
 use crate::input_handler::InputHandler;
 use crate::Instruction;
 use crate::kana_converter::KanaConverter;
-use crate::keyevent::SkkKeyModifier;
 use crate::keyevent::KeyEvent;
+use crate::keyevent::SkkKeyModifier;
 use crate::skk_modes::CompositionMode;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,7 +38,7 @@ impl InputHandler for KanaDirectHandler {
 
         let symbol = key_event.get_symbol();
         if xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z {
-            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::PreComposition));
+            instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreComposition, delegate: false });
         }
 
         if self.kana_converter.can_continue(key_event, &unprocessed) {
@@ -77,9 +77,6 @@ impl KanaDirectHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Once;
-    use std::sync::ONCE_INIT;
-
     use xkbcommon::xkb::keysyms;
 
     use crate::keyevent::SkkKeyModifier;
@@ -150,6 +147,6 @@ mod tests {
         assert!(xkb::keysyms::KEY_A <= key_event.get_symbol());
 
         let result = handler.get_instruction(&key_event, &vec![]);
-        assert_eq!(Instruction::ChangeCompositionMode(CompositionMode::PreComposition), result[0]);
+        assert_eq!(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreComposition, delegate: false }, result[0]);
     }
 }

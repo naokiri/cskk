@@ -29,12 +29,16 @@ impl InputHandler for KanaPrecompositionHandler {
         let mut instructions = Vec::new();
         // TODO: ▽ひらがな + 'q' => ヒラガナ
         // TODO: ▽ひらがな + Ctrl-G => FlushAbort
-        // TODO: ▽ひらがな + ' ' => ▼平仮名
 
         let symbol = key_event.get_symbol();
+        if symbol == xkb::keysyms::KEY_space {
+            instructions.push(Instruction::ChangeCompositionMode {composition_mode: CompositionMode::CompositionSelection, delegate: true });
+            return instructions;
+        }
+
         let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
         if is_capital {
-            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::CompositionSelection));
+            instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: false });
         }
 
         if self.kana_converter.can_continue(key_event, &unprocessed) {

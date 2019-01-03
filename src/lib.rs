@@ -20,7 +20,7 @@ use std::fmt::Formatter;
 use std::iter::FromIterator;
 
 // FIXIT: log related use doesn't work well with current Rust2018 + clippy etc.
-use log::debug;
+use log::{debug, warn};
 #[allow(unused_imports)]
 use log::log;
 
@@ -38,6 +38,7 @@ mod kana_converter;
 mod keyevent;
 mod input_handler;
 mod skk_modes;
+mod dict;
 
 #[derive(Deserialize)]
 struct RuleMeta {
@@ -53,7 +54,8 @@ pub(crate) enum Instruction<'a> {
     //ChangeInputMode(InputMode),
     //StackRegisterMode,
     FlushPreviousCarryOver,
-    ChangeCompositionMode(CompositionMode),
+    // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
+    ChangeCompositionMode { composition_mode: CompositionMode, delegate: bool },
     InsertInput(char),
     InputKana { converted: &'a str, carry_over: &'a Vec<char> },
 }
@@ -163,7 +165,7 @@ impl CskkContext {
                     self.append_converted(converted);
                     self.set_carry_over(carry_over);
                 }
-                Instruction::ChangeCompositionMode(composition_mode) => {
+                Instruction::ChangeCompositionMode { composition_mode, delegate: _ } => {
                     self.set_composition_mode(composition_mode);
                 }
                 Instruction::InsertInput(ch) => {
@@ -247,8 +249,8 @@ impl<'a> Display for Instruction<'a> {
                 carry_over.iter().map(|c| write!(f, "{}", c));
                 writeln!(f)
             }
-            Instruction::ChangeCompositionMode(composition_mode) => {
-                writeln!(f, "ChangeComopositionMode: {}", composition_mode)
+            Instruction::ChangeCompositionMode { composition_mode, delegate } => {
+                writeln!(f, "ChangeComopositionMode: {} (delegate: {})", composition_mode, delegate)
             }
             _ => {
                 writeln!(f, "Display-unsupported instruction. This is a bug.")
@@ -277,10 +279,11 @@ impl Display for CskkState {
 
 #[cfg(test)]
 impl CskkContext {
-    fn process_key_events(&mut self, key_event_seq: &KeyEventSeq) -> bool {
+    fn process_key_events(&self, key_event_seq: &KeyEventSeq) -> bool {
         for key_event in key_event_seq {
-            if !self.process_key_event(key_event) {
-                self.reset_carry_over();
+            let processed = self.process_key_event(key_event);
+            if !processed {
+                debug!("Key {} not processed", key_event);
             }
             debug!("{}", self.current_state().borrow());
         }
@@ -428,5 +431,17 @@ mod tests {
         cskkcontext.process_key_event(&large_a);
         let after = cskkcontext.get_preedit().unwrap();
         assert_eq!("▽き", after, "context: {}", cskkcontext.current_state().borrow());
+    }
+
+    #[test]
+    fn basic_henkan() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+        );
+        let pre_love = KeyEvent::deserialize_seq("A i space").unwrap();
+        cskkcontext.process_key_events(&pre_love);
+        let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {}", cskkcontext.current_state().borrow()));
+        assert_eq!("▼愛", actual);
     }
 }
