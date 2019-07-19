@@ -40,6 +40,7 @@ mod input_handler;
 mod skk_modes;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RuleMeta {
     name: String,
     root: bool,
@@ -49,6 +50,7 @@ struct RuleMeta {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Instruction<'a> {
+    #[allow(dead_code)]
     Abort,
     //ChangeInputMode(InputMode),
     //StackRegisterMode,
@@ -78,6 +80,7 @@ struct CskkState {
 }
 
 impl CskkContext {
+    // TODO: Write integration test that uses new, will_process, poll_output, process_key_event etc.
 //    fn set_mode(&mut self, new_mode: InputMode) {
 //        self.input_mode = new_mode;
 //    }
@@ -85,10 +88,12 @@ impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
+    #[allow(dead_code)]
     pub fn poll_output(&self) -> Option<String> {
         self.retrieve_output(true)
     }
 
+    #[allow(dead_code)]
     pub fn get_preedit(&self) -> Option<String> {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().unconverted;
@@ -137,6 +142,8 @@ impl CskkContext {
         current_state.borrow_mut().unconverted = unconv.to_owned();
     }
 
+    // TODO: might not only for test
+    #[cfg(test)]
     fn reset_carry_over(&self) -> bool {
         let current_state = self.current_state();
         let do_reset = !current_state.borrow().unconverted.is_empty();
@@ -153,6 +160,7 @@ impl CskkContext {
     /// process that key event and change the internal states.
     /// if key_event is not processable by current CSKK state, then return false
     ///
+    #[allow(dead_code)]
     pub fn process_key_event(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
@@ -189,6 +197,7 @@ impl CskkContext {
     /// Only checking, doesn't change internal states
     /// TODO: maybe not a proper impl for IM? can be replaced with just checking meta of keyevent?
     ///
+    #[allow(dead_code)]
     pub fn will_process(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
@@ -211,6 +220,7 @@ impl CskkContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode) -> Self {
         let kana_converter = KanaConverter::default_converter();
@@ -239,9 +249,9 @@ impl<'a> Display for Instruction<'a> {
     #[allow(unused_must_use)]
     fn fmt(&self, f: &mut Formatter<>) -> fmt::Result {
         match self {
-            Instruction::Abort => {
-                writeln!(f, "Abort")
-            }
+//            Instruction::Abort => {
+//                writeln!(f, "Abort")
+//            }
             Instruction::InputKana { converted, carry_over } => {
                 write!(f, "Input {}, carry over ", converted);
                 carry_over.iter().map(|c| write!(f, "{}", c));

@@ -137,6 +137,12 @@ mod tests {
         assert_eq!(vec!['b'], next_key);
     }
 
+//    #[test]
+//    fn na() {
+//        let next_key = KanaConverter::combined_key(&KeyEvent::from_str("n").unwrap(), &vec![]);
+//        assert_eq!(vec!['n'], next_key);
+//    }
+
     #[test]
     fn converter_from_string() {
         let content = r#"
