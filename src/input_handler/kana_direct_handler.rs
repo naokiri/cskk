@@ -23,7 +23,7 @@ impl KanaDirectHandler {
 impl InputHandler for KanaDirectHandler {
     fn can_process(&self, key_event: &KeyEvent, _unprocessed: &[char]) -> bool {
         let modifier = key_event.get_modifier();
-        if modifier.contains(SkkKeyModifier::Control) {
+        if modifier.contains(SkkKeyModifier::CONTROL) {
             return false;
         }
 
@@ -110,7 +110,7 @@ mod tests {
     fn handler_works() {
         let handler = KanaDirectHandler::test_handler();
 
-        let result = handler.can_process(&KeyEvent::from_keysym(keysyms::KEY_apostrophe, SkkKeyModifier::None), &vec!['n']);
+        let result = handler.can_process(&KeyEvent::from_keysym(keysyms::KEY_apostrophe, SkkKeyModifier::NONE), &vec!['n']);
         assert!(!result);
 
         let result = handler.can_process(&KeyEvent::from_str("b").unwrap(), &vec![]);
