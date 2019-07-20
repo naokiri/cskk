@@ -63,7 +63,7 @@ pub struct KeyEvent {
 impl KeyEvent {
     #[cfg(test)]
     pub(crate) fn from_keysym(keysym: xkb::Keysym,
-                   modifier: SkkKeyModifier) -> KeyEvent {
+                              modifier: SkkKeyModifier) -> KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
 
@@ -313,15 +313,15 @@ mod tests {
     #[test]
     fn get_symbol_char() {
         let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::None);
-        assert_eq!('0' ,key_event.get_symbol_char().unwrap());
+        assert_eq!('0', key_event.get_symbol_char().unwrap());
 
         let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::None);
-        assert_eq!('C' ,key_event.get_symbol_char().unwrap());
+        assert_eq!('C', key_event.get_symbol_char().unwrap());
     }
 
     #[test]
     fn get_symbol_char_no_display() {
         let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::None);
-        assert_eq!(None ,key_event.get_symbol_char());
+        assert_eq!(None, key_event.get_symbol_char());
     }
 }

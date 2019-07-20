@@ -25,6 +25,7 @@ use log::{debug, warn};
 use log::log;
 
 use crate::input_handler::InputHandler;
+use crate::input_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::input_handler::kana_direct_handler::KanaDirectHandler;
 use crate::input_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::kana_converter::KanaConverter;
@@ -64,19 +65,31 @@ pub(crate) enum Instruction<'a> {
 /// Rough design prototype yet
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
+/// FIXME: Handler保持をもうちょっとスマートにしたい
+#[allow(dead_code)]
 struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
-    //handlers: HashMap<InputMode, HashMap<CompositionMode, InputHandlerType<KanaHandler>>>,
     kana_direct_handler: KanaDirectHandler,
     kana_precomposition_handler: KanaPrecompositionHandler,
+    kana_composition_handler: KanaCompositionHandler,
 }
 
 #[derive(Debug)]
 struct CskkState {
     input_mode: InputMode,
     composition_mode: CompositionMode,
+    // 入力文字で、確定済みでないものすべて
     unconverted: Vec<char>,
-    converted: String,
+    // 未確定入力をInputモードにあわせてかな変換したもののうち、変換する部分。
+    converted_tocomposite: String,
+    // 未確定入力をInputモードにあわせてかな変換したもののうち、おくり仮名部分。
+    converted_toappend: String,
+    // 入力を漢字変換したもの。
+    composited: String,
+    // 確定済み入力。pollされた時に渡してflushされるもの。
+    confirmed: String,
+
+
 }
 
 impl CskkContext {
@@ -87,10 +100,12 @@ impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
+    #[allow(dead_code)]
     pub fn poll_output(&self) -> Option<String> {
         self.retrieve_output(true)
     }
 
+    #[allow(dead_code)]
     pub fn get_preedit(&self) -> Option<String> {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().unconverted;
@@ -146,6 +161,7 @@ impl CskkContext {
         do_reset
     }
 
+    #[allow(dead_code)]
     fn set_composition_mode(&self, composition_mode: CompositionMode) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.composition_mode = composition_mode;
@@ -155,18 +171,21 @@ impl CskkContext {
     /// process that key event and change the internal states.
     /// if key_event is not processable by current CSKK state, then return false
     ///
+    #[allow(dead_code)]
     pub fn process_key_event(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
         let instructions = handler.get_instruction(key_event, &current_state.borrow().unconverted);
+        let mut is_delegated = false;
         for instruction in instructions {
             match instruction {
                 Instruction::InputKana { converted, carry_over } => {
                     self.append_converted(converted);
                     self.set_carry_over(carry_over);
                 }
-                Instruction::ChangeCompositionMode { composition_mode, delegate: _ } => {
+                Instruction::ChangeCompositionMode { composition_mode, delegate } => {
                     self.set_composition_mode(composition_mode);
+                    is_delegated = delegate;
                 }
                 Instruction::InsertInput(ch) => {
                     self.append_unconverted(ch);
@@ -179,7 +198,11 @@ impl CskkContext {
                 }
             }
         }
-        true
+        if is_delegated {
+            self.process_key_event(key_event)
+        } else {
+            true
+        }
     }
 
     fn current_state(&self) -> &RefCell<CskkState> {
@@ -191,6 +214,7 @@ impl CskkContext {
     /// Only checking, doesn't change internal states
     /// TODO: maybe not a proper impl for IM? can be replaced with just checking meta of keyevent?
     ///
+    #[allow(dead_code)]
     pub fn will_process(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
@@ -220,6 +244,8 @@ impl CskkContext {
         let kana_direct_handler = KanaDirectHandler::new(Box::new(kana_converter.clone()));
         // FIXME: Make ref to kana handler using rental crate or find something more simple.
         let kana_precomposition_handler = KanaPrecompositionHandler::new(Box::new(kana_converter.clone()));
+        // FIXME: Make ref to kana converter
+        let kana_composition_handler = KanaCompositionHandler::new();
 
         let mut initial_stack = Vec::new();
         initial_stack.push(RefCell::new(
@@ -233,6 +259,7 @@ impl CskkContext {
             state_stack: initial_stack,
             kana_direct_handler,
             kana_precomposition_handler,
+            kana_composition_handler,
         }
     }
 }
@@ -442,6 +469,6 @@ mod tests {
         let pre_love = KeyEvent::deserialize_seq("A i space").unwrap();
         cskkcontext.process_key_events(&pre_love);
         let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {}", cskkcontext.current_state().borrow()));
-        assert_eq!("▼愛", actual);
+        assert_eq!(actual, "▼愛");
     }
 }

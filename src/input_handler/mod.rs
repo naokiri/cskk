@@ -5,6 +5,7 @@ use crate::keyevent::KeyEvent;
 
 pub mod kana_direct_handler;
 pub mod kana_precomposition_handler;
+pub mod kana_composition_handler;
 
 pub(crate) trait InputHandler: Debug {
     ///

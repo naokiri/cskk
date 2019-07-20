@@ -4,6 +4,7 @@ use crate::input_handler::InputHandler;
 use crate::Instruction;
 use crate::kana_converter::KanaConverter;
 use crate::keyevent::KeyEvent;
+use crate::keyevent::SkkKeyModifier;
 use crate::skk_modes::CompositionMode;
 
 #[derive(Debug)]
@@ -31,13 +32,11 @@ impl InputHandler for KanaPrecompositionHandler {
         // TODO: ▽ひらがな + Ctrl-G => FlushAbort
 
         let symbol = key_event.get_symbol();
+        let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z && key_event.get_modifier().contains(SkkKeyModifier::Shift);
         if symbol == xkb::keysyms::KEY_space {
-            instructions.push(Instruction::ChangeCompositionMode {composition_mode: CompositionMode::CompositionSelection, delegate: true });
+            instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true });
             return instructions;
-        }
-
-        let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
-        if is_capital {
+        } else if is_capital {
             instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: false });
         }
 
