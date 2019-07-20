@@ -42,6 +42,7 @@ mod skk_modes;
 mod dict;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RuleMeta {
     name: String,
     root: bool,
@@ -51,6 +52,7 @@ struct RuleMeta {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Instruction<'a> {
+    #[allow(dead_code)]
     Abort,
     //ChangeInputMode(InputMode),
     //StackRegisterMode,
@@ -93,6 +95,7 @@ struct CskkState {
 }
 
 impl CskkContext {
+    // TODO: Write integration test that uses new, will_process, poll_output, process_key_event etc.
 //    fn set_mode(&mut self, new_mode: InputMode) {
 //        self.input_mode = new_mode;
 //    }
@@ -154,6 +157,8 @@ impl CskkContext {
         current_state.borrow_mut().unconverted = unconv.to_owned();
     }
 
+    // TODO: might not only for test
+    #[cfg(test)]
     fn reset_carry_over(&self) -> bool {
         let current_state = self.current_state();
         let do_reset = !current_state.borrow().unconverted.is_empty();
@@ -237,6 +242,7 @@ impl CskkContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode) -> Self {
         let kana_converter = KanaConverter::default_converter();
@@ -268,9 +274,9 @@ impl<'a> Display for Instruction<'a> {
     #[allow(unused_must_use)]
     fn fmt(&self, f: &mut Formatter<>) -> fmt::Result {
         match self {
-            Instruction::Abort => {
-                writeln!(f, "Abort")
-            }
+//            Instruction::Abort => {
+//                writeln!(f, "Abort")
+//            }
             Instruction::InputKana { converted, carry_over } => {
                 write!(f, "Input {}, carry over ", converted);
                 carry_over.iter().map(|c| write!(f, "{}", c));

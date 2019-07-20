@@ -10,6 +10,9 @@ Of course, this library is named as 'CSKK' because it is extensionally equal to 
 [ddskk]: http://openlab.ring.gr.jp/skk/ddskk.html
 
 
+## Build requirement
+- libxkbcommon
+
 ## Development roadmap
 ### SKK in rust, simulating the keyevent.
 First goal is to simulate skk like libskk and be able to run something similar that libskk does for library testing.
