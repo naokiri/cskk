@@ -15,30 +15,31 @@ bitflags! {
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
     pub(crate) struct SkkKeyModifier: u32 {
-        const None = 0;
-        const Shift = 1;
-        const Lock = 1 << 1;
-        const Control = 1 << 2;
-        const Mod1 = 1 << 3;
-        const Mod2 = 1 << 4;
-        const Mod3 = 1 << 5;
-        const Mod4 = 1 << 6;
-        const Mod5 = 1 << 7;
+        const NONE = 0;
+        const SHIFT = 1;
+        const LOCK = 1 << 1;
+        const CONTROL = 1 << 2;
+        const MOD1 = 1 << 3;
+        const MOD2 = 1 << 4;
+        const MOD3 = 1 << 5;
+        const MOD4 = 1 << 6;
+        const MOD5 = 1 << 7;
 
         /// Reserved for nicola
-        const LShift = 1 << 22;
+        const L_SHIFT = 1 << 22;
         /// Reserved for nicola
-        const RShift = 1 << 23;
+        const R_SHIFT = 1 << 23;
         /// Reserved for nicola
         /// works specially that sleeps (int)keysym usec for simulating non-double key press event.
-        const USleep = 1 << 24;
-        const Super = 1 << 26;
-        const Hyper = 1 << 27;
-        const Meta = 1 << 28;
-        const Release = 1 << 30;
+        const USLEEP = 1 << 24;
+        const SUPER = 1 << 26;
+        const HYPER = 1 << 27;
+        const META = 1 << 28;
+        const RELEASE = 1 << 30;
     }
 }
 
+#[cfg(test)]
 pub type KeyEventSeq = Vec<KeyEvent>;
 
 ///
@@ -72,27 +73,27 @@ impl KeyEvent {
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
     pub fn from_str(key: &str) -> Result<KeyEvent, KeyEventError> {
-        let mut modifier: SkkKeyModifier = SkkKeyModifier::None;
+        let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
         let key = key.trim();
         if key.starts_with('(') && key.ends_with(')') {
-            let words = key.trim_left_matches('(').trim_right_matches(')').split(' ');
+            let words = key.trim_start_matches('(').trim_end_matches(')').split(' ');
             for word in words {
                 match word {
                     "control" => {
-                        modifier.set(SkkKeyModifier::Control, true);
+                        modifier.set(SkkKeyModifier::CONTROL, true);
                     }
                     "meta" => {
-                        modifier.set(SkkKeyModifier::Meta, true);
+                        modifier.set(SkkKeyModifier::META, true);
                     }
                     "alt" => {
-                        modifier.set(SkkKeyModifier::Mod1, true);
+                        modifier.set(SkkKeyModifier::MOD1, true);
                     }
                     "lshift" => {
-                        modifier.set(SkkKeyModifier::LShift, true);
+                        modifier.set(SkkKeyModifier::L_SHIFT, true);
                     }
                     "rshift" => {
-                        modifier.set(SkkKeyModifier::RShift, true);
+                        modifier.set(SkkKeyModifier::R_SHIFT, true);
                     }
                     _ => {
                         keysym = xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
@@ -103,19 +104,19 @@ impl KeyEvent {
             let keyname: &str = if key.len() > 2 {
                 match &key[0..2] {
                     "C-" => {
-                        modifier.set(SkkKeyModifier::Control, true);
+                        modifier.set(SkkKeyModifier::CONTROL, true);
                         &key[2..]
                     }
                     "M-" => {
-                        modifier.set(SkkKeyModifier::Meta, true);
+                        modifier.set(SkkKeyModifier::META, true);
                         &key[2..]
                     }
                     "A-" => {
-                        modifier.set(SkkKeyModifier::Mod1, true);
+                        modifier.set(SkkKeyModifier::MOD1, true);
                         &key[2..]
                     }
                     "G-" => {
-                        modifier.set(SkkKeyModifier::Mod5, true);
+                        modifier.set(SkkKeyModifier::MOD5, true);
                         &key[2..]
                     }
                     _ => {
@@ -157,6 +158,7 @@ impl KeyEvent {
 ///
 /// KeyEventSeq related functions
 ///
+#[cfg(test)]
 impl KeyEvent {
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
         match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
@@ -230,7 +232,7 @@ impl KeyEvent {
 
 impl Display for KeyEvent {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_right_matches('\u{0}'))
+        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_end_matches('\u{0}'))
     }
 }
 
@@ -254,18 +256,18 @@ mod tests {
     fn keyevent_from_str() {
         let a = KeyEvent::from_str("a").unwrap();
         assert_eq!(a.symbol, keysyms::KEY_a, "equals small a");
-        assert_eq!(a.modifiers, SkkKeyModifier::None, "No modifier for a");
+        assert_eq!(a.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
         let spacea = KeyEvent::from_str(" a").unwrap();
         assert_eq!(spacea.symbol, keysyms::KEY_a, "equals small a");
-        assert_eq!(spacea.modifiers, SkkKeyModifier::None, "No modifier for a");
+        assert_eq!(spacea.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
         let b = KeyEvent::from_str("B").unwrap();
         assert_eq!(b.symbol, keysyms::KEY_B, "equals large B");
-        assert_eq!(b.modifiers, SkkKeyModifier::None, "No modifier for B");
+        assert_eq!(b.modifiers, SkkKeyModifier::NONE, "No modifier for B");
 
         let control_b = KeyEvent::from_str("(control b)").unwrap();
-        let control_modifier: SkkKeyModifier = SkkKeyModifier::Control;
+        let control_modifier: SkkKeyModifier = SkkKeyModifier::CONTROL;
         assert_eq!(control_b.symbol, keysyms::KEY_b, "equals small b");
         assert_eq!(control_b.modifiers, control_modifier, "long modifier control");
 
@@ -280,7 +282,7 @@ mod tests {
         assert_eq!(short_ctrl_a.modifiers, control_modifier, "C-a works");
 
         let meta_left = KeyEvent::from_str("M-Left").unwrap();
-        let meta_modifier: SkkKeyModifier = SkkKeyModifier::Meta;
+        let meta_modifier: SkkKeyModifier = SkkKeyModifier::META;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
 
@@ -304,7 +306,7 @@ mod tests {
 
     #[test]
     fn from_keysym() {
-        let modifier = SkkKeyModifier::LShift;
+        let modifier = SkkKeyModifier::L_SHIFT;
         let result = KeyEvent::from_keysym(keysyms::KEY_s, modifier);
         assert_eq!(result.symbol, keysyms::KEY_s);
         assert_eq!(result.modifiers, modifier);
@@ -312,16 +314,16 @@ mod tests {
 
     #[test]
     fn get_symbol_char() {
-        let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::None);
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::NONE);
         assert_eq!('0' ,key_event.get_symbol_char().unwrap());
 
-        let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::None);
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::NONE);
         assert_eq!('C' ,key_event.get_symbol_char().unwrap());
     }
 
     #[test]
     fn get_symbol_char_no_display() {
-        let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::None);
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::NONE);
         assert_eq!(None ,key_event.get_symbol_char());
     }
 }
