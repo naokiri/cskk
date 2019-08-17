@@ -16,6 +16,12 @@ pub(crate) struct KanaConverter {
 }
 
 impl KanaConverter {
+    //!
+    //! 未決時にもconvertすると確定してしまうので、ddskkのskk-kana-input実装と違う作りになっている。要再検討
+    //!
+
+
+    // returns unprocessed vector appending the key_event
     pub fn combined_key(key_event: &KeyEvent, unprocessed: &[char]) -> Vec<char> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
@@ -31,6 +37,7 @@ impl KanaConverter {
         }
     }
 
+    // convert the unprocessed vector into kana and the remaining carryover if matching kana exists
     pub fn convert<'a>(&'a self, kana: &[char]) -> Option<&'a (Converted, CarryOver)> {
         self.process_map.get(kana)
     }
@@ -110,6 +117,23 @@ impl KanaConverter {
             process_map: process_list,
         }
     }
+
+    // Example from ddskk 16.2 skk-kana-input
+    fn test_ant_converter() -> Self {
+        let mut process_list = SequenceTrie::new();
+
+        process_list.insert(&['a'], ("あ".to_string(), vec![]));
+        process_list.insert(&['n'], ("ん".to_string(), vec![]));
+        process_list.insert(&['n', 'n'], ("ん".to_string(), vec![]));
+        process_list.insert(&['n', 'a'], ("な".to_string(), vec![]));
+        process_list.insert(&['t', 'a'], ("た".to_string(), vec![]));
+        process_list.insert(&['t', 't'], ("っ".to_string(), vec!['t']));
+
+
+        KanaConverter {
+            process_map: process_list,
+        }
+    }
 }
 
 
@@ -135,12 +159,6 @@ mod tests {
         assert_eq!(vec!['b'], next_key);
     }
 
-//    #[test]
-//    fn na() {
-//        let next_key = KanaConverter::combined_key(&KeyEvent::from_str("n").unwrap(), &vec![]);
-//        assert_eq!(vec!['n'], next_key);
-//    }
-
     #[test]
     fn converter_from_string() {
         let content = r#"
@@ -154,7 +172,7 @@ mod tests {
         let converter = KanaConverter::converter_from_string(&content);
 
         let (converted, carry_over) = converter.convert(&['a']).unwrap();
-        assert_eq!("あ", converted);
+        assert_eq!(converted, "あ");
         assert_eq!(Vec::<char>::with_capacity(0), *carry_over);
     }
 
@@ -163,6 +181,17 @@ mod tests {
         let converter = KanaConverter::test_converter();
 
         let result = converter.convert(&['k']);
-        assert_eq!(None, result);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn ant_tree_convert() {
+        let converter = KanaConverter::test_ant_converter();
+        let result = converter.convert(&['t']);
+        assert_eq!(result, None);
+
+        let (kana, carry_over) = converter.convert(&['t', 't']).unwrap();
+        assert_eq!("っ", kana);
+        assert_eq!(*carry_over, vec!['t'])
     }
 }
