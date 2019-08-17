@@ -13,21 +13,16 @@ use encoding_rs_io::DecodeReaderBytesBuilder;
 use log::log;
 use log::warn;
 
-#[derive(Debug)]
-pub(crate) struct Candidate {
-    kouho: String,
-    // TODO: okuri of personal dictionary?
-    // okuri: Option<String>,
-    annotation: Option<String>,
-}
+use crate::dict::candidate::Candidate;
+use std::sync::Arc;
 
 struct DictEntry {
     midashi: String,
-    candidates: Vec<Candidate>,
+    candidates: Vec<Arc<Candidate>>,
 }
 
 struct OnMemoryDict {
-    okuri_nashi_dictionary: BTreeMap<String, Vec<Candidate>>,
+    okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
 }
 
 #[derive(PartialEq)]
@@ -50,11 +45,18 @@ impl OnMemoryDict {
             if entry != "" {
                 let mut entry = entry.split(';');
                 let kouho = if let Some(text) = entry.next() { text } else { continue; };
-                let annotation = entry.next().map(|entry| entry.to_string());
-                result.push(Candidate {
-                    kouho: kouho.to_string(),
-                    annotation,
-                });
+                let annotation = entry.next().map(|entry| Arc::new(entry.to_string()));
+                result.push(
+                    Arc::new(
+                        Candidate::new(
+                            Arc::new(midashi.to_string()),
+                            false,
+                            Arc::new(kouho.to_string()),
+                            annotation,
+                            Some(kouho.to_string()),
+                        )
+                    )
+                )
             }
         }
         Ok(DictEntry {
@@ -85,7 +87,7 @@ impl OnMemoryDict {
                         match parsed {
                             Ok(parsed) => {
                                 //eprintln!("{}", parsed.midashi);
-                                okuri_nashi.insert(parsed.midashi, parsed.candidates);
+                                okuri_nashi.insert(parsed.midashi.clone(), parsed);
                             }
                             Err(_) => {
                                 eprintln!("Dict is ill formatted. Ignored line {}", &line);
@@ -106,7 +108,7 @@ impl OnMemoryDict {
         self.load();
     }
 
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&Vec<Candidate>> {
+    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
         self.okuri_nashi_dictionary.get(midashi)
     }
 
@@ -146,17 +148,37 @@ mod tests {
 
         let okuri_nashi = dict.okuri_nashi_dictionary;
         assert_ne!(0, okuri_nashi.len());
-        assert_eq!("", (*okuri_nashi.get("あい").unwrap())[0].kouho);
+        let Candidate { kouho_text, .. } = ((okuri_nashi.get("あい").unwrap()).candidates[0]).as_ref();
+        assert_eq!("", *kouho_text.as_ref());
     }
 
     #[test]
-    fn split_candidate() {
-        let result = OnMemoryDict::split_candidates("あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/");
+    fn split_candidate_okuri_nashi() {
+        let result = OnMemoryDict::split_candidates(
+            "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/"
+        );
         let result = result.unwrap();
         assert_eq!("あい", result.midashi);
-        assert_eq!("愛", result.candidates[0].kouho);
-        assert_eq!(None, result.candidates[0].annotation);
-        assert_eq!("亜衣", result.candidates[5].kouho);
-        assert_eq!(Some("人名".to_string()), result.candidates[5].annotation);
+        let Candidate { kouho_text, annotation, .. } = result.candidates[0].as_ref();
+        assert_eq!("愛", *kouho_text.as_ref());
+        assert_eq!(None, *annotation);
+        let Candidate { kouho_text, annotation, .. } = result.candidates[5].as_ref();
+        assert_eq!("亜衣", *kouho_text.as_ref());
+        assert_eq!("人名", *(annotation.as_ref()).expect("亜衣 doesn't have annotation").as_ref());
+    }
+
+    #[test]
+    fn split_candidate_okuri_ari() {
+        let result = OnMemoryDict::split_candidates(
+            "おどr /踊;dance/躍;jump/踴;「踊」の異体字/"
+        );
+        let result = result.unwrap();
+        assert_eq!("おどr", result.midashi);
+        let Candidate { kouho_text, annotation,.. } = result.candidates[0].as_ref();
+        assert_eq!("踊", *kouho_text.as_ref());
+        assert_eq!("dance", *(annotation.as_ref()).expect("踊 in sense of dance doesn't have annotation").as_ref());
+        let Candidate { kouho_text, annotation,.. } = result.candidates[1].as_ref();
+        assert_eq!("躍".to_string(), *kouho_text.as_ref());
+        assert_eq!("jump".to_string(), *(annotation.as_ref()).expect("躍 in sense of jump doesn't have annotation.").as_ref());
     }
 }
