@@ -13,7 +13,7 @@ use encoding_rs_io::DecodeReaderBytesBuilder;
 use log::log;
 use log::warn;
 
-use crate::dict::candidate::Candidate;
+use crate::dictionary::candidate::Candidate;
 use std::sync::Arc;
 
 struct DictEntry {
@@ -32,7 +32,7 @@ enum EntryProcessingMode {
 }
 
 ///
-/// skkjisyo dict
+/// skkjisyo dictionary
 ///
 impl OnMemoryDict {
     fn split_candidates(line: &str) -> Result<DictEntry, &str> {
@@ -126,8 +126,8 @@ impl OnMemoryDict {
     }
 
     ///
-    /// It is OK not to save on memory dict.
-    /// Probably only for user dict?
+    /// It is OK not to save on memory dictionary.
+    /// Probably only for user dictionary?
     ///
     fn save_dict(&self) -> bool {
         false

@@ -17,8 +17,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::iter::FromIterator;
 
-// FIXIT: log related use doesn't work well with current Rust2018 + clippy etc.
-use log::{debug, warn};
+use log::debug;
 #[allow(unused_imports)]
 use log::log;
 
@@ -37,7 +36,7 @@ mod kana_converter;
 mod keyevent;
 mod input_handler;
 mod skk_modes;
-mod dict;
+mod dictionary;
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
@@ -74,6 +73,9 @@ struct CskkContext {
     kana_composition_handler: KanaCompositionHandler,
 }
 
+/// Rough prototype yet.
+///
+/// FIXME: どこまでRc (or Arc) で共有できるのか整理する。
 #[derive(Debug)]
 struct CskkState {
     input_mode: InputMode,
@@ -88,7 +90,6 @@ struct CskkState {
     composited: String,
     // 確定済み入力。pollされた時に渡してflushされるもの。
     confirmed: String,
-
 
 }
 
@@ -124,12 +125,12 @@ impl CskkContext {
 
     fn retrieve_output(&self, is_polling: bool) -> Option<String> {
         let current_state = self.current_state();
-        if current_state.borrow().converted.is_empty() {
+        if current_state.borrow().confirmed.is_empty() {
             None
         } else {
-            let out = current_state.borrow().converted.clone();
+            let out = current_state.borrow().confirmed.clone();
             if is_polling {
-                current_state.borrow_mut().converted.clear();
+                current_state.borrow_mut().confirmed.clear();
             }
             Some(out)
         }
@@ -137,7 +138,7 @@ impl CskkContext {
 
     fn append_converted(&self, result: &str) {
         let current_state = self.current_state();
-        current_state.borrow_mut().converted.push_str(result);
+        current_state.borrow_mut().confirmed.push_str(result);
     }
 
     fn append_unconverted(&self, unconv: char) {
@@ -257,7 +258,10 @@ impl CskkContext {
                 input_mode,
                 composition_mode,
                 unconverted: vec![], // TODO
-                converted: "".to_string(), // TODO
+                converted_tocomposite: "".to_string(), // TODO
+                converted_toappend: "".to_string(), // TODO
+                composited: "".to_string(), // TODO
+                confirmed: "".to_string(), // TODO
             }));
         Self {
             state_stack: initial_stack,
@@ -296,8 +300,9 @@ impl Display for CskkState {
         writeln!(f, r#"{{
             {}
             {}
-            converted: {}"#,
-                 self.input_mode, self.composition_mode, self.converted);
+            confirmed: {}"#,
+                 self.input_mode, self.composition_mode,
+                 self.confirmed);
         write!(f, "            unconverted:");
         for c in self.unconverted.to_vec() {
             write!(f, "{}", c);
