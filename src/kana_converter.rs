@@ -115,8 +115,6 @@ impl KanaConverter {
 
 #[cfg(test)]
 mod tests {
-    use xkbcommon::xkb::keysyms;
-
     use super::*;
 
     #[test]

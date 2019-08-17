@@ -11,8 +11,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
-#[cfg(test)]
-use std::cell::Ref;
 use std::cell::RefCell;
 use std::fmt;
 use std::fmt::Display;
@@ -226,7 +224,7 @@ impl CskkContext {
         handler.can_process(key_event, &[])
     }
 
-    fn get_handler<'a>(&'a self, input_mode: &InputMode, composition_mode: &CompositionMode) -> Box<InputHandler + 'a> {
+    fn get_handler<'a>(&'a self, input_mode: &InputMode, composition_mode: &CompositionMode) -> Box<dyn InputHandler + 'a> {
         // FIXME: this _ => default handler looks error prone
         match input_mode {
             InputMode::Hiragana => match composition_mode {
@@ -371,7 +369,7 @@ mod tests {
         );
         let a = KeyEvent::from_str("a").unwrap();
         cskkcontext.process_key_event(&a);
-        let mut cskkcontext = cskkcontext;
+        let cskkcontext = cskkcontext;
         let actual = cskkcontext.retrieve_output(false).unwrap();
         assert_eq!("あ", actual);
         let actual = cskkcontext.retrieve_output(true).unwrap();
@@ -388,7 +386,7 @@ mod tests {
         );
         let a = KeyEvent::from_str("a").unwrap();
         cskkcontext.process_key_event(&a);
-        let mut cskkcontext = cskkcontext;
+        let cskkcontext = cskkcontext;
         let actual = cskkcontext.poll_output().unwrap();
         assert_eq!("あ", actual);
         let after = cskkcontext.poll_output();

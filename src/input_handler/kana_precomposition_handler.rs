@@ -77,10 +77,6 @@ impl KanaPrecompositionHandler {
 
 #[cfg(test)]
 mod tests {
-    use xkbcommon::xkb::keysyms;
-
-    use crate::keyevent::SkkKeyModifier;
-
     use super::*;
 
     #[test]
@@ -112,5 +108,6 @@ mod tests {
         assert_eq!(Instruction::InsertInput('y'), result[0]);
 
         let result = handler.get_instruction(&KeyEvent::from_str("a").unwrap(), &vec!['b', 'y']);
+        assert_eq!(Instruction::InputKana{converted: "びゃ", carry_over: &vec![] }, result[0]);
     }
 }
