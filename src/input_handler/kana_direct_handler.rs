@@ -77,9 +77,6 @@ impl KanaDirectHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Once;
-    use std::sync::ONCE_INIT;
-
     use xkbcommon::xkb::keysyms;
 
     use crate::keyevent::SkkKeyModifier;
