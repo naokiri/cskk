@@ -9,6 +9,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+#[cfg(test)]
+extern crate simulacrum;
 extern crate xkbcommon;
 
 use std::cell::RefCell;
@@ -21,6 +23,7 @@ use log::debug;
 #[allow(unused_imports)]
 use log::log;
 
+use crate::dictionary::candidate::Candidate;
 use crate::input_handler::InputHandler;
 use crate::input_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::input_handler::kana_direct_handler::KanaDirectHandler;
@@ -57,7 +60,9 @@ pub(crate) enum Instruction<'a> {
     // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
     ChangeCompositionMode { composition_mode: CompositionMode, delegate: bool },
     InsertInput(char),
-    InputKana { converted: &'a str, carry_over: &'a Vec<char> },
+    InputKanaDirect { converted: &'a str, carry_over: &'a Vec<char> },
+    InputKanaPrecomposition { converted: &'a str, carry_over: &'a Vec<char> },
+    SetComposition { kanji: &'a str, okuri: Option<&'a str> },
 }
 
 
@@ -80,17 +85,20 @@ struct CskkContext {
 struct CskkState {
     input_mode: InputMode,
     composition_mode: CompositionMode,
-    // 入力文字で、確定済みでないものすべて
-    unconverted: Vec<char>,
+    // 入力文字で、かな確定済みでないものすべて
+    pre_conversion: Vec<char>,
     // 未確定入力をInputモードにあわせてかな変換したもののうち、変換する部分。
-    converted_tocomposite: String,
+    converted_kana_to_composite: String,
     // 未確定入力をInputモードにあわせてかな変換したもののうち、おくり仮名部分。
-    converted_toappend: String,
+    converted_kana_to_okuri: String,
     // 入力を漢字変換したもの。
     composited: String,
-    // 確定済み入力。pollされた時に渡してflushされるもの。
+    // 確定済み入力列。pollされた時に渡してflushされるもの。
     confirmed: String,
-
+    // 変換中の選択肢
+    //composition_candidates: &Vec<Arc<Candidate>>,
+    // 変換中の選択肢のうち、どれをさしているか
+    selection_pointer: usize,
 }
 
 impl CskkContext {
@@ -110,7 +118,7 @@ impl CskkContext {
     #[allow(dead_code)]
     pub fn get_preedit(&self) -> Option<String> {
         let converted = self.retrieve_output(false);
-        let unconverted = &self.current_state().borrow().unconverted;
+        let unconverted = &self.current_state().borrow().pre_conversion;
 
         match self.current_state().borrow().composition_mode {
             CompositionMode::PreComposition => {
@@ -123,6 +131,11 @@ impl CskkContext {
         }
     }
 
+    ///
+    /// 確定済文字を返す。
+    /// IM側からのpolling用途でなければ、状態を変えない。
+    /// IMからのpollingで出力用途ならば、flushする。
+    ///
     fn retrieve_output(&self, is_polling: bool) -> Option<String> {
         let current_state = self.current_state();
         if current_state.borrow().confirmed.is_empty() {
@@ -143,25 +156,30 @@ impl CskkContext {
 
     fn append_unconverted(&self, unconv: char) {
         let current_state = self.current_state();
-        current_state.borrow_mut().unconverted.push(unconv);
+        current_state.borrow_mut().pre_conversion.push(unconv);
+    }
+
+    fn append_converted_to_composite(&self, result: &str) {
+        let current_state = self.current_state();
+        current_state.borrow_mut().converted_kana_to_composite.push_str(result);
     }
 
     fn reset_unconverted(&self) {
         let current_state = self.current_state();
-        current_state.borrow_mut().unconverted = vec![];
+        current_state.borrow_mut().pre_conversion = vec![];
     }
 
     fn set_carry_over(&self, unconv: &[char]) {
         let current_state = self.current_state();
-        current_state.borrow_mut().unconverted = unconv.to_owned();
+        current_state.borrow_mut().pre_conversion = unconv.to_owned();
     }
 
     // TODO: might not only for test
     #[cfg(test)]
     fn reset_carry_over(&self) -> bool {
         let current_state = self.current_state();
-        let do_reset = !current_state.borrow().unconverted.is_empty();
-        current_state.borrow_mut().unconverted = vec![];
+        let do_reset = !current_state.borrow().pre_conversion.is_empty();
+        current_state.borrow_mut().pre_conversion = vec![];
         do_reset
     }
 
@@ -169,6 +187,7 @@ impl CskkContext {
     fn set_composition_mode(&self, composition_mode: CompositionMode) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.composition_mode = composition_mode;
+        current_state.selection_pointer = 0;
     }
 
     ///
@@ -179,13 +198,17 @@ impl CskkContext {
     pub fn process_key_event(&self, key_event: &KeyEvent) -> bool {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
-        let instructions = handler.get_instruction(key_event, &current_state.borrow().unconverted);
+        let instructions = handler.get_instruction(key_event, &current_state.borrow());
         let mut is_delegated = false;
         for instruction in instructions {
             match instruction {
-                Instruction::InputKana { converted, carry_over } => {
+                Instruction::InputKanaDirect { converted, carry_over } => {
                     self.append_converted(converted);
                     self.set_carry_over(carry_over);
+                }
+                Instruction::InputKanaPrecomposition { converted, carry_over } => {
+                    self.append_converted_to_composite(converted);
+                    self.set_carry_over(carry_over)
                 }
                 Instruction::ChangeCompositionMode { composition_mode, delegate } => {
                     self.set_composition_mode(composition_mode);
@@ -194,6 +217,7 @@ impl CskkContext {
                 Instruction::InsertInput(ch) => {
                     self.append_unconverted(ch);
                 }
+
                 Instruction::FlushPreviousCarryOver => {
                     self.reset_unconverted();
                 }
@@ -235,6 +259,9 @@ impl CskkContext {
                 CompositionMode::PreComposition => {
                     Box::new(&self.kana_precomposition_handler)
                 }
+                CompositionMode::CompositionSelection => {
+                    Box::new(&self.kana_composition_handler)
+                }
                 _ => { Box::new(&self.kana_direct_handler) }
             }
             _ => { Box::new(&self.kana_direct_handler) }
@@ -257,11 +284,12 @@ impl CskkContext {
             CskkState {
                 input_mode,
                 composition_mode,
-                unconverted: vec![], // TODO
-                converted_tocomposite: "".to_string(), // TODO
-                converted_toappend: "".to_string(), // TODO
+                pre_conversion: vec![], // TODO
+                converted_kana_to_composite: "".to_string(), // TODO
+                converted_kana_to_okuri: "".to_string(), // TODO
                 composited: "".to_string(), // TODO
                 confirmed: "".to_string(), // TODO
+                selection_pointer: 0,
             }));
         Self {
             state_stack: initial_stack,
@@ -279,7 +307,7 @@ impl<'a> Display for Instruction<'a> {
 //            Instruction::Abort => {
 //                writeln!(f, "Abort")
 //            }
-            Instruction::InputKana { converted, carry_over } => {
+            Instruction::InputKanaDirect { converted, carry_over } => {
                 write!(f, "Input {}, carry over ", converted);
                 carry_over.iter().map(|c| write!(f, "{}", c));
                 writeln!(f)
@@ -304,7 +332,7 @@ impl Display for CskkState {
                  self.input_mode, self.composition_mode,
                  self.confirmed);
         write!(f, "            unconverted:");
-        for c in self.unconverted.to_vec() {
+        for c in self.pre_conversion.to_vec() {
             write!(f, "{}", c);
         }
         writeln!(f);
@@ -324,6 +352,25 @@ impl CskkContext {
             debug!("{}", self.current_state().borrow());
         }
         return true;
+    }
+}
+
+#[cfg(test)]
+impl CskkState {
+    pub fn new_test_state(input_mode: InputMode,
+                          composition_mode: CompositionMode,
+                          pre_conversion: Vec<char>,
+    ) -> Self {
+        CskkState {
+            input_mode,
+            composition_mode,
+            pre_conversion,
+            converted_kana_to_composite: "".to_string(), // TODO
+            converted_kana_to_okuri: "".to_string(), // TODO
+            composited: "".to_string(), // TODO
+            confirmed: "".to_string(), // TODO
+            selection_pointer: 0,
+        }
     }
 }
 

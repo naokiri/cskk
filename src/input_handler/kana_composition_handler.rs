@@ -1,20 +1,34 @@
+use std::borrow::Borrow;
+use std::sync::Arc;
+
 use xkbcommon::xkb;
 
+use crate::{CskkState, Instruction};
+use crate::dictionary::candidate::Candidate;
+use crate::dictionary::on_memory_dict::OnMemoryDict;
 use crate::input_handler::InputHandler;
-use crate::Instruction;
-use crate::kana_converter::KanaConverter;
 use crate::keyevent::KeyEvent;
+use crate::dictionary::{DictEntry, Dictionary};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct KanaCompositionHandler {}
+///
+/// かな -> 漢字 ハンドラ。とりあえず送りなしのみ。
+///
+#[derive(Debug)]
+pub(crate) struct KanaCompositionHandler<Dict : Dictionary> {
+    dictionary: Dict,
+}
 
-impl KanaCompositionHandler {
+impl KanaCompositionHandler<OnMemoryDict> {
     pub fn new() -> Self {
-        KanaCompositionHandler {}
+        KanaCompositionHandler {
+            dictionary: OnMemoryDict::new()
+        }
     }
 
     // dictionary list order search, dedupe by kouho and add to list and return all candidates
-    fn get_all_candidates() {}
+    fn get_all_candidates(&self, a: &str) -> Option<&DictEntry> {
+        self.dictionary.lookup(a, false)
+    }
 }
 
 impl InputHandler for KanaCompositionHandler {
@@ -22,16 +36,40 @@ impl InputHandler for KanaCompositionHandler {
         key_event.get_symbol() == xkb::keysyms::KEY_space
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Vec<Instruction> {
-        unimplemented!()
+    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+        let ref to_composite = *current_state.converted_kana_to_composite;
+        let dict_entry = self.get_all_candidates(to_composite);
+        let selection_pointer = current_state.selection_pointer + 1;
+        if let Some(entry) = dict_entry {
+            let candidates = entry.get_candidates();
+            let candidate = candidates.get(selection_pointer);
+            match candidate {
+                Some(candidate) => {
+                    instructions.push(Instruction::SetComposition {
+                        kanji: &candidate.clone().kouho_text,
+                        okuri: None,
+                    });
+                }
+                None => {
+                    unimplemented!("no more entry. Delegate to registration mode.")
+                }
+            }
+        } else {
+            unimplemented!("no entry. Delegate to registration mode.")
+        }
+
+        instructions
     }
 }
 
 #[cfg(test)]
 impl KanaCompositionHandler {
-    fn test_handler() -> Self {
-        KanaCompositionHandler {}
-    }
+//    fn test_handler() -> Self {
+//        KanaCompositionHandler {
+//            dictionary:
+//        }
+//    }
 }
 
 #[cfg(test)]

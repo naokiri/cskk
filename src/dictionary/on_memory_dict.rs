@@ -5,23 +5,21 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::sync::Arc;
 
 use encoding_rs::Encoding;
 use encoding_rs_io::DecodeReaderBytesBuilder;
+
 // FIXME: log related use doesn't work well with current Rust2018 + clippy etc.
 #[allow(unused_imports)]
 use log::log;
 use log::warn;
 
+use crate::dictionary::{DictEntry, Dictionary};
 use crate::dictionary::candidate::Candidate;
-use std::sync::Arc;
 
-struct DictEntry {
-    midashi: String,
-    candidates: Vec<Arc<Candidate>>,
-}
-
-struct OnMemoryDict {
+#[derive(Debug)]
+pub(crate) struct OnMemoryDict {
     okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
 }
 
@@ -35,6 +33,14 @@ enum EntryProcessingMode {
 /// skkjisyo dictionary
 ///
 impl OnMemoryDict {
+    pub fn new() -> Self {
+        let mut new_instance = Self {
+            okuri_nashi_dictionary: BTreeMap::new()
+        };
+        new_instance.load();
+        return new_instance;
+    }
+
     fn split_candidates(line: &str) -> Result<DictEntry, &str> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
@@ -65,6 +71,7 @@ impl OnMemoryDict {
         })
     }
 
+    // TODO: make it able to load other files
     fn load(&mut self) {
         let filename = "src/data/SKK-JISYO.L";
         let dict_file = File::open(filename).expect(&format!("file {} not found", filename));
@@ -108,10 +115,6 @@ impl OnMemoryDict {
         self.load();
     }
 
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.okuri_nashi_dictionary.get(midashi)
-    }
-
     ///
     /// TODO: midashi から始まるエントリを全て返す。i.e. skkserv 4 command
     /// e.g.
@@ -134,6 +137,12 @@ impl OnMemoryDict {
     }
 
 // reorder?
+}
+
+impl Dictionary for OnMemoryDict {
+    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
+        self.okuri_nashi_dictionary.get(midashi)
+    }
 }
 
 #[cfg(test)]
@@ -174,10 +183,10 @@ mod tests {
         );
         let result = result.unwrap();
         assert_eq!("おどr", result.midashi);
-        let Candidate { kouho_text, annotation,.. } = result.candidates[0].as_ref();
+        let Candidate { kouho_text, annotation, .. } = result.candidates[0].as_ref();
         assert_eq!("踊", *kouho_text.as_ref());
         assert_eq!("dance", *(annotation.as_ref()).expect("踊 in sense of dance doesn't have annotation").as_ref());
-        let Candidate { kouho_text, annotation,.. } = result.candidates[1].as_ref();
+        let Candidate { kouho_text, annotation, .. } = result.candidates[1].as_ref();
         assert_eq!("躍".to_string(), *kouho_text.as_ref());
         assert_eq!("jump".to_string(), *(annotation.as_ref()).expect("躍 in sense of jump doesn't have annotation.").as_ref());
     }
