@@ -1,7 +1,4 @@
 use std::sync::Arc;
-use std::fmt;
-use std::fmt::Formatter;
-use std::error::Error;
 
 // Blind copy of libskk vala Candidate class
 // TODO: Maybe enough with Rc instead of Arc, 置きかえる意味があるかどうか調べる

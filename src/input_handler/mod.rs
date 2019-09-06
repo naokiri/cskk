@@ -13,7 +13,7 @@ pub(crate) trait InputHandler: Debug {
     /// FIXME: Should this be in this trait?
     ///
     fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool;
-    fn get_instruction<'a>(&'a self, key_event: &KeyEvent, current_state: &CskkState) -> Vec<Instruction<'a>>;
+    fn get_instruction<'a>(&'a self, key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction<'a>>;
 }
 
 //// Union to put handlers in same collection. Will not be required when Rust expands the usage of return impl Trait
@@ -40,7 +40,7 @@ impl<T> InputHandler for &T where T: InputHandler {
         (*self).can_process(key_event, unprocessed)
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState) -> Vec<Instruction> {
-        (*self).get_instruction(key_event, current_state)
+    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
+        (*self).get_instruction(key_event, current_state, is_delegated)
     }
 }

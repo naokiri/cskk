@@ -1,5 +1,3 @@
-use std::env::current_exe;
-
 use xkbcommon::xkb;
 
 use crate::{CskkState, Instruction};
@@ -33,7 +31,7 @@ impl InputHandler for KanaDirectHandler {
         xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState) -> Vec<Instruction> {
+    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let ref unprocessed = *current_state.pre_conversion;
         // TODO: reset to ascii direct mode on l
@@ -48,7 +46,11 @@ impl InputHandler for KanaDirectHandler {
 
             match self.kana_converter.convert(&key) {
                 Some((converted, carry_over)) => {
-                    instructions.push(Instruction::InputKanaDirect { converted, carry_over });
+                    if xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z {
+                        instructions.push(Instruction::InputKanaPrecomposition { converted, carry_over });
+                    } else {
+                        instructions.push(Instruction::InputKanaDirect { converted, carry_over });
+                    }
                 }
                 None => {
                     if let Some(key_char) = key_event.get_symbol_char() {
@@ -133,17 +135,17 @@ mod tests {
     fn get_instruction() {
         let handler = KanaDirectHandler::test_handler();
 
-        let result = handler.get_instruction(&KeyEvent::from_str("b").unwrap(), &get_unprocessed_state(vec![]));
+        let result = handler.get_instruction(&KeyEvent::from_str("b").unwrap(), &get_unprocessed_state(vec![]),false);
         assert_eq!(Instruction::InsertInput('b'), result[0]);
 
-        let result = handler.get_instruction(&KeyEvent::from_str("n").unwrap(), &get_unprocessed_state(vec!['b']));
+        let result = handler.get_instruction(&KeyEvent::from_str("n").unwrap(), &get_unprocessed_state(vec!['b']), false);
         assert_eq!(Instruction::FlushPreviousCarryOver, result[0]);
         assert_eq!(Instruction::InsertInput('n'), result[1]);
 
-        let result = handler.get_instruction(&KeyEvent::from_str("y").unwrap(), &get_unprocessed_state(vec!['n']));
+        let result = handler.get_instruction(&KeyEvent::from_str("y").unwrap(), &get_unprocessed_state(vec!['n']), false);
         assert_eq!(Instruction::InsertInput('y'), result[0]);
 
-        let result = handler.get_instruction(&KeyEvent::from_str("a").unwrap(), &get_unprocessed_state(vec!['b', 'y']));
+        let result = handler.get_instruction(&KeyEvent::from_str("a").unwrap(), &get_unprocessed_state(vec!['b', 'y']), false);
         assert_eq!(Instruction::InputKanaDirect { converted: &"びゃ", carry_over: &Vec::with_capacity(0) }, result[0]);
     }
 
@@ -155,7 +157,7 @@ mod tests {
         assert!(key_event.get_symbol() <= xkb::keysyms::KEY_asciitilde);
         assert!(xkb::keysyms::KEY_A <= key_event.get_symbol());
 
-        let result = handler.get_instruction(&key_event, &vec![]);
+        let result = handler.get_instruction(&key_event, &get_unprocessed_state(vec![]), false);
         assert_eq!(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreComposition, delegate: false }, result[0]);
     }
 }

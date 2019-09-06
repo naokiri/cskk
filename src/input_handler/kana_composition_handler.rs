@@ -1,27 +1,26 @@
-use std::borrow::Borrow;
-use std::sync::Arc;
+use std::fmt::Debug;
 
 use xkbcommon::xkb;
 
 use crate::{CskkState, Instruction};
-use crate::dictionary::candidate::Candidate;
+use crate::dictionary::{DictEntry, Dictionary};
+#[cfg(test)]
 use crate::dictionary::on_memory_dict::OnMemoryDict;
 use crate::input_handler::InputHandler;
 use crate::keyevent::KeyEvent;
-use crate::dictionary::{DictEntry, Dictionary};
 
 ///
 /// かな -> 漢字 ハンドラ。とりあえず送りなしのみ。
 ///
 #[derive(Debug)]
-pub(crate) struct KanaCompositionHandler<Dict : Dictionary> {
+pub(crate) struct KanaCompositionHandler<Dict: Dictionary> {
     dictionary: Dict,
 }
 
-impl KanaCompositionHandler<OnMemoryDict> {
+impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
     pub fn new() -> Self {
         KanaCompositionHandler {
-            dictionary: OnMemoryDict::new()
+            dictionary: Dict::new()
         }
     }
 
@@ -31,23 +30,27 @@ impl KanaCompositionHandler<OnMemoryDict> {
     }
 }
 
-impl InputHandler for KanaCompositionHandler {
-    fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
+impl<Dict: Dictionary + Debug> InputHandler for KanaCompositionHandler<Dict> {
+    fn can_process(&self, key_event: &KeyEvent, _unprocessed: &[char]) -> bool {
         key_event.get_symbol() == xkb::keysyms::KEY_space
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState) -> Vec<Instruction> {
+    fn get_instruction(&self, _key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let ref to_composite = *current_state.converted_kana_to_composite;
         let dict_entry = self.get_all_candidates(to_composite);
-        let selection_pointer = current_state.selection_pointer + 1;
+        let mut selection_pointer = current_state.selection_pointer;
+        if !is_delegated {
+            selection_pointer = selection_pointer + 1;
+        }
+
         if let Some(entry) = dict_entry {
             let candidates = entry.get_candidates();
             let candidate = candidates.get(selection_pointer);
             match candidate {
                 Some(candidate) => {
                     instructions.push(Instruction::SetComposition {
-                        kanji: &candidate.clone().kouho_text,
+                        kanji: &candidate.kouho_text,
                         okuri: None,
                     });
                 }
@@ -64,12 +67,12 @@ impl InputHandler for KanaCompositionHandler {
 }
 
 #[cfg(test)]
-impl KanaCompositionHandler {
-//    fn test_handler() -> Self {
-//        KanaCompositionHandler {
-//            dictionary:
-//        }
-//    }
+impl KanaCompositionHandler<OnMemoryDict> {
+    fn test_handler() -> Self {
+        KanaCompositionHandler {
+            dictionary: OnMemoryDict::new()
+        }
+    }
 }
 
 #[cfg(test)]

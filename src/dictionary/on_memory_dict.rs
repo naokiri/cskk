@@ -33,13 +33,6 @@ enum EntryProcessingMode {
 /// skkjisyo dictionary
 ///
 impl OnMemoryDict {
-    pub fn new() -> Self {
-        let mut new_instance = Self {
-            okuri_nashi_dictionary: BTreeMap::new()
-        };
-        new_instance.load();
-        return new_instance;
-    }
 
     fn split_candidates(line: &str) -> Result<DictEntry, &str> {
         let mut result = Vec::new();
@@ -111,6 +104,7 @@ impl OnMemoryDict {
         self.okuri_nashi_dictionary = okuri_nashi;
     }
 
+    #[allow(dead_code)]
     fn reload(&mut self) {
         self.load();
     }
@@ -120,10 +114,12 @@ impl OnMemoryDict {
     /// e.g.
     /// complete('あ') -> ["あい", "あいさつ"]
     ///
-    fn complete(&self, midashi: &str) /* -> Option<&Vec<&str>>?*/ {
+    #[allow(dead_code)]
+    fn complete(&self, _midashi: &str) /* -> Option<&Vec<&str>>?*/ {
         unimplemented!("complete")
     }
 
+    #[allow(dead_code)]
     fn purge_candidate(&self/* ,midashi, &candidate */) -> bool {
         unimplemented!("purge_candidate")
     }
@@ -132,6 +128,7 @@ impl OnMemoryDict {
     /// It is OK not to save on memory dictionary.
     /// Probably only for user dictionary?
     ///
+    #[allow(dead_code)]
     fn save_dict(&self) -> bool {
         false
     }
@@ -140,6 +137,14 @@ impl OnMemoryDict {
 }
 
 impl Dictionary for OnMemoryDict {
+    fn new() -> Self {
+        let mut new_instance = Self {
+            okuri_nashi_dictionary: BTreeMap::new()
+        };
+        new_instance.load();
+        return new_instance;
+    }
+
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
         self.okuri_nashi_dictionary.get(midashi)
     }
@@ -156,9 +161,9 @@ mod tests {
         dict.load();
 
         let okuri_nashi = dict.okuri_nashi_dictionary;
-        assert_ne!(0, okuri_nashi.len());
+        assert_eq!(false, okuri_nashi.is_empty());
         let Candidate { kouho_text, .. } = ((okuri_nashi.get("あい").unwrap()).candidates[0]).as_ref();
-        assert_eq!("", *kouho_text.as_ref());
+        assert_eq!("愛", *kouho_text.as_ref());
     }
 
     #[test]

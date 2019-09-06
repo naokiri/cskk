@@ -5,7 +5,6 @@ use crate::dictionary::candidate::Candidate;
 pub mod on_memory_dict;
 pub mod candidate;
 
-
 #[derive(Debug)]
 pub(crate) struct DictEntry {
     midashi: String,
@@ -21,4 +20,5 @@ impl DictEntry {
 
 pub(crate) trait Dictionary {
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry>;
+    fn new() -> Self;
 }
