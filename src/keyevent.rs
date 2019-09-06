@@ -53,7 +53,7 @@ pub type KeyEventSeq = Vec<KeyEvent>;
 /// https://xkbcommon.org/doc/current/xkbcommon_8h.html#a79e604a22703391bdfe212cfc10ea007
 ///
 /// e.g.
-/// "(control a)" "C-a" "M-Left" "l"
+/// "(control a)" "C-a" "M-Left" "l" "space"
 ///
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
@@ -64,7 +64,7 @@ pub struct KeyEvent {
 impl KeyEvent {
     #[cfg(test)]
     pub(crate) fn from_keysym(keysym: xkb::Keysym,
-                   modifier: SkkKeyModifier) -> KeyEvent {
+                              modifier: SkkKeyModifier) -> KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
 
@@ -285,6 +285,9 @@ mod tests {
         let meta_modifier: SkkKeyModifier = SkkKeyModifier::META;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
+
+        let space = KeyEvent::from_str("space").unwrap();
+        assert_eq!(space.symbol, keysyms::KEY_space);
     }
 
     #[test]
@@ -312,15 +315,15 @@ mod tests {
     #[test]
     fn get_symbol_char() {
         let key_event = KeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::NONE);
-        assert_eq!('0' ,key_event.get_symbol_char().unwrap());
+        assert_eq!('0', key_event.get_symbol_char().unwrap());
 
         let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::NONE);
-        assert_eq!('C' ,key_event.get_symbol_char().unwrap());
+        assert_eq!('C', key_event.get_symbol_char().unwrap());
     }
 
     #[test]
     fn get_symbol_char_no_display() {
         let key_event = KeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::NONE);
-        assert_eq!(None ,key_event.get_symbol_char());
+        assert_eq!(None, key_event.get_symbol_char());
     }
 }
