@@ -33,7 +33,7 @@ impl InputHandler for KanaDirectHandler {
 
     fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
-        let ref unprocessed = *current_state.pre_conversion;
+        let unprocessed = &*current_state.pre_conversion;
         // TODO: reset to ascii direct mode on l
 
         let symbol = key_event.get_symbol();

@@ -33,7 +33,6 @@ enum EntryProcessingMode {
 /// skkjisyo dictionary
 ///
 impl OnMemoryDict {
-
     fn split_candidates(line: &str) -> Result<DictEntry, &str> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
@@ -67,8 +66,8 @@ impl OnMemoryDict {
     // TODO: make it able to load other files
     fn load(&mut self) {
         let filename = "src/data/SKK-JISYO.L";
-        let dict_file = File::open(filename).expect(&format!("file {} not found", filename));
-        let enc = Encoding::for_label("euc-jp".as_bytes());
+        let dict_file = File::open(filename).unwrap_or_else(|_| panic!("file {} not found", filename));
+        let enc = Encoding::for_label(b"euc-jp");
         let decoder = DecodeReaderBytesBuilder::new()
             .encoding(enc)
             .build(dict_file);
@@ -142,7 +141,7 @@ impl Dictionary for OnMemoryDict {
             okuri_nashi_dictionary: BTreeMap::new()
         };
         new_instance.load();
-        return new_instance;
+        new_instance
     }
 
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {

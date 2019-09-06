@@ -37,11 +37,11 @@ impl<Dict: Dictionary + Debug> InputHandler for KanaCompositionHandler<Dict> {
 
     fn get_instruction(&self, _key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
-        let ref to_composite = *current_state.converted_kana_to_composite;
+        let to_composite = &*current_state.converted_kana_to_composite;
         let dict_entry = self.get_all_candidates(to_composite);
         let mut selection_pointer = current_state.selection_pointer;
         if !is_delegated {
-            selection_pointer = selection_pointer + 1;
+            selection_pointer += 1;
         }
 
         if let Some(entry) = dict_entry {

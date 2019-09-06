@@ -28,7 +28,7 @@ impl InputHandler for KanaPrecompositionHandler {
 
     fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
-        let ref unprocessed = *current_state.pre_conversion;
+        let unprocessed = &*current_state.pre_conversion;
         // TODO: ▽ひらがな + 'q' => ヒラガナ
         // TODO: ▽ひらがな + Ctrl-G => FlushAbort
 
