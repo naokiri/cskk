@@ -298,11 +298,11 @@ impl CskkContext {
     #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode) -> Self {
-        let kana_converter = KanaConverter::default_converter();
-
-        let kana_direct_handler = KanaDirectHandler::new(Box::new(kana_converter.clone()));
+        //let kana_converter =
+        let kana_converter = Box::new(KanaConverter::default_converter());
+        let kana_direct_handler = KanaDirectHandler::new(kana_converter.clone());
         // FIXME: Make ref to kana handler using rental crate or find something more simple.
-        let kana_precomposition_handler = KanaPrecompositionHandler::new(Box::new(kana_converter.clone()));
+        let kana_precomposition_handler = KanaPrecompositionHandler::new(kana_converter);
         // FIXME: Make ref to kana converter
         let kana_composition_handler = KanaCompositionHandler::new();
 
@@ -404,11 +404,11 @@ impl CskkState {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Once, ONCE_INIT};
+    use std::sync::{Once};
 
     use super::*;
 
-    pub static INIT_SYNC: Once = ONCE_INIT;
+    pub static INIT_SYNC: Once = Once::new();
 
     fn init() {
         INIT_SYNC.call_once(|| {
