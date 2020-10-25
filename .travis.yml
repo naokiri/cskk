@@ -14,7 +14,9 @@ matrix:
   - name: "Nightly"
     rust: nightly
     env: EXTRA_LINT_CHECK=0
-cache: cargo
+cache:
+  timeout: 300
+  cargo: true
 addons:
   apt:
     packages:
