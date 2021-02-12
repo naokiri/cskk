@@ -42,7 +42,7 @@ jobs:
       - name: Install required libs (MacOS)
         if: matrix.os == 'macOS-latest'
         run: |
-          brew cask install xquartz
+          brew install --cask xquartz
           brew install libxkbcommon
       - uses: actions/checkout@master
       - name: Install cargo
