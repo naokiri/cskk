@@ -23,7 +23,7 @@ impl KanaPrecompositionHandler {
 impl InputHandler for KanaPrecompositionHandler {
     fn can_process(&self, key_event: &KeyEvent, _unprocessed: &[char]) -> bool {
         let symbol = key_event.get_symbol();
-        0x0020 <= symbol && symbol < 0x007F
+        (0x0020..0x007F).contains(&symbol)
     }
 
     fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {

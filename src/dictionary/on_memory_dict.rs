@@ -40,7 +40,7 @@ impl OnMemoryDict {
         let entries = if let Some(entries) = line.next() { entries } else { return Err(""); };
         let entries = entries.split('/');
         for entry in entries {
-            if entry != "" {
+            if !entry.is_empty() {
                 let mut entry = entry.split(';');
                 let kouho = if let Some(text) = entry.next() { text } else { continue; };
                 let annotation = entry.next().map(|entry| Arc::new(entry.to_string()));
