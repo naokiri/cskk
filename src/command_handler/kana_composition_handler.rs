@@ -6,11 +6,11 @@ use crate::{CskkState, Instruction};
 use crate::dictionary::{DictEntry, Dictionary};
 #[cfg(test)]
 use crate::dictionary::on_memory_dict::OnMemoryDict;
-use crate::input_handler::InputHandler;
+use crate::command_handler::CommandHandler;
 use crate::keyevent::KeyEvent;
 
 ///
-/// かな -> 漢字 ハンドラ。とりあえず送りなしのみ。
+/// かな -> 漢字 ハンドラ。
 ///
 #[derive(Debug)]
 pub(crate) struct KanaCompositionHandler<Dict: Dictionary> {
@@ -30,15 +30,27 @@ impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
     }
 }
 
-impl<Dict: Dictionary + Debug> InputHandler for KanaCompositionHandler<Dict> {
-    fn can_process(&self, key_event: &KeyEvent, _unprocessed: &[char]) -> bool {
-        key_event.get_symbol() == xkb::keysyms::KEY_space
+impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
+    fn can_process(&self, key_event: &KeyEvent) -> bool {
+        let symbol = key_event.get_symbol();
+        xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
     }
 
-    fn get_instruction(&self, _key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
+    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
-        let to_composite = &*current_state.converted_kana_to_composite;
-        let dict_entry = self.get_all_candidates(to_composite);
+        let symbol = key_event.get_symbol();
+        if symbol == xkb::keysyms::KEY_space {
+
+        } else if xkb::keysyms::KEY_0 <= symbol && symbol <= xkb::keysyms::KEY_9 {
+            // TODO: 選択肢から直接 キー0-9でとりあえずif文書いただけ
+        } else if !is_delegated && symbol == xkb::keysyms::KEY_greater {
+            // TODO: 接尾辞変換 skk 16.2マニュアル 5.5.3
+        } else if !is_delegated && xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z {
+            // TODO: 現在の変換で確定させ、次のモードでキー入力を処理させる。 "I s i space k" の kのような時。
+        }
+        let raw_to_composite = &*current_state.raw_to_composite;
+        dbg!(raw_to_composite);
+        let dict_entry = self.get_all_candidates(raw_to_composite);
         let mut selection_pointer = current_state.selection_pointer;
         if !is_delegated {
             selection_pointer += 1;
@@ -82,7 +94,7 @@ mod tests {
     #[test]
     fn can_process_single() {
         let handler = KanaCompositionHandler::test_handler();
-        let result = handler.can_process(&KeyEvent::from_str("a").unwrap(), &vec![]);
-        assert!(!result);
+        let result = handler.can_process(&KeyEvent::from_str("a").unwrap());
+        assert!(result);
     }
 }

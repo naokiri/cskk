@@ -20,13 +20,7 @@ use crate::dictionary::candidate::Candidate;
 
 #[derive(Debug)]
 pub(crate) struct OnMemoryDict {
-    okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
-}
-
-#[derive(PartialEq)]
-enum EntryProcessingMode {
-    OkuriAri,
-    OkuriNasi,
+    dictionary: BTreeMap<String, DictEntry>,
 }
 
 ///
@@ -72,21 +66,18 @@ impl OnMemoryDict {
             .encoding(enc)
             .build(dict_file);
         let reader = BufReader::new(decoder);
-        let mut mode = EntryProcessingMode::OkuriAri;
-        let mut okuri_nashi = BTreeMap::new();
+        let mut mut_dict = BTreeMap::new();
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    if ";; okuri-nasi entries.".eq(&line) {
-                        eprintln!("Found split line. ");
-                        mode = EntryProcessingMode::OkuriNasi;
-                    }
-                    if mode == EntryProcessingMode::OkuriNasi {
+                    if line.starts_with(";") {
+                        // Skip
+                    } else {
                         let parsed = OnMemoryDict::split_candidates(&line);
                         match parsed {
                             Ok(parsed) => {
                                 //eprintln!("{}", parsed.midashi);
-                                okuri_nashi.insert(parsed.midashi.clone(), parsed);
+                                mut_dict.insert(parsed.midashi.clone(), parsed);
                             }
                             Err(_) => {
                                 eprintln!("Dict is ill formatted. Ignored line {}", &line);
@@ -100,7 +91,7 @@ impl OnMemoryDict {
                 }
             }
         }
-        self.okuri_nashi_dictionary = okuri_nashi;
+        self.dictionary = mut_dict;
     }
 
     #[allow(dead_code)]
@@ -138,14 +129,14 @@ impl OnMemoryDict {
 impl Dictionary for OnMemoryDict {
     fn new() -> Self {
         let mut new_instance = Self {
-            okuri_nashi_dictionary: BTreeMap::new()
+            dictionary: BTreeMap::new()
         };
         new_instance.load();
         new_instance
     }
 
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.okuri_nashi_dictionary.get(midashi)
+        self.dictionary.get(midashi)
     }
 }
 
@@ -155,11 +146,11 @@ mod tests {
 
     #[test]
     fn load() {
-        let okuri_nashi_dictionary = BTreeMap::new();
-        let mut dict = OnMemoryDict { okuri_nashi_dictionary };
+        let dictionary = BTreeMap::new();
+        let mut dict = OnMemoryDict { dictionary };
         dict.load();
 
-        let okuri_nashi = dict.okuri_nashi_dictionary;
+        let okuri_nashi = dict.dictionary;
         assert_eq!(false, okuri_nashi.is_empty());
         let Candidate { kouho_text, .. } = ((okuri_nashi.get("あい").unwrap()).candidates[0]).as_ref();
         assert_eq!("愛", *kouho_text.as_ref());

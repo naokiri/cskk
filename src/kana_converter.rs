@@ -42,6 +42,10 @@ impl KanaConverter {
         self.process_map.get(kana)
     }
 
+    // 今のunprocessedに続いて次のkey_eventが来た時にかな変換を続けられるか。
+    // e.g.
+    // k j -> false
+    // t t -> true ('っt' として続けられるため)
     pub fn can_continue(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
         match self.get_node(key_event, unprocessed) {
             None => {

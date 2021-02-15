@@ -3,7 +3,7 @@ use std::fmt::Display;
 /// Rough design prototype yet
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
-#[derive(Debug, Display, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) enum InputMode {
     // かなモード
     #[allow(dead_code)]
@@ -25,15 +25,14 @@ pub(crate) enum InputMode {
 /// Rough design prototype yet
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
-#[derive(Debug, Display, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub(crate) enum CompositionMode {
-    // ■モード
+    // ■モード 確定入力モード
     #[allow(dead_code)]
     Direct,
     // ▽モード 見出しモード
     PreComposition,
-    // ▽モードの送り仮名開始時
-    #[allow(dead_code)]
+    // ▽モードの送り仮名時。Sub mode of PreComposition
     PreCompositionOkurigana,
     // ▼モード
     CompositionSelection,
