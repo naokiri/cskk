@@ -1,5 +1,5 @@
 # LibCSKK
-[![Build Status](https://travis-ci.org/naokiri/cskk.svg?branch=master)](https://travis-ci.org/naokiri/cskk)
+[![Build Status](https://travis-ci.com/naokiri/cskk.svg?branch=master)](https://travis-ci.com/naokiri/cskk)
 [![Build Status](https://github.com/naokiri/cskk/workflows/Test/badge.svg)](https://github.com/naokiri/cskk/actions)
 
 Cobalt SKK library. 
