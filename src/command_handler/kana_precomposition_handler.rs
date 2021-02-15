@@ -52,10 +52,7 @@ impl CommandHandler for KanaPrecompositionHandler {
 #[cfg(test)]
 impl KanaPrecompositionHandler {
     fn test_handler() -> Self {
-        let kana_converter = KanaConverter::default_converter();
-
         KanaPrecompositionHandler {
-            // kana_converter: Box::new(kana_converter),
         }
     }
 }

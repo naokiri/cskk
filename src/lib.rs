@@ -56,11 +56,6 @@ pub(crate) enum Instruction<'a> {
     // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
     // delegate: delegate processing current key. Run the key event handling again on the next mode with current key.
     ChangeCompositionMode { composition_mode: CompositionMode, delegate: bool },
-    //InsertInput(char),
-    //InputKanaDirect { converted: &'a str, carry_over: &'a Vec<char> },
-    //InputKanaPrecomposition { converted: &'a str, carry_over: &'a Vec<char> },
-
-    SetCompositionOkuri,
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
     FinishConsumingKeyEvent,
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用

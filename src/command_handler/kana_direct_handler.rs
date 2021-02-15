@@ -102,8 +102,7 @@ mod tests {
         let handler = KanaDirectHandler::test_handler();
 
         let result = handler.get_instruction(&KeyEvent::from_str("b").unwrap(), &get_test_state(), false);
-
-
+        assert!(result.is_empty())
     }
 
     #[test]
