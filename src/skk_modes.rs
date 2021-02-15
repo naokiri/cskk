@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 /// Rough design prototype yet
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る

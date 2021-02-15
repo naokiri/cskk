@@ -2,21 +2,17 @@ use xkbcommon::xkb;
 
 use crate::{CskkState, Instruction};
 use crate::command_handler::CommandHandler;
-use crate::kana_converter::KanaConverter;
 use crate::keyevent::KeyEvent;
 use crate::skk_modes::CompositionMode;
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
 pub(crate) struct KanaPrecompositionHandler {
-    // kana_converter: Box<KanaConverter>,
 }
 
 impl KanaPrecompositionHandler {
-    pub fn new(_kana_converter: Box<KanaConverter>) -> Self {
-        KanaPrecompositionHandler {
-            // kana_converter
-        }
+    pub fn new() -> Self {
+        KanaPrecompositionHandler {}
     }
 }
 

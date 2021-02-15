@@ -30,6 +30,7 @@ impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
     }
 }
 
+#[allow(clippy::if_same_then_else)]
 impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
     fn can_process(&self, key_event: &KeyEvent) -> bool {
         let symbol = key_event.get_symbol();

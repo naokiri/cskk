@@ -2,20 +2,17 @@ use xkbcommon::xkb;
 
 use crate::{CskkState, Instruction};
 use crate::command_handler::CommandHandler;
-use crate::kana_converter::KanaConverter;
 use crate::keyevent::KeyEvent;
 use crate::keyevent::SkkKeyModifier;
 use crate::skk_modes::CompositionMode;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct KanaDirectHandler {
-    kana_converter: Box<KanaConverter>,
 }
 
 impl KanaDirectHandler {
-    pub fn new(kana_converter: Box<KanaConverter>) -> Self {
+    pub fn new() -> Self {
         KanaDirectHandler {
-            kana_converter
         }
     }
 }
@@ -31,7 +28,7 @@ impl CommandHandler for KanaDirectHandler {
         xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
     }
 
-    fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
+    fn get_instruction(&self, key_event: &KeyEvent, _current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         // TODO: ASCIIモード実装する時には、reset to ascii direct mode on l
 
@@ -46,10 +43,7 @@ impl CommandHandler for KanaDirectHandler {
 #[cfg(test)]
 impl KanaDirectHandler {
     fn test_handler() -> Self {
-        let kana_converter = KanaConverter::default_converter();
-
         KanaDirectHandler {
-            kana_converter: Box::new(kana_converter),
         }
     }
 }

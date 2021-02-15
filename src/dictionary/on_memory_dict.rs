@@ -70,7 +70,7 @@ impl OnMemoryDict {
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    if line.starts_with(";") {
+                    if line.starts_with(';') {
                         // Skip
                     } else {
                         let parsed = OnMemoryDict::split_candidates(&line);

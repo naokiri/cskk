@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate bitflags;
-#[macro_use]
-extern crate enum_display_derive;
 #[cfg(test)]
 extern crate env_logger;
 extern crate sequence_trie;
@@ -422,11 +420,9 @@ impl CskkContext {
     #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode) -> Self {
-        //let kana_converter =
-        let kana_converter = Box::new(KanaConverter::default_converter());
-        let kana_direct_handler = KanaDirectHandler::new(kana_converter.clone());
+        let kana_direct_handler = KanaDirectHandler::new();
         // FIXME: Make ref to kana handler using rental crate or find something more simple.
-        let kana_precomposition_handler = KanaPrecompositionHandler::new(kana_converter);
+        let kana_precomposition_handler = KanaPrecompositionHandler::new();
         // FIXME: Make ref to kana converter
         let kana_composition_handler = KanaCompositionHandler::new();
         let kana_converter = Box::new(KanaConverter::default_converter());
