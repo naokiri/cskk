@@ -61,7 +61,7 @@ pub(crate) enum Instruction<'a> {
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用
     FinishNotConsumingKeyEvent,
     // 今の変換候補を変更する。
-    SetComposition { kanji: &'a str, okuri: Option<&'a str> },
+    SetComposition { kanji: &'a str },
     // 現在の変換候補で確定する
     ConfirmComposition,
 }
@@ -138,11 +138,7 @@ impl CskkContext {
                 Some("▽".to_owned() + &converted.unwrap_or_else(|| "".to_string()) + kana_to_composite + "*" + &String::from_iter(unconverted.iter()))
             }
             CompositionMode::CompositionSelection => {
-                if kana_to_okuri.is_empty() {
-                    Some("▼".to_owned() + composited)
-                } else {
-                    Some("▼".to_owned() + composited + kana_to_okuri)
-                }
+                Some("▼".to_owned() + composited)
             }
             _ => {
                 // FIXME: putting Direct as _ for match, TODO other modes
@@ -213,15 +209,12 @@ impl CskkContext {
         current_state.borrow_mut().pre_conversion = unconv.to_owned();
     }
 
-    fn set_composition_candidate(&self, kanji: &str, okuri: Option<&str>) {
+    fn set_composition_candidate(&self, kanji: &str) {
         let current_state = self.current_state();
-        if let Some(okuri_kana) = okuri {
-            let mut kanji_okuri = kanji.to_owned();
-            kanji_okuri.push_str(okuri_kana);
-            current_state.borrow_mut().composited = kanji_okuri;
-        } else {
-            current_state.borrow_mut().composited = kanji.to_owned();
-        }
+        let okuri = current_state.borrow().converted_kana_to_okuri.to_owned();
+        let mut kanji_okuri = kanji.to_owned();
+        kanji_okuri.push_str(&okuri);
+        current_state.borrow_mut().composited = kanji_okuri;
     }
 
     fn confirm_current_composition_candidate(&self) {
@@ -261,7 +254,7 @@ impl CskkContext {
         let current_state = self.current_state();
         let handler = self.get_handler(&current_state.borrow().input_mode, &current_state.borrow().composition_mode);
         if !handler.can_process(key_event) {
-            return false
+            return false;
         }
         let instructions = handler.get_instruction(key_event, &current_state.borrow(), is_delegated);
         let mut must_delegate = false;
@@ -275,8 +268,8 @@ impl CskkContext {
                 Instruction::FlushPreviousCarryOver => {
                     self.reset_unconverted();
                 }
-                Instruction::SetComposition { kanji, okuri } => {
-                    self.set_composition_candidate(kanji, okuri);
+                Instruction::SetComposition { kanji } => {
+                    self.set_composition_candidate(kanji);
                 }
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
@@ -715,11 +708,27 @@ mod tests {
         let love = KeyEvent::deserialize_seq("A i space Return").unwrap();
         cskkcontext.process_key_events(&love);
 
-        // let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
         let output = cskkcontext.poll_output().unwrap();
         let after_state = cskkcontext.current_state().borrow_mut();
 
         assert_eq!(output, "愛");
+        assert_eq!(after_state.composition_mode, CompositionMode::Direct);
+        assert_eq!(after_state.input_mode, InputMode::Hiragana);
+    }
+
+    #[test]
+    fn okuri_ari_henkan_kakutei() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+        );
+        let love = KeyEvent::deserialize_seq("A K i Return").unwrap();
+        cskkcontext.process_key_events(&love);
+
+        let output = cskkcontext.poll_output().unwrap();
+        let after_state = cskkcontext.current_state().borrow_mut();
+
+        assert_eq!(output, "開き");
         assert_eq!(after_state.composition_mode, CompositionMode::Direct);
         assert_eq!(after_state.input_mode, InputMode::Hiragana);
     }

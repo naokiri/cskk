@@ -69,8 +69,7 @@ impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
             match candidate {
                 Some(candidate) => {
                     instructions.push(Instruction::SetComposition {
-                        kanji: &candidate.kouho_text,
-                        okuri: None,
+                        kanji: &candidate.kouho_text
                     });
                 }
                 None => {
