@@ -124,7 +124,6 @@ impl CskkContext {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().pre_conversion;
         let kana_to_composite = &self.current_state().borrow().converted_kana_to_composite;
-        let kana_to_okuri = &self.current_state().borrow().converted_kana_to_okuri;
         let composited = &self.current_state().borrow().composited;
 
         match self.current_state().borrow().composition_mode {
