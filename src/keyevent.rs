@@ -288,6 +288,9 @@ mod tests {
 
         let space = KeyEvent::from_str("space").unwrap();
         assert_eq!(space.symbol, keysyms::KEY_space);
+
+        let enter = KeyEvent::from_str("Return").unwrap();
+        assert_eq!(enter.symbol, keysyms::KEY_Return);
     }
 
     #[test]

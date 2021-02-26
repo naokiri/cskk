@@ -7,7 +7,8 @@ use crate::dictionary::{DictEntry, Dictionary};
 #[cfg(test)]
 use crate::dictionary::on_memory_dict::OnMemoryDict;
 use crate::command_handler::CommandHandler;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::{KeyEvent, SkkKeyModifier};
+use crate::skk_modes::CompositionMode;
 
 ///
 /// かな -> 漢字 ハンドラ。
@@ -34,21 +35,26 @@ impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
 impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
     fn can_process(&self, key_event: &KeyEvent) -> bool {
         let symbol = key_event.get_symbol();
-        xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
+        (xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde) || symbol == xkb::keysyms::KEY_Return
     }
 
     fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let symbol = key_event.get_symbol();
-        if symbol == xkb::keysyms::KEY_space {
-
-        } else if xkb::keysyms::KEY_0 <= symbol && symbol <= xkb::keysyms::KEY_9 {
+        let modifier = key_event.get_modifier();
+        if symbol == xkb::keysyms::KEY_space {} else if xkb::keysyms::KEY_0 <= symbol && symbol <= xkb::keysyms::KEY_9 {
             // TODO: 選択肢から直接 キー0-9でとりあえずif文書いただけ
         } else if !is_delegated && symbol == xkb::keysyms::KEY_greater {
             // TODO: 接尾辞変換 skk 16.2マニュアル 5.5.3
         } else if !is_delegated && xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z {
             // TODO: 現在の変換で確定させ、次のモードでキー入力を処理させる。 "I s i space k" の kのような時。
+        } else if !is_delegated && (xkb::keysyms::KEY_Return == symbol || (xkb::keysyms::KEY_j == symbol && SkkKeyModifier::CONTROL == modifier)) {
+            // 現在の変換で確定させ、Directに戻す
+            instructions.push(Instruction::ConfirmComposition);
+            instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::Direct, delegate: false });
+            instructions.push(Instruction::FinishConsumingKeyEvent);
         }
+
         let raw_to_composite = &*current_state.raw_to_composite;
         dbg!(raw_to_composite);
         let dict_entry = self.get_all_candidates(raw_to_composite);

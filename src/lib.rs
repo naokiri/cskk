@@ -60,7 +60,10 @@ pub(crate) enum Instruction<'a> {
     FinishConsumingKeyEvent,
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用
     FinishNotConsumingKeyEvent,
+    // 今の変換候補を変更する。
     SetComposition { kanji: &'a str, okuri: Option<&'a str> },
+    // 現在の変換候補で確定する
+    ConfirmComposition,
 }
 
 
@@ -221,6 +224,13 @@ impl CskkContext {
         }
     }
 
+    fn confirm_current_composition_candidate(&self) {
+        let current_state = self.current_state();
+        let composited = current_state.borrow().composited.to_owned();
+        current_state.borrow_mut().confirmed.push_str(&composited);
+        current_state.borrow_mut().composited = "".to_string()
+    }
+
     // TODO: might not only for test
     #[cfg(test)]
     #[allow(dead_code)]
@@ -267,6 +277,9 @@ impl CskkContext {
                 }
                 Instruction::SetComposition { kanji, okuri } => {
                     self.set_composition_candidate(kanji, okuri);
+                }
+                Instruction::ConfirmComposition => {
+                    self.confirm_current_composition_candidate();
                 }
                 Instruction::FinishConsumingKeyEvent => {
                     return true;
@@ -487,7 +500,7 @@ impl CskkContext {
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);
             if !processed {
-                dbg!("Key {} not processed", key_event);
+                dbg!("Key event not processed", key_event);
             }
             dbg!(self.current_state().borrow());
         }
@@ -691,5 +704,23 @@ mod tests {
         cskkcontext.process_key_events(&pre_love);
         let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
         assert_eq!(actual, "▼開き");
+    }
+
+    #[test]
+    fn okuri_nashi_henkan_kakutei() {
+        let cskkcontext = CskkContext::new(
+            InputMode::Hiragana,
+            CompositionMode::Direct,
+        );
+        let love = KeyEvent::deserialize_seq("A i space Return").unwrap();
+        cskkcontext.process_key_events(&love);
+
+        // let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
+        let output = cskkcontext.poll_output().unwrap();
+        let after_state = cskkcontext.current_state().borrow_mut();
+
+        assert_eq!(output, "愛");
+        assert_eq!(after_state.composition_mode, CompositionMode::Direct);
+        assert_eq!(after_state.input_mode, InputMode::Hiragana);
     }
 }
