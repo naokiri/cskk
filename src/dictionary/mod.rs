@@ -6,7 +6,6 @@ pub mod on_memory_dict;
 pub mod candidate;
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct DictEntry {
     midashi: String,
     candidates: Vec<Arc<Candidate>>,
