@@ -4,7 +4,7 @@ use std::sync::Arc;
 // TODO: Maybe enough with Rc instead of Arc, 置きかえる意味があるかどうか調べる
 // TODO: pub(crate) -> pub(in foo)? Want this to be pub in cfg(test) only
 #[derive(Debug)]
-pub(crate) struct Candidate {
+pub struct Candidate {
     pub (crate) midashi: Arc<String>,
     #[allow(dead_code)]
     pub (crate) okuri: bool,

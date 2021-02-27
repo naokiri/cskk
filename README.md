@@ -13,6 +13,27 @@ Of course, this library is named as 'CSKK' because it is extensionally equal to 
 
 ## Build requirement
 - libxkbcommon
+  
+In Ubuntu e.g. 
+```shell
+    sudo apt install libxkbcommon-dev
+```
+
+- cbindgen 
+```shell
+    cargo install --force cbindgen
+```
+
+## Develop
+No convenient makefile-like script yet.
+
+To run tests,
+```shell
+    cargo build
+    cbindgen --config cbindgen.toml --crate cskk --output tests/libcskk.h
+    $(CC) tests/basic.c -L ./target/debug/ -lcskk -o tests/lib_test
+    LD_LIBRARY_PATH=./target/debug ./tests/lib_test
+```
 
 ## Development roadmap
 ### SKK in rust, simulating the keyevent.

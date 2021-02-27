@@ -7,7 +7,8 @@ use crate::keyevent::SkkKeyModifier;
 use crate::skk_modes::CompositionMode;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct KanaDirectHandler {
+#[repr(C)]
+pub struct KanaDirectHandler {
 }
 
 impl KanaDirectHandler {

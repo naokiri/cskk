@@ -2,7 +2,7 @@
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub(crate) enum InputMode {
+pub enum InputMode {
     // かなモード
     #[allow(dead_code)]
     Hiragana,
@@ -24,7 +24,7 @@ pub(crate) enum InputMode {
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub(crate) enum CompositionMode {
+pub enum CompositionMode {
     // ■モード 確定入力モード
     #[allow(dead_code)]
     Direct,

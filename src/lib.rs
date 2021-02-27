@@ -26,10 +26,11 @@ use crate::command_handler::kana_direct_handler::KanaDirectHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::kana_converter::KanaConverter;
 use crate::keyevent::KeyEvent;
-#[cfg(test)]
 use crate::keyevent::KeyEventSeq;
 use crate::skk_modes::CompositionMode;
 use crate::skk_modes::InputMode;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 
 mod kana_converter;
 mod keyevent;
@@ -70,9 +71,10 @@ pub(crate) enum Instruction<'a> {
 /// Rough design prototype yet
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
+/// TODO: libskkのSkkContextPrivateのようにC APIに見せなくていいものは隠し、C APIに見せるものだけrepr(C)にする。
 /// FIXME: Handler保持をもうちょっとスマートにしたい
-#[allow(dead_code)]
-struct CskkContext {
+#[no_mangle]
+pub struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
     kana_direct_handler: KanaDirectHandler,
     kana_precomposition_handler: KanaPrecompositionHandler,
@@ -103,6 +105,24 @@ struct CskkState {
     //composition_candidates: &Vec<Arc<Candidate>>,
     // 変換中の選択肢のうち、どれをさしているか
     selection_pointer: usize,
+}
+
+// TODO: ueno/libskkのskk_context_newのようにDict[]を指定できるようにする。
+/// Returns newly allocated CSKKContext.
+/// It is caller's responsibility to retain and free it.
+#[no_mangle]
+pub extern "C" fn create_new_context() -> Box<CskkContext> {
+    Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
+}
+
+// Test purpose
+/// # Safety
+///
+/// This function must be called by a valid C string terminated by a NULL.
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_process_key_events(context: &mut CskkContext, keyevents_cstring: *mut c_char) -> bool {
+    let keyevents = CStr::from_ptr(keyevents_cstring);
+    context.process_key_events_string(keyevents.to_str().unwrap())
 }
 
 impl CskkContext {
@@ -417,6 +437,25 @@ impl CskkContext {
         }
     }
 
+    // Mainly for test purpose, but exposed to test as library.
+    fn process_key_events_string(&self, key_event_string: &str) -> bool {
+        self.process_key_events(&KeyEvent::deserialize_seq(key_event_string).unwrap())
+    }
+
+    // Mainly for test purpose, but exposed to test as library.
+    // FIXME: Remove this clippy rule allow when parameterize on array length is stable in Rust. maybe 1.51?
+    #[allow(clippy::ptr_arg)]
+    fn process_key_events(&self, key_event_seq: &KeyEventSeq) -> bool {
+        for key_event in key_event_seq {
+            let processed = self.process_key_event(key_event);
+            if !processed {
+                dbg!("Key event not processed", key_event);
+            }
+            dbg!(self.current_state().borrow());
+        }
+        true
+    }
+
     #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
                composition_mode: CompositionMode) -> Self {
@@ -483,20 +522,6 @@ impl Display for CskkState {
         writeln!(f);
         writeln!(f, "}}");
         Ok(())
-    }
-}
-
-#[cfg(test)]
-impl CskkContext {
-    fn process_key_events(&self, key_event_seq: &KeyEventSeq) -> bool {
-        for key_event in key_event_seq {
-            let processed = self.process_key_event(key_event);
-            if !processed {
-                dbg!("Key event not processed", key_event);
-            }
-            dbg!(self.current_state().borrow());
-        }
-        return true;
     }
 }
 

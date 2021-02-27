@@ -18,22 +18,18 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings -A dead_code
-  build_and_test:
+          args: -- -D warnings -A dead_code -A improper_ctypes_definitions
+  rust_test:
     name: test
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest]
         channel: [stable, nightly, beta]
         exclude:
           - os: macOS-latest
             channel: nightly
           - os: macOS-latest
             channel: beta
-#          - os: windows-latest
-#            channel: nightly
-#          - os: windows-latest
-#            channel: beta
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install required libs (Ubuntu)
@@ -51,8 +47,25 @@ jobs:
           toolchain: ${{ matrix.channel }}
           profile: minimal
           override: true
-      - name: Run test
+      - name: Run rust test
         uses: actions-rs/cargo@v1
         with:
           command: test
+  library_test:
+    name: library test
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macOS-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@master
+      - name: Install cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: cbindgen
+          override: true
+      - name: generate c header
+        run: cbindgen --config cbindgen.toml --crate cskk --output tests/libcskk.h
         
