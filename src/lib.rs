@@ -32,10 +32,10 @@ use crate::skk_modes::InputMode;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
+pub mod skk_modes;
 mod kana_converter;
 mod keyevent;
 mod command_handler;
-mod skk_modes;
 mod dictionary;
 
 #[derive(Deserialize)]
@@ -114,7 +114,7 @@ pub extern "C" fn create_new_context() -> Box<CskkContext> {
     Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
 }
 
-// Test purpose
+/// Test purpose
 /// # Safety
 ///
 /// This function must be called by a valid C string terminated by a NULL.
@@ -122,6 +122,13 @@ pub extern "C" fn create_new_context() -> Box<CskkContext> {
 pub unsafe extern "C" fn skk_context_process_key_events(context: &mut CskkContext, keyevents_cstring: *mut c_char) -> bool {
     let keyevents = CStr::from_ptr(keyevents_cstring);
     context.process_key_events_string(keyevents.to_str().unwrap())
+}
+
+/// テスト用途。composition modeを設定する。
+/// 他のステートとの整合性は無視される。
+#[no_mangle]
+pub extern "C" fn skk_context_set_composition_mode(context: &mut CskkContext, composition_mode: CompositionMode) {
+    context.set_composition_mode(composition_mode)
 }
 
 impl CskkContext {

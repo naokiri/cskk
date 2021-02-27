@@ -2,9 +2,9 @@
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
 #[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(C)]
 pub enum InputMode {
     // かなモード
-    #[allow(dead_code)]
     Hiragana,
     // カナモード
     #[allow(dead_code)]
@@ -24,9 +24,9 @@ pub enum InputMode {
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[repr(C)]
 pub enum CompositionMode {
     // ■モード 確定入力モード
-    #[allow(dead_code)]
     Direct,
     // ▽モード 見出しモード
     PreComposition,
@@ -35,9 +35,9 @@ pub enum CompositionMode {
     // ▼モード
     CompositionSelection,
     // SKK abbrev mode: Sub-mode of PreComposition
-    #[allow(dead_code)]
     Abbreviation,
-    // Sub-mode of CompositionSelection
-    #[allow(dead_code)]
-    Register(Box<CompositionMode>),
+    // Sub-mode of CompositionSelection?
+    // Implies that state stack has at least one more deeper state for registration input
+    // ▼たじゅうに【▼とうろくできる【こんなふうに】】
+    Register,
 }
