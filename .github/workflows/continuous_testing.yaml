@@ -64,8 +64,16 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
-          components: cbindgen
           override: true
-      - name: generate c header
+      - name: Install cbindgen
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --force cbindgen
+      - name: Generate c header
         run: cbindgen --config cbindgen.toml --crate cskk --output tests/libcskk.h
+      - name: Build lib test
+        run: $(CC) tests/basic.c -L ./target/debug/ -lcskk -o tests/lib_test
+      - name: Run lib test
+        run: LD_LIBRARY_PATH=./target/debug ./tests/lib_test
         
