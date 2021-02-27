@@ -70,10 +70,14 @@ jobs:
         with:
           command: install
           args: --force cbindgen
+      - name: Build library
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
       - name: Generate c header
         run: cbindgen --config cbindgen.toml --crate cskk --output ./tests/libcskk.h
       - name: Build lib test
-        run: pwd && gcc ./tests/basic.c -L ./target/debug/ -lcskk -o ./tests/lib_test
+        run: gcc ./tests/basic.c -L ./target/debug/ -lcskk -o ./tests/lib_test
       - name: Run lib test
         run: LD_LIBRARY_PATH=./target/debug ./tests/lib_test
         
