@@ -60,6 +60,7 @@ pub(crate) enum Instruction<'a> {
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
     FinishConsumingKeyEvent,
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用
+    #[allow(dead_code)]
     FinishNotConsumingKeyEvent,
     // 今の変換候補を変更する。
     SetComposition { kanji: &'a str },
