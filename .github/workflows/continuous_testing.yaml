@@ -20,14 +20,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings -A dead_code -A improper_ctypes_definitions
   rust_test:
-    name: test
+    name: cargo test
     strategy:
       matrix:
         channel: [stable, nightly, beta]
     runs-on: ubuntu-latest
     steps:
       - name: Install required libs (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
       - uses: actions/checkout@master
       - name: Install cargo
