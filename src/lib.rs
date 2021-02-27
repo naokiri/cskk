@@ -73,7 +73,6 @@ pub(crate) enum Instruction<'a> {
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
 /// TODO: libskkのSkkContextPrivateのようにC APIに見せなくていいものは隠し、C APIに見せるものだけrepr(C)にする。
 /// FIXME: Handler保持をもうちょっとスマートにしたい
-#[no_mangle]
 pub struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
     kana_direct_handler: KanaDirectHandler,
