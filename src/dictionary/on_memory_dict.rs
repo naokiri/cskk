@@ -19,7 +19,7 @@ use crate::dictionary::{DictEntry, Dictionary};
 use crate::dictionary::candidate::Candidate;
 
 #[derive(Debug)]
-pub(crate) struct OnMemoryDict {
+pub struct OnMemoryDict {
     dictionary: BTreeMap<String, DictEntry>,
 }
 

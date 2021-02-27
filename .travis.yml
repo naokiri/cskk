@@ -1,3 +1,5 @@
+# Migrating to github actions.
+# I keep this least test setup as is, but won't add new things unless I cannot afford github actions bill.
 language: rust
 sudo: false
 matrix:

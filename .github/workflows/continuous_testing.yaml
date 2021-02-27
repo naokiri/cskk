@@ -18,24 +18,46 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings -A dead_code
-  build_and_test:
-    name: test
+          args: -- -D warnings -A dead_code -A improper_ctypes_definitions
+  rust_test:
+    name: cargo test
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
         channel: [stable, nightly, beta]
-        exclude:
-          - os: macOS-latest
-            channel: nightly
-          - os: macOS-latest
-            channel: beta
-#          - os: windows-latest
-#            channel: nightly
-#          - os: windows-latest
-#            channel: beta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install required libs (Ubuntu)
+        run: sudo apt-get install libxkbcommon-dev
+      - uses: actions/checkout@master
+      - name: Install cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.channel }}
+          profile: minimal
+          override: true
+      - name: Run rust test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+  library_test:
+    name: library test
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macOS-latest ]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@master
+      - name: Install cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Install cbindgen
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --force cbindgen
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
@@ -44,15 +66,14 @@ jobs:
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
-      - uses: actions/checkout@master
-      - name: Install cargo
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.channel }}
-          profile: minimal
-          override: true
-      - name: Run test
+      - name: Build library
         uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: build
+      - name: Generate c header
+        run: cbindgen --config cbindgen.toml --crate cskk --output ./tests/libcskk.h
+      - name: Build lib test
+        run: gcc ./tests/basic.c -L ./target/debug/ -lcskk -o ./tests/lib_test
+      - name: Run lib test
+        run: LD_LIBRARY_PATH=./target/debug ./tests/lib_test
         

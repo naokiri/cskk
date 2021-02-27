@@ -6,7 +6,7 @@ pub mod on_memory_dict;
 pub mod candidate;
 
 #[derive(Debug)]
-pub(crate) struct DictEntry {
+pub struct DictEntry {
     midashi: String,
     candidates: Vec<Arc<Candidate>>,
 }
@@ -18,7 +18,7 @@ impl DictEntry {
     }
 }
 
-pub(crate) trait Dictionary {
+pub trait Dictionary {
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry>;
     fn new() -> Self;
 }

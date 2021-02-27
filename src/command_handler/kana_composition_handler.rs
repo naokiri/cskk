@@ -14,7 +14,7 @@ use crate::skk_modes::CompositionMode;
 /// かな -> 漢字 ハンドラ。
 ///
 #[derive(Debug)]
-pub(crate) struct KanaCompositionHandler<Dict: Dictionary> {
+pub struct KanaCompositionHandler<Dict: Dictionary> {
     dictionary: Dict,
 }
 

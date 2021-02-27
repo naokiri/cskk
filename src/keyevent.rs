@@ -39,7 +39,6 @@ bitflags! {
     }
 }
 
-#[cfg(test)]
 pub type KeyEventSeq = Vec<KeyEvent>;
 
 ///
@@ -152,14 +151,7 @@ impl KeyEvent {
     pub(crate) fn get_symbol(&self) -> xkb::Keysym {
         self.symbol
     }
-}
 
-
-///
-/// KeyEventSeq related functions
-///
-#[cfg(test)]
-impl KeyEvent {
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
         match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
             Ok(result) => {

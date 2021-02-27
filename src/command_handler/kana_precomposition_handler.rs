@@ -7,7 +7,7 @@ use crate::skk_modes::CompositionMode;
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
-pub(crate) struct KanaPrecompositionHandler {
+pub struct KanaPrecompositionHandler {
 }
 
 impl KanaPrecompositionHandler {
