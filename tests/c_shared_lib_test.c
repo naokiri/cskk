@@ -2,7 +2,10 @@
 #include <assert.h>
 #include "libcskk.h"
 
-
+/**
+ * Shallow checking of libcskk.h
+ * Use rust tests for meaningful integration tests.
+ */
 int main() {
     CskkContext *context;
     context = create_new_context();

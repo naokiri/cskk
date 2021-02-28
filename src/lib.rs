@@ -29,7 +29,7 @@ use crate::keyevent::KeyEvent;
 use crate::keyevent::KeyEventSeq;
 use crate::skk_modes::CompositionMode;
 use crate::skk_modes::InputMode;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 pub mod skk_modes;
@@ -114,6 +114,11 @@ pub extern "C" fn create_new_context() -> Box<CskkContext> {
     Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
 }
 
+#[no_mangle]
+pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
+
+}
+
 /// Test purpose
 /// # Safety
 ///
@@ -131,12 +136,52 @@ pub extern "C" fn skk_context_set_composition_mode(context: &mut CskkContext, co
     context.set_composition_mode(composition_mode)
 }
 
-impl CskkContext {
-    // TODO: Write integration test that uses new, will_process, poll_output, process_key_event etc.
-//    fn set_mode(&mut self, new_mode: InputMode) {
-//        self.input_mode = new_mode;
-//    }
+/// テスト用途。input_modeを設定する。
+/// 他のステートとの整合性は無視される。
+#[no_mangle]
+pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mode: InputMode) {
+    context.set_input_mode(input_mode)
+}
 
+/// 現在のoutputをpollingする。
+///
+/// # Safety
+/// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
+/// 返り値はcallerがskk_free_stringしないと実体がメモリリークする。
+///
+#[no_mangle]
+pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
+    CString::new("aaa".to_string()).unwrap().into_raw()
+}
+
+/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+///
+/// # Safety
+///
+/// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
+/// 返り値はcallerがskk_free_stringしないとメモリリークする。
+/// ueno/libskkと違う点なので注意が必要
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_preedit(context: &mut CskkContext) -> *mut c_char {
+    let preedit = context.get_preedit().unwrap();
+    CString::new(preedit).unwrap().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn skk_free_string(ptr: *mut c_char)  {
+    unsafe {
+        if ptr.is_null() {
+            return;
+        }
+        // Get ownership in rust side, and do nothing.
+        CString::from_raw(ptr);
+    }
+}
+
+
+
+impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
@@ -145,7 +190,6 @@ impl CskkContext {
         self.retrieve_output(true)
     }
 
-    #[allow(dead_code)]
     pub fn get_preedit(&self) -> Option<String> {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().pre_conversion;
@@ -259,11 +303,15 @@ impl CskkContext {
         do_reset
     }
 
-    #[allow(dead_code)]
     fn set_composition_mode(&self, composition_mode: CompositionMode) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.composition_mode = composition_mode;
         current_state.selection_pointer = 0;
+    }
+
+    fn set_input_mode(&self, input_mode: InputMode) {
+        let mut current_state = self.current_state().borrow_mut();
+        current_state.input_mode = input_mode
     }
 
     ///
@@ -399,7 +447,7 @@ impl CskkContext {
             }
             // TODO
             CompositionMode::Abbreviation => {}
-            CompositionMode::Register(_) => {}
+            CompositionMode::Register => {}
         }
         // TODO: 入力として内部では処理しつつunhandledで返す命令は必要か調べる。ueno/libskkのviとの連携関連issueとか読むとわかるか？
         true
