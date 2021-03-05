@@ -25,13 +25,13 @@ In Ubuntu e.g.
 ```
 
 ## Develop
-No convenient makefile-like script yet.
+There's no convenient makefile-like scripts here. `cargo build` and `cargo test` shall be enough for most of the development. 
 
-To run tests,
+To run tests on .so file,
 ```shell
     cargo build
     cbindgen --config cbindgen.toml --crate cskk --output tests/libcskk.h
-    $(CC) tests/basic.c -L ./target/debug/ -lcskk -o tests/lib_test
+    $(CC) tests/c_shared_lib_test.c -L ./target/debug/ -lcskk -o tests/lib_test
     LD_LIBRARY_PATH=./target/debug ./tests/lib_test
 ```
 

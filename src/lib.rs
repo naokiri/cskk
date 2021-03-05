@@ -29,13 +29,13 @@ use crate::keyevent::KeyEvent;
 use crate::keyevent::KeyEventSeq;
 use crate::skk_modes::CompositionMode;
 use crate::skk_modes::InputMode;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
+pub mod skk_modes;
 mod kana_converter;
 mod keyevent;
 mod command_handler;
-mod skk_modes;
 mod dictionary;
 
 #[derive(Deserialize)]
@@ -114,7 +114,17 @@ pub extern "C" fn create_new_context() -> Box<CskkContext> {
     Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
 }
 
-// Test purpose
+/// Reset the context
+#[no_mangle]
+pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
+    // TODO: Flush all the state stack after implementing the register mode
+    // TODO: あとまわし。他のテストがこけはじめたらちゃんと実装する。
+    context.poll_output();
+    context.reset_unconverted();
+    context.reset_carry_over();
+}
+
+/// Test purpose
 /// # Safety
 ///
 /// This function must be called by a valid C string terminated by a NULL.
@@ -124,21 +134,99 @@ pub unsafe extern "C" fn skk_context_process_key_events(context: &mut CskkContex
     context.process_key_events_string(keyevents.to_str().unwrap())
 }
 
-impl CskkContext {
-    // TODO: Write integration test that uses new, will_process, poll_output, process_key_event etc.
-//    fn set_mode(&mut self, new_mode: InputMode) {
-//        self.input_mode = new_mode;
-//    }
+/// Test purpose
+pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
+    context.process_key_events_string(keyevents)
+}
 
+
+/// テスト用途。composition modeを設定する。
+/// 他のステートとの整合性は無視される。
+#[no_mangle]
+pub extern "C" fn skk_context_set_composition_mode(context: &mut CskkContext, composition_mode: CompositionMode) {
+    context.set_composition_mode(composition_mode)
+}
+
+/// テスト用途。input_modeを設定する。
+/// 他のステートとの整合性は無視される。
+#[no_mangle]
+pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mode: InputMode) {
+    context.set_input_mode(input_mode)
+}
+
+/// 現在のoutputをpollingする。
+///
+/// # Safety
+/// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
+/// 返り値はcallerがskk_free_stringしないと実体がメモリリークする。
+///
+#[no_mangle]
+pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
+    let output = context.poll_output();
+    match output {
+        None => {
+            CString::new("".to_string()).unwrap().into_raw()
+        }
+        Some(str) => {
+            CString::new(str).unwrap().into_raw()
+        }
+    }
+}
+
+/// 現在のoutputをpollingする。
+///
+pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
+    if let Some(str) = context.poll_output() {
+        return str;
+    }
+    "".to_string()
+}
+
+/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+///
+/// # Safety
+/// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
+/// 返り値はcallerがskk_free_stringしないとメモリリークする。
+/// ueno/libskkと違う点なので注意が必要
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char {
+    let preedit = context.get_preedit().unwrap();
+    CString::new(preedit).unwrap().into_raw()
+}
+
+/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+///
+pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
+    context.get_preedit().unwrap()
+}
+
+///
+/// cskk libraryが渡したC言語文字列をfreeする。
+///
+/// # Safety
+///
+/// CSKKライブラリで返したC言語文字列のポインタ以外を引数に渡してはいけない。
+/// 他で管理されるべきメモリを過剰に解放してしまう。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    // Get back ownership in Rust side, then do nothing.
+    CString::from_raw(ptr);
+}
+
+
+impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
-    #[allow(dead_code)]
     pub fn poll_output(&self) -> Option<String> {
         self.retrieve_output(true)
     }
 
-    #[allow(dead_code)]
     pub fn get_preedit(&self) -> Option<String> {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().pre_conversion;
@@ -242,9 +330,6 @@ impl CskkContext {
         current_state.borrow_mut().composited = "".to_string()
     }
 
-    // TODO: might not only for test
-    #[cfg(test)]
-    #[allow(dead_code)]
     fn reset_carry_over(&self) -> bool {
         let current_state = self.current_state();
         let do_reset = !current_state.borrow().pre_conversion.is_empty();
@@ -252,11 +337,15 @@ impl CskkContext {
         do_reset
     }
 
-    #[allow(dead_code)]
     fn set_composition_mode(&self, composition_mode: CompositionMode) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.composition_mode = composition_mode;
         current_state.selection_pointer = 0;
+    }
+
+    fn set_input_mode(&self, input_mode: InputMode) {
+        let mut current_state = self.current_state().borrow_mut();
+        current_state.input_mode = input_mode
     }
 
     ///
@@ -392,7 +481,7 @@ impl CskkContext {
             }
             // TODO
             CompositionMode::Abbreviation => {}
-            CompositionMode::Register(_) => {}
+            CompositionMode::Register => {}
         }
         // TODO: 入力として内部では処理しつつunhandledで返す命令は必要か調べる。ueno/libskkのviとの連携関連issueとか読むとわかるか？
         true
