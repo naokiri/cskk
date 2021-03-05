@@ -1,6 +1,6 @@
 extern crate cskk;
 
-use cskk::{create_new_context, skk_context_set_composition_mode, skk_context_set_input_mode, skk_context_process_key_events, skk_context_process_key_events_rs, skk_context_get_preedit, skk_context_get_preedit_rs, skk_context_poll_output_rs};
+use cskk::{create_new_context, skk_context_set_composition_mode, skk_context_set_input_mode, skk_context_process_key_events_rs, skk_context_poll_output_rs};
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 
