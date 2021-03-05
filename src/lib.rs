@@ -163,15 +163,7 @@ pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mo
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
-    let output = context.poll_output();
-    match output {
-        None => {
-            CString::new("".to_string()).unwrap().into_raw()
-        }
-        Some(str) => {
-            CString::new(str).unwrap().into_raw()
-        }
-    }
+    CString::new(skk_context_poll_output_rs(context)).unwrap().into_raw()
 }
 
 /// 現在のoutputをpollingする。
@@ -443,6 +435,7 @@ impl CskkContext {
                                 CompositionMode::PreCompositionOkurigana => {
                                     // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
                                     self.append_converted_to_okuri(converted);
+                                    self.set_carry_over(carry_over);
                                     self.set_composition_mode(CompositionMode::CompositionSelection);
                                     return self.process_key_event_inner(key_event, true);
                                 }
@@ -546,6 +539,7 @@ impl CskkContext {
     // FIXME: Remove this clippy rule allow when parameterize on array length is stable in Rust. maybe 1.51?
     #[allow(clippy::ptr_arg)]
     fn process_key_events(&self, key_event_seq: &KeyEventSeq) -> bool {
+        dbg!(key_event_seq);
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);
             if !processed {
@@ -654,6 +648,8 @@ mod tests {
 
     pub static INIT_SYNC: Once = Once::new();
 
+    // TODO: setup proper debug log and move to lib test
+    #[allow(dead_code)]
     fn init() {
         INIT_SYNC.call_once(|| {
             let _ = env_logger::init();
@@ -717,48 +713,6 @@ mod tests {
     }
 
     #[test]
-    fn basic_hiragana() {
-        init();
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-
-        let a_gyou = KeyEvent::deserialize_seq("a i u e o").unwrap();
-        cskkcontext.process_key_events(&a_gyou);
-        let actual = cskkcontext.poll_output().unwrap();
-        assert_eq!("あいうえお", actual);
-    }
-
-    #[test]
-    fn skip_on_impossible_hiragana() {
-        init();
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-
-        let a_gyou = KeyEvent::deserialize_seq("b n y a").unwrap();
-        cskkcontext.process_key_events(&a_gyou);
-        let actual = cskkcontext.poll_output().unwrap();
-        assert_eq!("にゃ", actual);
-    }
-
-    #[test]
-    fn simple_composition() {
-        init();
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-
-        let pre_love = KeyEvent::deserialize_seq("A i").unwrap();
-        cskkcontext.process_key_events(&pre_love);
-        let actual_preedit = cskkcontext.get_preedit().unwrap();
-        assert_eq!("▽あい", actual_preedit);
-    }
-
-    #[test]
     fn get_preedit() {
         let cskkcontext = CskkContext::new(
             InputMode::Hiragana,
@@ -768,92 +722,5 @@ mod tests {
         cskkcontext.process_key_event(&capital_a);
         let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
         assert_eq!("▽あ", actual);
-    }
-
-    #[test]
-    fn get_preedit_precompostion_from_mid() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let a = KeyEvent::from_str("k").unwrap();
-        cskkcontext.process_key_event(&a);
-        let actual = cskkcontext.get_preedit().expect(&format!("No preedit after k. context: {:?}", cskkcontext.current_state().borrow()));
-        assert_eq!("k", actual);
-
-        let large_a = KeyEvent::from_str("I").unwrap();
-        cskkcontext.process_key_event(&large_a);
-        let after = cskkcontext.get_preedit().unwrap();
-        assert_eq!("▽き", after, "context: {}", cskkcontext.current_state().borrow());
-    }
-
-    #[test]
-    fn basic_okuri_nashi_henkan() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let pre_love = KeyEvent::deserialize_seq("A i space").unwrap();
-        cskkcontext.process_key_events(&pre_love);
-        let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
-        assert_eq!(actual, "▼愛");
-    }
-
-    #[test]
-    fn okuri_ari_henkan_precomposition() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let pre_love = KeyEvent::deserialize_seq("A K").unwrap();
-        cskkcontext.process_key_events(&pre_love);
-        let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
-        assert_eq!(actual, "▽あ*k");
-    }
-
-    #[test]
-    fn okuri_ari_henkan_delegate_to_compositionselection() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let pre_love = KeyEvent::deserialize_seq("A K i").unwrap();
-        cskkcontext.process_key_events(&pre_love);
-        let actual = cskkcontext.get_preedit().expect(&format!("No preedit. context: {:?}", cskkcontext.current_state().borrow()));
-        assert_eq!(actual, "▼開き");
-    }
-
-    #[test]
-    fn okuri_nashi_henkan_kakutei() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let love = KeyEvent::deserialize_seq("A i space Return").unwrap();
-        cskkcontext.process_key_events(&love);
-
-        let output = cskkcontext.poll_output().unwrap();
-        let after_state = cskkcontext.current_state().borrow_mut();
-
-        assert_eq!(output, "愛");
-        assert_eq!(after_state.composition_mode, CompositionMode::Direct);
-        assert_eq!(after_state.input_mode, InputMode::Hiragana);
-    }
-
-    #[test]
-    fn okuri_ari_henkan_kakutei() {
-        let cskkcontext = CskkContext::new(
-            InputMode::Hiragana,
-            CompositionMode::Direct,
-        );
-        let love = KeyEvent::deserialize_seq("A K i Return").unwrap();
-        cskkcontext.process_key_events(&love);
-
-        let output = cskkcontext.poll_output().unwrap();
-        let after_state = cskkcontext.current_state().borrow_mut();
-
-        assert_eq!(output, "開き");
-        assert_eq!(after_state.composition_mode, CompositionMode::Direct);
-        assert_eq!(after_state.input_mode, InputMode::Hiragana);
     }
 }
