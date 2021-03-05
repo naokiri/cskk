@@ -114,9 +114,14 @@ pub extern "C" fn create_new_context() -> Box<CskkContext> {
     Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
 }
 
+/// Reset the context
 #[no_mangle]
 pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
-
+    // TODO: Flush all the state stack after implementing the register mode
+    // TODO: あとまわし。他のテストがこけはじめたらちゃんと実装する。
+    context.poll_output();
+    context.reset_unconverted();
+    context.reset_carry_over();
 }
 
 /// Test purpose
@@ -128,6 +133,12 @@ pub unsafe extern "C" fn skk_context_process_key_events(context: &mut CskkContex
     let keyevents = CStr::from_ptr(keyevents_cstring);
     context.process_key_events_string(keyevents.to_str().unwrap())
 }
+
+/// Test purpose
+pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
+    context.process_key_events_string(keyevents)
+}
+
 
 /// テスト用途。composition modeを設定する。
 /// 他のステートとの整合性は無視される。
@@ -151,41 +162,67 @@ pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mo
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
-    CString::new("aaa".to_string()).unwrap().into_raw()
+    let output = context.poll_output();
+    match output {
+        None => {
+            CString::new("".to_string()).unwrap().into_raw()
+        }
+        Some(str) => {
+            CString::new(str).unwrap().into_raw()
+        }
+    }
+}
+
+/// 現在のoutputをpollingする。
+///
+pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
+    if let Some(str) = context.poll_output() {
+        return str;
+    }
+    "".to_string()
 }
 
 /// テスト用途。preedit文字列と同じ内容の文字列を取得する。
 ///
 /// # Safety
-///
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
 /// 返り値はcallerがskk_free_stringしないとメモリリークする。
 /// ueno/libskkと違う点なので注意が必要
 ///
 #[no_mangle]
-pub extern "C" fn skk_context_get_preedit(context: &mut CskkContext) -> *mut c_char {
+pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char {
     let preedit = context.get_preedit().unwrap();
     CString::new(preedit).unwrap().into_raw()
 }
 
-#[no_mangle]
-pub extern "C" fn skk_free_string(ptr: *mut c_char)  {
-    unsafe {
-        if ptr.is_null() {
-            return;
-        }
-        // Get ownership in rust side, and do nothing.
-        CString::from_raw(ptr);
-    }
+/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+///
+pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
+    context.get_preedit().unwrap()
 }
 
+///
+/// cskk libraryが渡したC言語文字列をfreeする。
+///
+/// # Safety
+///
+/// CSKKライブラリで返したC言語文字列のポインタ以外を引数に渡してはいけない。
+/// 他で管理されるべきメモリを過剰に解放してしまう。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    // Get back ownership in Rust side, then do nothing.
+    CString::from_raw(ptr);
+}
 
 
 impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
-    #[allow(dead_code)]
     pub fn poll_output(&self) -> Option<String> {
         self.retrieve_output(true)
     }
@@ -293,9 +330,6 @@ impl CskkContext {
         current_state.borrow_mut().composited = "".to_string()
     }
 
-    // TODO: might not only for test
-    #[cfg(test)]
-    #[allow(dead_code)]
     fn reset_carry_over(&self) -> bool {
         let current_state = self.current_state();
         let do_reset = !current_state.borrow().pre_conversion.is_empty();
