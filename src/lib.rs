@@ -72,7 +72,8 @@ pub(crate) enum Instruction<'a> {
 /// Rough design prototype yet
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
-/// FIXME: Handler保持をもうちょっとスマートにしたい
+/// FIXME: Handler保持をもうちょっとスマートにしたい。将来的にueno/libskkのように複数の入力体系をサポートできたらいいなと思いhandlerをcontextに入れているが、設計が複雑になりすぎるようならば諦める。
+///
 pub struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
     kana_direct_handler: KanaDirectHandler,
@@ -200,6 +201,17 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
 pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
+
+/// テスト用途。
+pub fn skk_context_get_compositon_mode(context: &CskkContext) -> CompositionMode {
+    context.current_state().borrow().composition_mode.clone()
+}
+
+/// テスト用途。
+pub fn skk_context_get_input_mode(context: &CskkContext) -> InputMode {
+    context.current_state().borrow().input_mode.clone()
+}
+
 
 ///
 /// cskk libraryが渡したC言語文字列をfreeする。
