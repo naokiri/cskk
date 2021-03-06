@@ -3,38 +3,22 @@ use std::fmt::Debug;
 use crate::{Instruction, CskkState};
 use crate::keyevent::KeyEvent;
 
-pub mod kana_direct_handler;
+pub mod direct_mode_command_handler;
 pub mod kana_precomposition_handler;
 pub mod kana_composition_handler;
 
+/// 文字入力以外の命令としてキー入力を解釈するもののハンドラ
+///
 pub(crate) trait CommandHandler: Debug {
     ///
     /// True if key_event should be consumed by current handler.
+    /// TODO: input_mode関連でcurrent_stateなしでは正しく返せない考慮漏れがあった。command_handler周辺は実際にlibで必要になったら書き直す必要があるかも。実際にlibで必要になるまで後回し。
     /// FIXME: Should this be in this trait?
-    ///
+    /// FIXME: get_instructionの配列長さで呼び出し側で置きかえていってしまっているので廃止するかも
     fn can_process(&self, key_event: &KeyEvent) -> bool;
     fn get_instruction<'a>(&'a self, key_event: &KeyEvent, current_state: &CskkState, is_delegated: bool) -> Vec<Instruction<'a>>;
 }
 
-//// Union to put handlers in same collection. Will not be required when Rust expands the usage of return impl Trait
-//pub enum InputHandlerType<A> {
-//    KanaHandler(A),
-//}
-//
-//impl<T> InputHandler for InputHandlerType<T> where T: InputHandler {
-//    fn can_process(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
-//        match self {
-//            InputHandlerType::KanaHandler(x) => x.can_process(key_event, unprocessed)
-//        }
-//    }
-//
-//    fn get_instruction(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<Instruction> {
-//        match self {
-//            InputHandlerType::KanaHandler(x) => x.get_instruction(key_event, unprocessed)
-//        }
-//    }
-//}
-//
 impl<T> CommandHandler for &T where T: CommandHandler {
     fn can_process(&self, key_event: &KeyEvent) -> bool {
         (*self).can_process(key_event)

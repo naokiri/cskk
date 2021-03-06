@@ -7,16 +7,12 @@ pub enum InputMode {
     // かなモード
     Hiragana,
     // カナモード
-    #[allow(dead_code)]
     Katakana,
     // JIS X 0201 カナ、 いわゆる半角カナ。 DDSKKでは独立したモード扱いではないので実装未定
-    #[allow(dead_code)]
     HankakuKatakana,
     // 全英モード
-    #[allow(dead_code)]
     Zenkaku,
     // アスキーモード
-    #[allow(dead_code)]
     Ascii,
 }
 
