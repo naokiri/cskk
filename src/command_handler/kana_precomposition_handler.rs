@@ -2,7 +2,7 @@ use xkbcommon::xkb;
 
 use crate::{CskkState, Instruction};
 use crate::command_handler::CommandHandler;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::{KeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 
 // PreComposition とそのサブモード
@@ -26,15 +26,14 @@ impl CommandHandler for KanaPrecompositionHandler {
         let mut instructions = Vec::new();
         let current_composition_mode = &current_state.composition_mode;
         debug_assert!(current_composition_mode == &CompositionMode::PreComposition || current_composition_mode == &CompositionMode::PreCompositionOkurigana);
-        // TODO: ▽ひらがな + 'q' => ヒラガナ
         // TODO: ▽ひらがな + Ctrl-G => FlushAbort
 
         let symbol = key_event.get_symbol();
+        let modifier = key_event.get_modifier();
         // Does not check if key_event's modifier contains SHIFT because keysym is different for 'a' and 'A'.
         let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
         if symbol == xkb::keysyms::KEY_space {
             instructions.push(Instruction::FlushPreviousCarryOver);
-            // TODO: "K space" 等 flush後空の時にはcomposition selectionではなくFlushAbortしないといけない。CompositionSelection側で処理？
             instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true });
             return instructions;
         } else if is_capital && current_state.composition_mode == CompositionMode::PreComposition {
@@ -42,6 +41,14 @@ impl CommandHandler for KanaPrecompositionHandler {
             // instructions.push(Instruction::SetCompositionOkuri);
         } else if symbol == xkb::keysyms::KEY_greater {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
+        } else if symbol == xkb::keysyms::KEY_q && !modifier.contains(SkkKeyModifier::CONTROL){
+            instructions.push(Instruction::FlushPreviousCarryOver);
+            instructions.push(Instruction::ConfirmAsKatakana);
+            instructions.push(Instruction::FinishConsumingKeyEvent);
+        } else if symbol == xkb::keysyms::KEY_q && modifier.contains(SkkKeyModifier::CONTROL){
+            instructions.push(Instruction::FlushPreviousCarryOver);
+            instructions.push(Instruction::ConfirmAsJISX0201);
+            instructions.push(Instruction::FinishConsumingKeyEvent);
         }
 
         instructions
