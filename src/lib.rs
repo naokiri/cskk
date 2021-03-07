@@ -611,7 +611,9 @@ impl CskkContext {
                             // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
                             self.output_nn_if_any(current_input_mode);
                             self.reset_unconverted();
+                            let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
                             if let Some(key_char) = key_event.get_symbol_char() {
+                                // カンマピリオドは特殊な設定と処理がある。
                                 if let Some(converted) = self.kana_converter.convert_periods(&key_char) {
                                     match current_composition_mode {
                                         CompositionMode::Direct => {
@@ -630,7 +632,7 @@ impl CskkContext {
                                             return false;
                                         }
                                     }
-                                } else {
+                                } else if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
                                     match current_composition_mode {
                                         CompositionMode::Direct |
                                         CompositionMode::PreComposition => {
@@ -646,6 +648,11 @@ impl CskkContext {
                                             return false;
                                         }
                                     }
+                                } else {
+                                    // kana builderで該当がない記号や、表示されないキー
+                                    // TODO: 表示がある文字であればAsciiモード扱いで入力する。 '%','!'などが該当
+                                    // とりあえず無視する。
+                                    return false;
                                 }
                             }
                         }
