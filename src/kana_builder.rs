@@ -43,12 +43,12 @@ impl KanaBuilder {
         self.period_style = period_style;
     }
 
-    fn get_period(&self) -> Option<Converted> {
-        Some("。".to_string())
+    fn get_period(&self) -> Converted {
+        "。".to_string()
     }
 
-    fn get_comma(&self) -> Option<Converted> {
-        Some("、".to_string())
+    fn get_comma(&self) -> Converted {
+        "、".to_string()
     }
 
     /// convert the unprocessed vector into kana and the remaining carryover if matching kana exists
@@ -59,11 +59,11 @@ impl KanaBuilder {
     ///
     /// Not in the normal convert function because caller should know ",." to treat this specially for composition mode changes.
     ///
-    pub fn convert_periods(&self, kana:&char) -> Option<Converted> {
+    pub fn convert_periods(&self, kana: &char) -> Option<Converted> {
         if *kana == '.' {
-            self.get_period()
+            Some(self.get_period())
         } else if *kana == ',' {
-            self.get_comma()
+            Some(self.get_comma())
         } else {
             None
         }
