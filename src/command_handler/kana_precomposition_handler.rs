@@ -3,7 +3,7 @@ use xkbcommon::xkb;
 use crate::{CskkState, Instruction};
 use crate::command_handler::CommandHandler;
 use crate::keyevent::{KeyEvent, SkkKeyModifier};
-use crate::skk_modes::CompositionMode;
+use crate::skk_modes::{CompositionMode, InputMode};
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
@@ -25,6 +25,7 @@ impl CommandHandler for KanaPrecompositionHandler {
     fn get_instruction(&self, key_event: &KeyEvent, current_state: &CskkState, _is_delegated: bool) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let current_composition_mode = &current_state.composition_mode;
+        let current_input_mode = &current_state.input_mode;
         debug_assert!(current_composition_mode == &CompositionMode::PreComposition || current_composition_mode == &CompositionMode::PreCompositionOkurigana);
         // TODO: ▽ひらがな + Ctrl-G => FlushAbort
 
@@ -33,21 +34,39 @@ impl CommandHandler for KanaPrecompositionHandler {
         // Does not check if key_event's modifier contains SHIFT because keysym is different for 'a' and 'A'.
         let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
         if symbol == xkb::keysyms::KEY_space {
+            // space
             instructions.push(Instruction::FlushPreviousCarryOver);
             instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true });
             return instructions;
         } else if is_capital && current_state.composition_mode == CompositionMode::PreComposition {
-            instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreCompositionOkurigana , delegate: false });
-            // instructions.push(Instruction::SetCompositionOkuri);
+            // 大文字
+            if !current_state.raw_to_composite.is_empty() {
+                instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreCompositionOkurigana, delegate: false });
+            }
         } else if symbol == xkb::keysyms::KEY_greater {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
         } else if symbol == xkb::keysyms::KEY_q && !modifier.contains(SkkKeyModifier::CONTROL){
-            instructions.push(Instruction::FlushPreviousCarryOver);
-            instructions.push(Instruction::ConfirmAsKatakana);
+            // q
+            if *current_input_mode == InputMode::Katakana {
+                instructions.push(Instruction::OutputNNIfAny(InputMode::Hiragana));
+                instructions.push(Instruction::FlushPreviousCarryOver);
+                instructions.push(Instruction::ConfirmAsHiragana);
+            } else {
+                instructions.push(Instruction::OutputNNIfAny(InputMode::Katakana));
+                instructions.push(Instruction::FlushPreviousCarryOver);
+                instructions.push(Instruction::ConfirmAsKatakana);
+            }
+            instructions.push(Instruction::ChangeCompositionMode {composition_mode: CompositionMode::Direct, delegate: false});
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_q && modifier.contains(SkkKeyModifier::CONTROL){
+            // C-q
             instructions.push(Instruction::FlushPreviousCarryOver);
             instructions.push(Instruction::ConfirmAsJISX0201);
+            instructions.push(Instruction::FinishConsumingKeyEvent);
+        } else if symbol == xkb::keysyms::KEY_g && modifier.contains(SkkKeyModifier::CONTROL) {
+            // C-g
+            instructions.push(Instruction::FlushPreviousCarryOver);
+            instructions.push(Instruction::ChangeCompositionMode {composition_mode: CompositionMode::Direct, delegate: false});
             instructions.push(Instruction::FinishConsumingKeyEvent);
         }
 
@@ -101,8 +120,10 @@ mod tests {
 
     #[test]
     fn go_to_okuri_submode() {
+        let mut test_state = get_test_state();
+        test_state.raw_to_composite = "あ".to_string();
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.get_instruction(&KeyEvent::from_str("K").unwrap(), &get_test_state(), false);
+        let result = handler.get_instruction(&KeyEvent::from_str("K").unwrap(), &test_state, false);
         assert_eq!(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreCompositionOkurigana , delegate: false }, result[0]);
     }
 }

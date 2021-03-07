@@ -4,7 +4,7 @@ use crate::{CskkState, Instruction};
 use crate::command_handler::CommandHandler;
 use crate::keyevent::KeyEvent;
 use crate::keyevent::SkkKeyModifier;
-use crate::skk_modes::{CompositionMode, InputMode};
+use crate::skk_modes::{CompositionMode, InputMode, has_rom2kana_conversion};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DirectModeCommandHandler {}
@@ -26,7 +26,9 @@ impl CommandHandler for DirectModeCommandHandler {
                 xkb::keysyms::KEY_q |
                 xkb::keysyms::KEY_Q |
                 xkb::keysyms::KEY_j |
-                xkb::keysyms::KEY_J => {
+                xkb::keysyms::KEY_J |
+                xkb::keysyms::KEY_g |
+                xkb::keysyms::KEY_G => {
                     return true;
                 }
                 _ => {
@@ -49,7 +51,7 @@ impl CommandHandler for DirectModeCommandHandler {
             xkb::keysyms::KEY_l => {
                 match current_state.input_mode {
                     InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                        instructions.push(Instruction::ForceConvertPreConversion);
+                        instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                         instructions.push(Instruction::ChangeInputMode(InputMode::Ascii));
                         instructions.push(Instruction::FlushPreviousCarryOver);
                         instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -60,7 +62,7 @@ impl CommandHandler for DirectModeCommandHandler {
             xkb::keysyms::KEY_L => {
                 match current_state.input_mode {
                     InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                        instructions.push(Instruction::ForceConvertPreConversion);
+                        instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                         instructions.push(Instruction::ChangeInputMode(InputMode::Zenkaku));
                         instructions.push(Instruction::FlushPreviousCarryOver);
                         instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -72,13 +74,13 @@ impl CommandHandler for DirectModeCommandHandler {
                 if modifier.contains(SkkKeyModifier::CONTROL) {
                     match current_state.input_mode {
                         InputMode::Hiragana | InputMode::Katakana => {
-                            instructions.push(Instruction::ForceConvertPreConversion);
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                             instructions.push(Instruction::ChangeInputMode(InputMode::HankakuKatakana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
                         }
                         InputMode::HankakuKatakana => {
-                            instructions.push(Instruction::ForceConvertPreConversion);
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Hiragana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -88,13 +90,13 @@ impl CommandHandler for DirectModeCommandHandler {
                 } else {
                     match current_state.input_mode {
                         InputMode::Hiragana => {
-                            instructions.push(Instruction::ForceConvertPreConversion);
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Katakana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
                         }
                         InputMode::Katakana | InputMode::HankakuKatakana => {
-                            instructions.push(Instruction::ForceConvertPreConversion);
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Hiragana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -103,6 +105,16 @@ impl CommandHandler for DirectModeCommandHandler {
                     }
                 }
             }
+            // xkb::keysyms::KEY_Q => {
+            //     match current_state.input_mode {
+            //         InputMode::Hiragana |
+            //         InputMode::Katakana => {
+            //             instructions.push(Instruction::ChangeCompositionMode {composition_mode: CompositionMode::PreComposition, delegate: false})；
+            //             instructions.push(Instruction::FinishConsumingKeyEvent);
+            //         }
+            //         _ => {}
+            //     }
+            // }
             xkb::keysyms::KEY_j => {
                 if modifier.contains(SkkKeyModifier::CONTROL) {
                     match current_state.input_mode {
@@ -114,21 +126,21 @@ impl CommandHandler for DirectModeCommandHandler {
                     }
                 }
             }
+            xkb::keysyms::KEY_g |
+            xkb::keysyms::KEY_G => {
+                if has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode) {
+                    instructions.push(Instruction::FlushPreviousCarryOver);
+                    instructions.push(Instruction::FinishConsumingKeyEvent);
+                }
+            }
             _ => {}
         }
 
         if instructions.is_empty() &&
+            has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode) &&
             xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z {
-            match current_state.input_mode {
-                InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                    instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreComposition, delegate: false });
-                }
-                InputMode::Ascii | InputMode::Zenkaku => {
-                    // Don't consume as command.
-                }
-            }
+                instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::PreComposition, delegate: false });
         }
-
         instructions
     }
 }
