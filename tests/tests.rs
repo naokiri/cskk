@@ -468,14 +468,6 @@ mod rom_kata_transitions {
         transition_check(context.as_mut(),
                          CompositionMode::Direct,
                          InputMode::Hiragana,
-                         "N o b a - s u C-q",
-                         "",
-                         "ﾉﾊﾞｰｽ",
-                         InputMode::Hiragana);
-
-        transition_check(context.as_mut(),
-                         CompositionMode::Direct,
-                         InputMode::Hiragana,
                          "Q n q",
                          "",
                          "ン",
