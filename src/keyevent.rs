@@ -67,6 +67,21 @@ impl KeyEvent {
         KeyEvent { symbol: keysym, modifiers: modifier }
     }
 
+    /// wrapper of keysym_from_name to pretend some words as a known key name.
+    fn keysym_from_name(word: &str) -> xkb::Keysym {
+        match word {
+            "." => {
+                xkb::keysym_from_name(&"period", xkb::KEYSYM_NO_FLAGS)
+            }
+            "-" => {
+                xkb::keysym_from_name(&"minus", xkb::KEYSYM_NO_FLAGS)
+            }
+            _ => {
+                xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS)
+            }
+        }
+    }
+
     ///
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
@@ -95,7 +110,7 @@ impl KeyEvent {
                         modifier.set(SkkKeyModifier::R_SHIFT, true);
                     }
                     _ => {
-                        keysym = xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
+                        keysym = KeyEvent::keysym_from_name(word);
                     }
                 }
             }
@@ -125,7 +140,7 @@ impl KeyEvent {
             } else {
                 key
             };
-            keysym = xkb::keysym_from_name(keyname, xkb::KEYSYM_NO_FLAGS);
+            keysym = KeyEvent::keysym_from_name(keyname);
         }
 
         if keysym == xkb::keysyms::KEY_VoidSymbol {
@@ -283,6 +298,9 @@ mod tests {
 
         let enter = KeyEvent::from_str("Return").unwrap();
         assert_eq!(enter.symbol, keysyms::KEY_Return);
+
+        let period = KeyEvent::from_str(".").unwrap();
+        assert_eq!(period.symbol, keysyms::KEY_period);
     }
 
     #[test]

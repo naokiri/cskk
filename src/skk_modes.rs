@@ -37,3 +37,38 @@ pub enum CompositionMode {
     // ▼たじゅうに【▼とうろくできる【こんなふうに】】
     Register,
 }
+
+pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &CompositionMode) -> bool {
+    match composition_mode {
+        CompositionMode::Direct |
+        CompositionMode::PreComposition |
+        CompositionMode::PreCompositionOkurigana => {
+            match input_mode {
+                InputMode::Hiragana |
+                InputMode::Katakana |
+                InputMode::HankakuKatakana => {
+                    true
+                }
+                _ => {
+                    false
+                }
+            }
+        }
+        _ => {
+            false
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[repr(C)]
+pub enum PeriodStyle {
+    /// Use "。" and "、" for "." and ",".
+    JaJa,
+    /// Use "．" and "，" for "." and ",".
+    EnEn,
+    /// Use "。" and "，" for "." and ",".
+    JaEn,
+    /// Use "．" and "、" for "." and ",".
+    EnJa,
+}

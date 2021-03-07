@@ -5,13 +5,15 @@ use std::io::Read;
 use sequence_trie::SequenceTrie;
 
 use crate::keyevent::KeyEvent;
+use crate::skk_modes::PeriodStyle;
 
 pub(crate) type Converted = String;
 pub(crate) type CarryOver = Vec<char>;
 
-#[derive(Clone, Deserialize, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub(crate) struct KanaBuilder {
-    process_map: SequenceTrie<char, (Converted, CarryOver)>
+    process_map: SequenceTrie<char, (Converted, CarryOver)>,
+    period_style: PeriodStyle,
 }
 
 impl KanaBuilder {
@@ -36,9 +38,35 @@ impl KanaBuilder {
         }
     }
 
+    /// TODO: Ignored yet.
+    pub fn set_period_style(&mut self, period_style: PeriodStyle) {
+        self.period_style = period_style;
+    }
+
+    fn get_period(&self) -> Option<Converted> {
+        Some("。".to_string())
+    }
+
+    fn get_comma(&self) -> Option<Converted> {
+        Some("、".to_string())
+    }
+
     /// convert the unprocessed vector into kana and the remaining carryover if matching kana exists
     pub fn convert(&self, kana: &[char]) -> Option<&(Converted, CarryOver)> {
         self.process_map.get(kana)
+    }
+
+    ///
+    /// Not in the normal convert function because caller should know ",." to treat this specially for composition mode changes.
+    ///
+    pub fn convert_periods(&self, kana:&char) -> Option<Converted> {
+        if *kana == '.' {
+            self.get_period()
+        } else if *kana == ',' {
+            self.get_comma()
+        } else {
+            None
+        }
     }
 
     // 今のunprocessedに続いて次のkey_eventが来た時にかな変換を続けられるか。
@@ -81,7 +109,8 @@ impl KanaBuilder {
         }
 
         Self {
-            process_map
+            process_map,
+            period_style: PeriodStyle::JaJa,
         }
     }
 
@@ -118,6 +147,7 @@ impl KanaBuilder {
 
         KanaBuilder {
             process_map: process_list,
+            period_style: PeriodStyle::JaJa,
         }
     }
 
@@ -135,6 +165,7 @@ impl KanaBuilder {
 
         KanaBuilder {
             process_map: process_list,
+            period_style: PeriodStyle::JaJa,
         }
     }
 }
