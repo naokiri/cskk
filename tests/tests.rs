@@ -18,9 +18,9 @@ fn transition_check(context: &mut CskkContext,
     let output = skk_context_poll_output_rs(context);
     let preedit = skk_context_get_preedit_rs(context);
     let input_mode = skk_context_get_input_mode(context);
-    assert_eq!(output, expected_output, "(output == expected) failed");
-    assert_eq!(preedit, expected_preedit, "(preedit == expected) failed");
-    assert_eq!(input_mode, expected_input_mode, "(input_mode == expected) failed");
+    assert_eq!(output, expected_output, "(output == expected) failed for '{}'", key_inputs);
+    assert_eq!(preedit, expected_preedit, "(preedit == expected) failed for '{}'", key_inputs);
+    assert_eq!(input_mode, expected_input_mode, "(input_mode == expected) failed for '{}'", key_inputs);
 }
 
 #[test]
@@ -47,6 +47,13 @@ fn simple_composition() {
                      InputMode::Hiragana);
 }
 
+/// 参照時のueno/skklib と ddskkで動作が違う例。
+/// ddskk式の方が現実的な打ち間違え時になってほしい状態なので採用
+///
+/// ueno/skklib
+/// "k A" -> ▽あ
+/// ddskk
+/// "k A" -> ▽か
 #[test]
 fn composition_mode_from_middle() {
     let mut context = create_new_context();
@@ -499,6 +506,165 @@ mod rom_kata_transitions {
                          "N o b a - s u C-q",
                          "",
                          "ﾉﾊﾞｰｽ",
+                         InputMode::Hiragana);
+    }
+}
+
+// ueno/libskk tests/basic.c okuri_nasi_transitionsより
+mod okuri_nasi_transitions {
+    use super::*;
+
+    #[test]
+    fn okuri_nasi_transitions_basic() {
+        let mut context = create_new_context();
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A",
+                         "▽あ",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A i",
+                         "▽あい",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A i space",
+                         "▼愛",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        // differnt from ueno/libskk because they use S dictionary for testing.
+        // TODO: cskkでも辞書を設定できるようになったら見直す
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A i space space",
+                         "▼相",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A i space space Return",
+                         "",
+                         "相",
+                         InputMode::Hiragana);
+    }
+
+    #[test]
+    fn okuri_nasi_transitions_all_capital() {
+        let mut context = create_new_context();
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "N A",
+                         "▽な",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "N A N",
+                         "▽な*n",
+                         "",
+                         InputMode::Hiragana);
+
+        // TODO: Registration mode
+        if false {
+            skk_context_reset(context.as_mut());
+            transition_check(context.as_mut(),
+                             CompositionMode::Direct,
+                             InputMode::Hiragana,
+                             "N A N A",
+                             "▼な*んあ【】",
+                             "",
+                             InputMode::Hiragana);
+            skk_context_reset(context.as_mut());
+            transition_check(context.as_mut(),
+                             CompositionMode::Direct,
+                             InputMode::Hiragana,
+                             "N A N a",
+                             "▼な*な【】",
+                             "",
+                             InputMode::Hiragana);
+        }
+    }
+
+    #[test]
+    fn okuri_nasi_transitions_kanjis() {
+        let mut context = create_new_context();
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "I z e n space",
+                         "▼以前",
+                         "",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "K a n j i space C-j",
+                         "",
+                         "漢字",
+                         InputMode::Hiragana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "K a n j i space C-g",
+                         "▽かんじ",
+                         "",
+                         InputMode::Hiragana);
+    }
+
+    #[test]
+    fn okuri_nasi_transitions_other_inputmodes() {
+        let mut context = create_new_context();
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::HankakuKatakana,
+                         "K a n j i space",
+                         "▼漢字",
+                         "",
+                         InputMode::HankakuKatakana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "K a n j i space q",
+                         "",
+                         "漢字",
+                         InputMode::Katakana);
+        skk_context_reset(context.as_mut());
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Katakana,
+                         "K a n j i space q",
+                         "",
+                         "漢字",
+                         InputMode::Hiragana);
+    }
+
+    #[test]
+    fn okuri_nasi_transitions_ignore_non_command() {
+        let mut context = create_new_context();
+        transition_check(context.as_mut(),
+                         CompositionMode::Direct,
+                         InputMode::Hiragana,
+                         "A o space C-l",
+                         "▼青",
+                         "",
                          InputMode::Hiragana);
     }
 }

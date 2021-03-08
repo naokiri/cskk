@@ -35,6 +35,7 @@ impl CommandHandler for KanaPrecompositionHandler {
         let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
         if symbol == xkb::keysyms::KEY_space {
             // space
+            instructions.push(Instruction::OutputNNIfAny(current_input_mode.clone()));
             instructions.push(Instruction::FlushPreviousCarryOver);
             instructions.push(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true });
             return instructions;
@@ -114,8 +115,9 @@ mod tests {
         let handler = KanaPrecompositionHandler::test_handler();
 
         let result = handler.get_instruction(&KeyEvent::from_str("space").unwrap(), &get_test_state(), false);
-        assert_eq!(Instruction::FlushPreviousCarryOver, result[0]);
-        assert_eq!(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true }, result[1]);
+        assert_eq!(Instruction::OutputNNIfAny(InputMode::Hiragana), result[0]);
+        assert_eq!(Instruction::FlushPreviousCarryOver, result[1]);
+        assert_eq!(Instruction::ChangeCompositionMode { composition_mode: CompositionMode::CompositionSelection, delegate: true }, result[2]);
     }
 
     #[test]
