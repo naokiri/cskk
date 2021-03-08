@@ -687,6 +687,66 @@ fn number_composition() {
     );
 }
 
+///
+/// ueno/libskk と動作が違う点だが、v1.0.0でどうするか未定
+///
+/// 今はCStringの文字コードをUnicode3.2以降のUTF-8まま返す形なのでRust内では問題ない。
+/// 受け側で想定するLinuxのいくつかのIMEで使用が難しければ変更するかも。
+///
+#[test]
+fn rom_kana_conversion_vu() {
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "V u",
+        "▽ゔ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "V u q",
+        "",
+        "ヴ",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "V u",
+        "▽ヴ",
+        "",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "V u",
+        "▽ヴ",
+        "",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "V u q",
+        "",
+        "ゔ",
+        InputMode::Katakana,
+    );
+}
+
 #[test]
 fn multiple_number_composition() {
     init_test_logger();

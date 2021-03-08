@@ -163,8 +163,9 @@ fn rom_kana_transitions_kana_form_change_without_input_mode() {
     );
 }
 
+/// Changed from libskk.
 #[test]
-fn rom_kana_conversion_longer_conversion() {
+fn rom_kana_conversion_vu_conversion() {
     init_test_logger();
     let mut context = default_test_context();
     transition_check(
@@ -172,7 +173,7 @@ fn rom_kana_conversion_longer_conversion() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "V u",
-        "▽う゛",
+        "▽ゔ",
         "",
         InputMode::Hiragana,
     );
@@ -213,8 +214,28 @@ fn rom_kana_conversion_longer_conversion() {
         InputMode::Katakana,
         "V u q",
         "",
-        "う゛",
+        "ゔ",
         InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "v u",
+        "",
+        "ｳﾞ",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "V u q",
+        "",
+        "ゔ",
+        InputMode::HankakuKatakana,
     );
 }
 
