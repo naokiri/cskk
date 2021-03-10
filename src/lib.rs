@@ -25,7 +25,7 @@ use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::kana_builder::KanaBuilder;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::{KeyEvent, SkkKeyModifier};
 use crate::keyevent::KeyEventSeq;
 use crate::skk_modes::{CompositionMode, PeriodStyle, has_rom2kana_conversion};
 use crate::skk_modes::InputMode;
@@ -463,8 +463,10 @@ impl CskkContext {
         let current_state = self.current_state();
         let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
         let combined_keys = KanaBuilder::combined_key(key_event, unprocessed_vector);
+        let modifier = key_event.get_modifier();
 
         if !is_delegated &&
+            (modifier - SkkKeyModifier::SHIFT).is_empty() &&
             has_rom2kana_conversion(&current_state.borrow().input_mode,
                                     &current_state.borrow().composition_mode) {
             if let Some((converted, carry_over)) = self.kana_converter.convert(&combined_keys) {
@@ -476,7 +478,7 @@ impl CskkContext {
                     self.set_composition_mode(CompositionMode::PreComposition);
                 } else if is_capital && *initial_composition_mode == CompositionMode::PreComposition &&
                     !current_state.borrow().raw_to_composite.is_empty() {
-                        self.set_composition_mode(CompositionMode::PreCompositionOkurigana);
+                    self.set_composition_mode(CompositionMode::PreCompositionOkurigana);
                 }
 
                 let current_composition_mode = &current_state.borrow().composition_mode.clone();
@@ -584,109 +586,111 @@ impl CskkContext {
         // ここまで来たらかな変換もなく、ステート変更等の命令としての処理が済み、素の入力として処理する状態
         let current_composition_mode = &current_state.borrow().composition_mode.clone();
         let current_input_mode = &current_state.borrow().input_mode.clone();
-        match current_composition_mode {
-            CompositionMode::CompositionSelection
-            => {
-                debug!("Reached to process as input in composition selection mode. Something is wrong. Ignoring the input.");
-                // Do nothing.
-            }
-            CompositionMode::Direct |
-            CompositionMode::PreComposition |
-            CompositionMode::PreCompositionOkurigana => {
-                match current_input_mode {
-                    InputMode::Ascii => {
-                        if let Some(key_char) = key_event.get_symbol_char() {
-                            match current_composition_mode {
-                                CompositionMode::Direct => {
-                                    self.append_confirmed_raw_char(key_char);
-                                }
-                                _ => {
-                                    debug!("Unreachable. Ascii should be always in Direct mode.");
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                    InputMode::Zenkaku => {
-                        // TODO
-                    }
-                    InputMode::Hiragana |
-                    InputMode::Katakana |
-                    InputMode::HankakuKatakana => {
-                        // let unprocessed = &current_state.borrow().pre_conversion.clone();
-                        if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
-                            // かな変換できる可能性が残るのでFlushはされない
+        if (modifier - SkkKeyModifier::SHIFT).is_empty() {
+            match current_composition_mode {
+                CompositionMode::CompositionSelection
+                => {
+                    debug!("Reached to process as input in composition selection mode. Something is wrong. Ignoring the input.");
+                    // Do nothing.
+                }
+                CompositionMode::Direct |
+                CompositionMode::PreComposition |
+                CompositionMode::PreCompositionOkurigana => {
+                    match current_input_mode {
+                        InputMode::Ascii => {
                             if let Some(key_char) = key_event.get_symbol_char() {
                                 match current_composition_mode {
-                                    CompositionMode::Direct |
-                                    CompositionMode::PreComposition => {
-                                        self.append_unconverted(key_char.to_ascii_lowercase())
-                                    }
-                                    CompositionMode::PreCompositionOkurigana => {
-                                        self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
-                                        self.append_unconverted(key_char.to_ascii_lowercase());
+                                    CompositionMode::Direct => {
+                                        self.append_confirmed_raw_char(key_char);
                                     }
                                     _ => {
-                                        debug!("Unreachable.");
+                                        debug!("Unreachable. Ascii should be always in Direct mode.");
                                         return false;
                                     }
                                 }
                             }
-                        } else {
-                            // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
-                            self.output_nn_if_any(current_input_mode);
-                            self.reset_unconverted();
-                            let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
-                            if let Some(key_char) = key_event.get_symbol_char() {
-                                // カンマピリオドは特殊な設定と処理がある。
-                                if let Some(converted) = self.kana_converter.convert_periods(&key_char) {
-                                    match current_composition_mode {
-                                        CompositionMode::Direct => {
-                                            self.append_converted(&converted);
-                                        }
-                                        CompositionMode::PreComposition |
-                                        CompositionMode::PreCompositionOkurigana => {
-                                            // 入力単独によらない特殊な遷移で、",."は送り仮名のように扱われて▽モードから▼モードへ移行する。
-                                            self.reset_unconverted();
-                                            self.append_converted_to_okuri(&converted);
-                                            self.set_composition_mode(CompositionMode::CompositionSelection);
-                                            return self.process_key_event_inner(key_event, true);
-                                        }
-                                        _ => {
-                                            debug!("Unreachable");
-                                            return false;
-                                        }
-                                    }
-                                } else if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
+                        }
+                        InputMode::Zenkaku => {
+                            // TODO
+                        }
+                        InputMode::Hiragana |
+                        InputMode::Katakana |
+                        InputMode::HankakuKatakana => {
+                            // let unprocessed = &current_state.borrow().pre_conversion.clone();
+                            if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
+                                // かな変換できる可能性が残るのでFlushはされない
+                                if let Some(key_char) = key_event.get_symbol_char() {
                                     match current_composition_mode {
                                         CompositionMode::Direct |
                                         CompositionMode::PreComposition => {
                                             self.append_unconverted(key_char.to_ascii_lowercase())
                                         }
                                         CompositionMode::PreCompositionOkurigana => {
-                                            self.set_to_composite_to_converted_kana();
                                             self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
                                             self.append_unconverted(key_char.to_ascii_lowercase());
                                         }
                                         _ => {
-                                            debug!("Unreachable");
+                                            debug!("Unreachable.");
                                             return false;
                                         }
                                     }
-                                } else {
-                                    // kana builderで該当がない記号や、表示されないキー
-                                    // TODO: 表示がある文字であればAsciiモード扱いで入力する。 '%','!'などが該当
-                                    // とりあえず無視する。
-                                    return false;
+                                }
+                            } else {
+                                // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
+                                self.output_nn_if_any(current_input_mode);
+                                self.reset_unconverted();
+                                let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
+                                if let Some(key_char) = key_event.get_symbol_char() {
+                                    // カンマピリオドは特殊な設定と処理がある。
+                                    if let Some(converted) = self.kana_converter.convert_periods(&key_char) {
+                                        match current_composition_mode {
+                                            CompositionMode::Direct => {
+                                                self.append_converted(&converted);
+                                            }
+                                            CompositionMode::PreComposition |
+                                            CompositionMode::PreCompositionOkurigana => {
+                                                // 入力単独によらない特殊な遷移で、",."は送り仮名のように扱われて▽モードから▼モードへ移行する。
+                                                self.reset_unconverted();
+                                                self.append_converted_to_okuri(&converted);
+                                                self.set_composition_mode(CompositionMode::CompositionSelection);
+                                                return self.process_key_event_inner(key_event, true);
+                                            }
+                                            _ => {
+                                                debug!("Unreachable");
+                                                return false;
+                                            }
+                                        }
+                                    } else if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
+                                        match current_composition_mode {
+                                            CompositionMode::Direct |
+                                            CompositionMode::PreComposition => {
+                                                self.append_unconverted(key_char.to_ascii_lowercase())
+                                            }
+                                            CompositionMode::PreCompositionOkurigana => {
+                                                self.set_to_composite_to_converted_kana();
+                                                self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
+                                                self.append_unconverted(key_char.to_ascii_lowercase());
+                                            }
+                                            _ => {
+                                                debug!("Unreachable");
+                                                return false;
+                                            }
+                                        }
+                                    } else {
+                                        // kana builderで該当がない記号や、表示されないキー
+                                        // TODO: 表示がある文字であればAsciiモード扱いで入力する。 '%','!'などが該当
+                                        // とりあえず無視する。
+                                        return false;
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                // TODO
+                CompositionMode::Abbreviation => {}
+                CompositionMode::Register => {}
             }
-            // TODO
-            CompositionMode::Abbreviation => {}
-            CompositionMode::Register => {}
         }
         // TODO: 入力として内部では処理しつつunhandledで返す命令は必要か調べる。ueno/libskkのviとの連携関連issueとか読むとわかるか？
         true

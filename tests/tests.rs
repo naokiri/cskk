@@ -657,12 +657,12 @@ mod okuri_nasi_transitions {
     }
 
     #[test]
-    fn okuri_nasi_transitions_ignore_non_command() {
+    fn okuri_nasi_transitions_ignore_non_command_ctrl() {
         let mut context = create_new_context();
         transition_check(context.as_mut(),
                          CompositionMode::Direct,
                          InputMode::Hiragana,
-                         "A o space C-l",
+                         "A o space Control_L",
                          "▼青",
                          "",
                          InputMode::Hiragana);
