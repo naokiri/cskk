@@ -33,6 +33,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use crate::kana_form_changer::KanaFormChanger;
 use xkbcommon::xkb;
+use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
 
 pub mod skk_modes;
 mod kana_builder;
@@ -257,6 +258,7 @@ impl CskkContext {
         let converted = self.retrieve_output(false);
         let unconverted = &self.current_state().borrow().pre_conversion;
         let kana_to_composite = &self.current_state().borrow().converted_kana_to_composite;
+        let kana_to_okuri = &self.current_state().borrow().converted_kana_to_okuri;
         let composited = &self.current_state().borrow().composited;
 
         match self.current_state().borrow().composition_mode {
@@ -267,7 +269,7 @@ impl CskkContext {
                 Some("▽".to_owned() + &converted.unwrap_or_else(|| "".to_string()) + kana_to_composite)
             }
             CompositionMode::PreCompositionOkurigana => {
-                Some("▽".to_owned() + &converted.unwrap_or_else(|| "".to_string()) + kana_to_composite + "*" + &String::from_iter(unconverted.iter()))
+                Some("▽".to_owned() + &converted.unwrap_or_else(|| "".to_string()) + kana_to_composite + "*" + kana_to_okuri + &String::from_iter(unconverted.iter()))
             }
             CompositionMode::CompositionSelection => {
                 Some("▼".to_owned() + composited)
@@ -340,6 +342,13 @@ impl CskkContext {
         if current_state.pre_conversion.is_empty() {
             current_state.raw_to_composite.push_str(&to_composite_last.to_string())
         }
+    }
+
+    /// Append a char to raw_to_composite without checking.
+    /// Usually use append_to_composite_iff_no_preconversion.
+    fn append_raw_to_composite(&self, to_composite_last: char) {
+        let mut current_state = self.current_state().borrow_mut();
+        current_state.raw_to_composite.push_str(&to_composite_last.to_string())
     }
 
     // to_compositeをconvertedの内容でリセットする。
@@ -420,24 +429,36 @@ impl CskkContext {
         current_state.input_mode = input_mode
     }
 
-    fn output_nn_if_any(&self, input_mode: &InputMode) {
+    ///
+    /// return true if output ん
+    ///
+    fn output_nn_if_any(&self, input_mode: &InputMode, composition_mode: &CompositionMode) -> bool {
         // I cannot think of other case than single 'n' being orphaned. This implementation would be enough for it.
         let current_state = self.current_state();
         let unprocessed = current_state.borrow().pre_conversion.clone();
-        let current_composition_mode = current_state.borrow().composition_mode.clone();
         if unprocessed.len() == 1 && unprocessed[0] == 'n' {
-            match current_composition_mode {
+            return match composition_mode {
                 CompositionMode::Direct => {
                     self.append_converted_in_input_mode("ん", input_mode);
+                    true
                 }
                 CompositionMode::PreComposition => {
                     self.append_converted_to_composite("ん");
+                    true
                 }
-                _ => {}
+                CompositionMode::PreCompositionOkurigana => {
+                    self.append_converted_to_okuri("ん");
+                    //self.append_raw_to_composite('n');
+                    self.append_to_composite_iff_no_preconversion('n');
+                    current_state.borrow_mut().pre_conversion = vec![];
+                    true
+                }
+                _ => {
+                    false
+                }
             }
         }
-
-        current_state.borrow_mut().pre_conversion = vec![];
+        false
     }
 
     ///
@@ -461,8 +482,9 @@ impl CskkContext {
     fn process_key_event_inner(&self, key_event: &KeyEvent, is_delegated: bool) -> bool {
         dbg!(key_event);
         let current_state = self.current_state();
-        let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
-        let combined_keys = KanaBuilder::combined_key(key_event, unprocessed_vector);
+        let initial_composition_mode = current_state.borrow().composition_mode.clone();
+        let initial_unprocessed_vector = &current_state.borrow().pre_conversion.clone();
+        let combined_keys = KanaBuilder::combined_key(key_event, initial_unprocessed_vector);
         let modifier = key_event.get_modifier();
 
         if !is_delegated &&
@@ -494,7 +516,18 @@ impl CskkContext {
                         true
                     }
                     CompositionMode::PreCompositionOkurigana => {
-                        self.append_converted_to_okuri(converted);
+                        if let Some(key_char) = key_event.get_symbol_char() {
+                            self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
+                        } else {
+                            debug!("Unreachable. Key event without symbol char is kana converted. Okuri will be ignored on composition.");
+                        }
+                        if *initial_composition_mode == CompositionMode::PreComposition && !initial_unprocessed_vector.is_empty(){
+                            // 以前入力されていた部分はPreComposition側として処理する。
+                            // 例: "t T" の't'部分が 'っ' とかな変換される場合
+                            self.append_converted_to_composite(&converted)
+                        } else {
+                            self.append_converted_to_okuri(&converted)
+                        }
                         self.set_carry_over(carry_over);
                         // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
                         if carry_over.is_empty() {
@@ -528,7 +561,7 @@ impl CskkContext {
                     self.set_input_mode(input_mode);
                 }
                 Instruction::OutputNNIfAny(input_mode) => {
-                    self.output_nn_if_any(&input_mode);
+                    self.output_nn_if_any(&input_mode, &initial_composition_mode);
                 }
                 Instruction::FlushPreviousCarryOver => {
                     self.reset_unconverted();
@@ -617,7 +650,7 @@ impl CskkContext {
                         InputMode::Katakana |
                         InputMode::HankakuKatakana => {
                             // let unprocessed = &current_state.borrow().pre_conversion.clone();
-                            if self.kana_converter.can_continue(key_event, &unprocessed_vector) {
+                            if self.kana_converter.can_continue(key_event, &initial_unprocessed_vector) {
                                 // かな変換できる可能性が残るのでFlushはされない
                                 if let Some(key_char) = key_event.get_symbol_char() {
                                     match current_composition_mode {
@@ -637,7 +670,8 @@ impl CskkContext {
                                 }
                             } else {
                                 // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
-                                self.output_nn_if_any(current_input_mode);
+                                // "n d" 等の場合、直前の'n'を'ん'とする。
+                                self.output_nn_if_any(current_input_mode, &initial_composition_mode);
                                 self.reset_unconverted();
                                 let unprocessed_vector = &current_state.borrow().pre_conversion.clone();
                                 if let Some(key_char) = key_event.get_symbol_char() {
@@ -667,8 +701,9 @@ impl CskkContext {
                                                 self.append_unconverted(key_char.to_ascii_lowercase())
                                             }
                                             CompositionMode::PreCompositionOkurigana => {
-                                                self.set_to_composite_to_converted_kana();
-                                                self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
+                                                if initial_composition_mode != PreCompositionOkurigana  {
+                                                    self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
+                                                }
                                                 self.append_unconverted(key_char.to_ascii_lowercase());
                                             }
                                             _ => {
