@@ -108,4 +108,11 @@ mod tests {
         let actual = changer.adjust_kana_string(&InputMode::Katakana, "う゛ぁいきんぐ");
         assert_eq!("ヴァイキング", actual);
     }
+
+    #[test]
+    fn adjust_kana_string_small_tu() {
+        let changer = KanaFormChanger::default_kanaform_changer();
+        let actual = changer.adjust_kana_string(&InputMode::Hiragana, "っ");
+        assert_eq!("っ", actual);
+    }
 }

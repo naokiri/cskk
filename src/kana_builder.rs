@@ -228,4 +228,12 @@ mod tests {
         assert_eq!("っ", kana);
         assert_eq!(*carry_over, vec!['t'])
     }
+
+    #[test]
+    fn default_converter() {
+        let converter = KanaBuilder::default_converter();
+        let (kana, carry_over) = converter.convert(&['t', 't']).unwrap();
+        assert_eq!(kana, "っ");
+        assert_eq!(*carry_over, vec!['t'])
+    }
 }
