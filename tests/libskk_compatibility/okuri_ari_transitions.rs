@@ -2,47 +2,47 @@
 //! ueno/libskk_compatibility tests/basic.c okuri_ari_transitionsより
 //!
 
-use cskk::{create_new_context, skk_context_reset};
+use cskk::{skk_context_reset};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::transition_check;
+use crate::utils::{transition_check,new_test_context};
 
 
 #[test]
 fn basic() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "K a n g a E",
                      "▼考え",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "K a n g a E r",
                      "r",
                      "考え",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "H a Z",
                      "▽は*z",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "H a Z u",
                      "▼恥ず",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "T u k a T t",
@@ -54,24 +54,25 @@ fn basic() {
 
 #[test]
 fn check_nn_on_composition_mode_switching() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "K a n J",
                      "▽かん*j",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    // input is different from original to match the SKK-JISYO.S
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
-                     "K a n J i",
+                     "K a n Z i",
                      "▼感じ",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "F u N d a",
@@ -82,16 +83,16 @@ fn check_nn_on_composition_mode_switching() {
 
 #[test]
 fn check_small_tsu_on_okuri() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "S a S s",
                      "▽さ*っs",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "S a s S",
@@ -102,8 +103,8 @@ fn check_small_tsu_on_okuri() {
 
 #[test]
 fn katakana_okuri() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "q S i r o K u",
@@ -116,8 +117,8 @@ fn katakana_okuri() {
 #[ignore]
 #[test]
 fn cancel_dict_edit() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "T e t u d a I space C-g",
@@ -129,8 +130,8 @@ fn cancel_dict_edit() {
 #[ignore]
 #[test]
 fn dict_edit_initial_state() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "N e o C h i space N",
@@ -143,26 +144,24 @@ fn dict_edit_initial_state() {
 #[ignore]
 #[test]
 fn setsubiji() {
-    let mut context = create_new_context();
-    // differnt from ueno/libskk_compatibility because they use S dictionary for testing.
-    // TODO: cskkでも辞書を設定できるようになったら見直す
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A z u m a space",
-                     "▼吾妻",
+                     "▼東",
                      "",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A z u m a space >",
                      "▽>",
-                     "吾妻",
+                     "東",
                      InputMode::Hiragana);
-    skk_context_reset(context.as_mut());
-    transition_check(context.as_mut(),
+    skk_context_reset(&mut context);
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A z u m a space > s h i space",
@@ -175,8 +174,8 @@ fn setsubiji() {
 #[ignore]
 #[test]
 fn settouji() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "T y o u >",

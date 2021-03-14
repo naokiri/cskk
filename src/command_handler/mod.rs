@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::{Instruction, CskkState};
 use crate::keyevent::KeyEvent;
 
@@ -9,7 +7,7 @@ pub mod kana_composition_handler;
 
 /// 文字入力以外の命令としてキー入力を解釈するもののハンドラ
 ///
-pub(crate) trait CommandHandler: Debug {
+pub(crate) trait CommandHandler {
     ///
     /// True if key_event should be consumed by current handler.
     /// TODO: input_mode関連でcurrent_stateなしでは正しく返せない考慮漏れがあった。command_handler周辺は実際にlibで必要になったら書き直す必要があるかも。実際にlibで必要になるまで後回し。
