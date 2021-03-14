@@ -2,11 +2,9 @@ use std::fmt::Debug;
 
 use xkbcommon::xkb;
 
-use crate::{CskkState, Instruction};
-use crate::dictionary::{DictEntry, Dictionary};
-#[cfg(test)]
-use crate::dictionary::on_memory_dict::OnMemoryDict;
-use crate::command_handler::CommandHandler;
+use crate::{CskkState, Instruction,CommandHandler};
+use crate::dictionary::{DictEntry, Dictionary, CskkDictionary};
+//use crate::command_handler::CommandHandler;
 use crate::keyevent::{KeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 use crate::Instruction::ChangeCompositionMode;
@@ -15,23 +13,31 @@ use crate::Instruction::ChangeCompositionMode;
 /// かな -> 漢字 ハンドラ。
 ///
 #[derive(Debug)]
-pub struct KanaCompositionHandler<Dict: Dictionary> {
-    dictionary: Dict,
+pub struct KanaCompositionHandler {
+    dictionaries: Vec<CskkDictionary>
 }
 
-impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
-    pub fn new() -> Self {
+impl KanaCompositionHandler {
+    pub fn new(dictionaries: Vec<CskkDictionary>) -> Self {
         KanaCompositionHandler {
-            dictionary: Dict::new()
+            dictionaries
         }
     }
 
     // dictionary list order search, dedupe by kouho and add to list and return all candidates
     fn get_all_candidates(&self, a: &str) -> Option<&DictEntry> {
-        self.dictionary.lookup(a, false)
+        // TODO: とりあえずdictionary1個のみで書いたので後で直す
+        if let Some(dictionary) = self.dictionaries.get(0) {
+            match dictionary {
+                CskkDictionary::StaticFile(dict) => {
+                    return dict.lookup(a, false);
+                }
+            }
+        }
+        None
     }
 
-    fn select_next_candidate(&self,current_state: &CskkState, count: usize) -> Vec<Instruction> {
+    fn select_next_candidate(&self, current_state: &CskkState, count: usize) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
         let raw_to_composite = &*current_state.raw_to_composite;
@@ -59,7 +65,7 @@ impl<Dict: Dictionary + Debug> KanaCompositionHandler<Dict> {
     }
 }
 
-impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
+impl CommandHandler for KanaCompositionHandler {
     fn can_process(&self, key_event: &KeyEvent) -> bool {
         let symbol = key_event.get_symbol();
         (xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde) || symbol == xkb::keysyms::KEY_Return
@@ -102,10 +108,10 @@ impl<Dict: Dictionary + Debug> CommandHandler for KanaCompositionHandler<Dict> {
 }
 
 #[cfg(test)]
-impl KanaCompositionHandler<OnMemoryDict> {
-    fn test_handler() -> Self {
+impl KanaCompositionHandler {
+    fn test_handler(dictionaries: Vec<CskkDictionary>) -> Self {
         KanaCompositionHandler {
-            dictionary: OnMemoryDict::new()
+            dictionaries
         }
     }
 }
@@ -113,10 +119,12 @@ impl KanaCompositionHandler<OnMemoryDict> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dictionary::static_dict::StaticFileDict;
 
     #[test]
     fn can_process_single() {
-        let handler = KanaCompositionHandler::test_handler();
+        let dict = CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
+        let handler = KanaCompositionHandler::test_handler(vec![dict]);
         let result = handler.can_process(&KeyEvent::from_str("a").unwrap());
         assert!(result);
     }

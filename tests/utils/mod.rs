@@ -1,5 +1,7 @@
-use cskk::{skk_context_set_composition_mode, skk_context_set_input_mode, skk_context_process_key_events_rs, skk_context_poll_output_rs, CskkContext, skk_context_get_preedit_rs, skk_context_get_input_mode};
+use cskk::{skk_context_set_composition_mode, skk_context_set_input_mode, skk_context_process_key_events_rs, skk_context_poll_output_rs, CskkContext, skk_context_get_preedit_rs, skk_context_get_input_mode, skk_context_new_rs};
 use cskk::skk_modes::{CompositionMode, InputMode};
+use cskk::dictionary::CskkDictionary;
+use cskk::dictionary::static_dict::StaticFileDict;
 
 pub fn transition_check(context: &mut CskkContext,
                         initial_composition_mode: CompositionMode,
@@ -18,4 +20,9 @@ pub fn transition_check(context: &mut CskkContext,
     assert_eq!(output, expected_output, "(output == expected) failed for '{}'", key_inputs);
     assert_eq!(preedit, expected_preedit, "(preedit == expected) failed for '{}'", key_inputs);
     assert_eq!(input_mode, expected_input_mode, "(input_mode == expected) failed for '{}'", key_inputs);
+}
+
+pub fn new_test_context() -> CskkContext {
+    let dict = CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
+    skk_context_new_rs(vec![dict])
 }

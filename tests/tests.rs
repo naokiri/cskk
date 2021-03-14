@@ -2,14 +2,13 @@ extern crate cskk;
 
 mod utils;
 
-use cskk::{create_new_context};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::transition_check;
+use crate::utils::{transition_check, new_test_context};
 
 #[test]
 fn basic_hiragana_input() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "a i u e o",
@@ -20,8 +19,8 @@ fn basic_hiragana_input() {
 
 #[test]
 fn simple_composition() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A i",
@@ -39,8 +38,8 @@ fn simple_composition() {
 /// "k A" -> ▽か
 #[test]
 fn composition_mode_from_middle() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "k I",
@@ -52,8 +51,8 @@ fn composition_mode_from_middle() {
 
 #[test]
 fn okuri_nashi_henkan() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A i space",
@@ -64,8 +63,8 @@ fn okuri_nashi_henkan() {
 
 #[test]
 fn skip_on_impossible_kana() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "b n y a",
@@ -76,8 +75,8 @@ fn skip_on_impossible_kana() {
 
 #[test]
 fn okuri_ari_henkan_precomposition() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A K",
@@ -88,20 +87,20 @@ fn okuri_ari_henkan_precomposition() {
 
 #[test]
 fn okuri_ari_henkan_to_composition_selection() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A K i",
-                     "▼開き",
+                     "▼飽き",
                      "",
                      InputMode::Hiragana);
 }
 
 #[test]
 fn okuri_nashi_henkan_kakutei() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A i space Return",
@@ -112,20 +111,20 @@ fn okuri_nashi_henkan_kakutei() {
 
 #[test]
 fn okuri_ari_henkan_kakutei() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "A K i space Return",
                      "",
-                     "飽き",
+                     "開き",
                      InputMode::Hiragana);
 }
 
 #[test]
 fn katakana_input() {
-    let mut context = create_new_context();
-    transition_check(context.as_mut(),
+    let mut context = new_test_context();
+    transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
                      "q x t u",

@@ -10,16 +10,13 @@ extern crate serde_json;
 extern crate xkbcommon;
 
 use std::cell::RefCell;
-use std::fmt;
+use std::{fmt, slice};
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::iter::FromIterator;
 
 use log::debug;
-#[allow(unused_imports)]
-use log::log;
 
-use crate::dictionary::on_memory_dict::OnMemoryDict;
 use crate::command_handler::CommandHandler;
 use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
@@ -34,12 +31,14 @@ use std::os::raw::c_char;
 use crate::kana_form_changer::KanaFormChanger;
 use xkbcommon::xkb;
 use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
+use crate::dictionary::{CskkDictionary};
+use crate::dictionary::static_dict::StaticFileDict;
 
+pub mod dictionary;
 pub mod skk_modes;
 mod kana_builder;
 mod keyevent;
 mod command_handler;
-mod dictionary;
 mod kana_form_changer;
 
 #[derive(Deserialize)]
@@ -83,21 +82,18 @@ pub(crate) enum Instruction<'a> {
 /// Rough design prototype yet
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
-/// FIXME: Handler保持をもうちょっとスマートにしたい。
-/// TODO: ueno/libskkの設計の理由がよくわからず同じようにhandlerをcontextに入れているが、せいぜいDict類くらいを保持するようにして移せるものはstaticに移す？
 ///
 pub struct CskkContext {
     state_stack: Vec<RefCell<CskkState>>,
     direct_handler: DirectModeCommandHandler,
     kana_precomposition_handler: KanaPrecompositionHandler,
-    kana_composition_handler: KanaCompositionHandler<OnMemoryDict>,
+    kana_composition_handler: KanaCompositionHandler,
     kana_converter: Box<KanaBuilder>,
     kana_form_changer: KanaFormChanger,
 }
 
 /// Rough prototype yet.
 ///
-/// FIXME: どこまでRc (or Arc) で共有できるのか整理する。
 #[derive(Debug)]
 struct CskkState {
     input_mode: InputMode,
@@ -120,12 +116,53 @@ struct CskkState {
     selection_pointer: usize,
 }
 
-// TODO: ueno/libskkのskk_context_newのようにDict[]を指定できるようにする。
-/// Returns newly allocated CSKKContext.
-/// It is caller's responsibility to retain and free it.
+///
+/// Creates a skk file dict based on the path_string. Returns the pointer of it.
+///
+/// # Safety
+/// c_path_string and c_encoidng must be a valid c string that terminates with \0.
+///
+/// Dictionary must be handled by a cskk context on creating a new context or registering later.
+/// If not, memory leaks.
+///
 #[no_mangle]
-pub extern "C" fn create_new_context() -> Box<CskkContext> {
-    Box::new(CskkContext::new(InputMode::Hiragana, CompositionMode::Direct))
+pub unsafe extern "C" fn skk_file_dict_new(c_path_string: *const c_char, c_encoding: *const c_char) -> *mut CskkDictionary {
+    let path = CStr::from_ptr(c_path_string);
+    let encoding = CStr::from_ptr(c_encoding);
+
+    Box::into_raw(
+        Box::new(
+            skk_file_dict_new_rs(path.to_str().unwrap(), encoding.to_str().unwrap())
+        )
+    )
+}
+
+pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
+    CskkDictionary::StaticFile(StaticFileDict::new(path_string, encoding))
+}
+
+/// Returns newly allocated CSKKContext.
+///
+/// # Safety
+/// Caller have to retain the pointer
+/// Caller must free the memory using skk_context_destroy
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_new(dictionary_array: *const *mut CskkDictionary, dictionary_count: usize) -> *mut CskkContext {
+    let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
+    let mut dict_array = vec!();
+    for dictref in tmp_array {
+        let cskkdict = *Box::from_raw(*dictref);
+        dict_array.push(cskkdict);
+    }
+    Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
+}
+
+pub fn skk_context_new_rs(dictionaries: Vec<CskkDictionary>) -> CskkContext {
+    CskkContext::new(InputMode::Hiragana,
+                     CompositionMode::Direct,
+                     dictionaries,
+    )
 }
 
 /// Reset the context
@@ -198,7 +235,7 @@ pub extern "C" fn skk_context_set_period_style(context: &mut CskkContext, period
     context.kana_converter.set_period_style(period_style)
 }
 
-/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+/// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -211,18 +248,18 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
     CString::new(preedit).unwrap().into_raw()
 }
 
-/// テスト用途。preedit文字列と同じ内容の文字列を取得する。
+/// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
 ///
 pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
 
-/// テスト用途。
+/// テスト用途？
 pub fn skk_context_get_compositon_mode(context: &CskkContext) -> CompositionMode {
     context.current_state().borrow().composition_mode.clone()
 }
 
-/// テスト用途。
+/// テスト用途？
 pub fn skk_context_get_input_mode(context: &CskkContext) -> InputMode {
     context.current_state().borrow().input_mode.clone()
 }
@@ -243,6 +280,21 @@ pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
     }
     // Get back ownership in Rust side, then do nothing.
     CString::from_raw(ptr);
+}
+
+///
+/// CskkContextを解放する。
+///
+/// # Safety
+///
+/// context_ptr は必ずCskkContextのポインタでなければならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_free(context_ptr: *mut CskkContext) {
+    if context_ptr.is_null() {
+        return;
+    }
+    Box::from_raw(context_ptr);
 }
 
 
@@ -346,12 +398,14 @@ impl CskkContext {
 
     /// Append a char to raw_to_composite without checking.
     /// Usually use append_to_composite_iff_no_preconversion.
+    #[allow(dead_code)]
     fn append_raw_to_composite(&self, to_composite_last: char) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.raw_to_composite.push_str(&to_composite_last.to_string())
     }
 
     // to_compositeをconvertedの内容でリセットする。
+    #[allow(dead_code)]
     fn set_to_composite_to_converted_kana(&self) {
         let mut current_state = self.current_state().borrow_mut();
         current_state.raw_to_composite = current_state.converted_kana_to_composite.clone()
@@ -456,7 +510,7 @@ impl CskkContext {
                 _ => {
                     false
                 }
-            }
+            };
         }
         false
     }
@@ -521,7 +575,7 @@ impl CskkContext {
                         } else {
                             debug!("Unreachable. Key event without symbol char is kana converted. Okuri will be ignored on composition.");
                         }
-                        if *initial_composition_mode == CompositionMode::PreComposition && !initial_unprocessed_vector.is_empty(){
+                        if *initial_composition_mode == CompositionMode::PreComposition && !initial_unprocessed_vector.is_empty() {
                             // 以前入力されていた部分はPreComposition側として処理する。
                             // 例: "t T" の't'部分が 'っ' とかな変換される場合
                             self.append_converted_to_composite(&converted)
@@ -701,7 +755,7 @@ impl CskkContext {
                                                 self.append_unconverted(key_char.to_ascii_lowercase())
                                             }
                                             CompositionMode::PreCompositionOkurigana => {
-                                                if initial_composition_mode != PreCompositionOkurigana  {
+                                                if initial_composition_mode != PreCompositionOkurigana {
                                                     self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
                                                 }
                                                 self.append_unconverted(key_char.to_ascii_lowercase());
@@ -786,14 +840,12 @@ impl CskkContext {
         true
     }
 
-    #[allow(dead_code)]
     pub fn new(input_mode: InputMode,
-               composition_mode: CompositionMode) -> Self {
+               composition_mode: CompositionMode,
+               dictionaries: Vec<CskkDictionary>) -> Self {
         let kana_direct_handler = DirectModeCommandHandler::new();
-        // FIXME: Make ref to kana handler using rental crate or find something more simple.
         let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        // FIXME: Make ref to kana converter
-        let kana_composition_handler = KanaCompositionHandler::new();
+        let kana_composition_handler = KanaCompositionHandler::new(dictionaries);
         let kana_converter = Box::new(KanaBuilder::default_converter());
 
         let mut initial_stack = Vec::new();
@@ -801,12 +853,12 @@ impl CskkContext {
             CskkState {
                 input_mode,
                 composition_mode,
-                pre_conversion: vec![], // TODO
-                raw_to_composite: "".to_string(), // TODO
-                converted_kana_to_composite: "".to_string(), // TODO
-                converted_kana_to_okuri: "".to_string(), // TODO
-                composited: "".to_string(), // TODO
-                confirmed: "".to_string(), // TODO
+                pre_conversion: vec![],
+                raw_to_composite: "".to_string(),
+                converted_kana_to_composite: "".to_string(),
+                converted_kana_to_okuri: "".to_string(),
+                composited: "".to_string(),
+                confirmed: "".to_string(),
                 selection_pointer: 0,
             }));
         Self {
@@ -893,9 +945,19 @@ mod unit_tests {
         });
     }
 
+    fn new_test_context(input_mode: InputMode,
+                        composition_mode: CompositionMode,
+    ) -> CskkContext {
+        let dict = skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp");
+        let context = skk_context_new_rs(vec![dict]);
+        context.set_input_mode(input_mode);
+        context.set_composition_mode(composition_mode);
+        context
+    }
+
     #[test]
     fn will_process() {
-        let cskkcontext = CskkContext::new(
+        let cskkcontext = new_test_context(
             InputMode::Ascii,
             CompositionMode::Direct,
         );
@@ -907,7 +969,7 @@ mod unit_tests {
 
     #[test]
     fn process_key_event() {
-        let cskkcontext = CskkContext::new(
+        let cskkcontext = new_test_context(
             InputMode::Ascii,
             CompositionMode::Direct,
         );
@@ -919,7 +981,7 @@ mod unit_tests {
 
     #[test]
     fn retrieve_output() {
-        let cskkcontext = CskkContext::new(
+        let cskkcontext = new_test_context(
             InputMode::Ascii,
             CompositionMode::Direct,
         );
@@ -936,7 +998,7 @@ mod unit_tests {
 
     #[test]
     fn poll_output() {
-        let cskkcontext = CskkContext::new(
+        let cskkcontext = new_test_context(
             InputMode::Ascii,
             CompositionMode::Direct,
         );
@@ -951,7 +1013,7 @@ mod unit_tests {
 
     #[test]
     fn get_preedit() {
-        let cskkcontext = CskkContext::new(
+        let cskkcontext = new_test_context(
             InputMode::Hiragana,
             CompositionMode::Direct,
         );
