@@ -17,4 +17,5 @@ int main() {
 
     bool retval = skk_context_process_key_events(context, "a");
     assert(retval);
+    skk_context_free(context);
 }

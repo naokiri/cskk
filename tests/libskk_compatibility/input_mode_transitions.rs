@@ -4,11 +4,11 @@
 
 use cskk::{skk_context_reset};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::{transition_check,new_test_context};
+use crate::utils::{transition_check, default_test_context};
 
 #[test]
 fn input_mode_transitions_hiragana() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -76,7 +76,7 @@ fn input_mode_transitions_hiragana() {
 
 #[test]
 fn input_mode_transition_katakana() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
 
     transition_check(&mut context,
                      CompositionMode::Direct,
@@ -121,7 +121,7 @@ fn input_mode_transition_katakana() {
 
 #[test]
 fn input_mode_transition_hankakukatakana() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
 
     transition_check(&mut context,
                      CompositionMode::Direct,
@@ -158,7 +158,7 @@ fn input_mode_transition_hankakukatakana() {
 
 #[test]
 fn input_mode_transition_ascii() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Ascii,

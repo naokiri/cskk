@@ -2,12 +2,13 @@ use std::fmt::Debug;
 
 use xkbcommon::xkb;
 
-use crate::{CskkState, Instruction,CommandHandler};
-use crate::dictionary::{DictEntry, Dictionary, CskkDictionary};
-//use crate::command_handler::CommandHandler;
+use crate::{CskkState, Instruction, CommandHandler};
+use crate::dictionary::{Dictionary, CskkDictionary};
 use crate::keyevent::{KeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 use crate::Instruction::ChangeCompositionMode;
+use crate::dictionary::dictentry::DictEntry;
+use std::slice::IterMut;
 
 ///
 /// かな -> 漢字 ハンドラ。
@@ -24,16 +25,23 @@ impl KanaCompositionHandler {
         }
     }
 
+    pub fn get_dictionaries(&mut self) -> IterMut<'_, CskkDictionary> {
+        self.dictionaries.iter_mut()
+    }
+
     // dictionary list order search, dedupe by kouho and add to list and return all candidates
     fn get_all_candidates(&self, a: &str) -> Option<&DictEntry> {
-        // TODO: とりあえずdictionary1個のみで書いたので後で直す
+        // TODO: とりあえずdictionary1個のみで書いたので後で全部からもらうよう直す。
         if let Some(dictionary) = self.dictionaries.get(0) {
             match dictionary {
                 CskkDictionary::StaticFile(dict) => {
                     return dict.lookup(a, false);
                 }
+                CskkDictionary::UserFile(dict) => {
+                    return dict.lookup(a, false);
+                }
             }
-        }
+        }//
         None
     }
 

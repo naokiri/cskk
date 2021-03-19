@@ -4,11 +4,11 @@
 
 use cskk::{skk_context_reset};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::{transition_check, new_test_context};
+use crate::utils::{transition_check, default_test_context};
 
 #[test]
 fn okuri_nasi_transitions_basic() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -52,7 +52,7 @@ fn okuri_nasi_transitions_basic() {
 
 #[test]
 fn okuri_nasi_transitions_all_capital() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -92,7 +92,7 @@ fn okuri_nasi_transitions_all_capital() {
 
 #[test]
 fn okuri_nasi_transitions_kanjis() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -120,7 +120,7 @@ fn okuri_nasi_transitions_kanjis() {
 
 #[test]
 fn okuri_nasi_transitions_other_inputmodes() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::HankakuKatakana,
@@ -148,7 +148,7 @@ fn okuri_nasi_transitions_other_inputmodes() {
 
 #[test]
 fn okuri_nasi_transitions_ignore_non_command_ctrl() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
