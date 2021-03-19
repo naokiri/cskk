@@ -10,12 +10,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.38"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -42,7 +36,6 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 name = "cskk"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "bitflags",
  "encoding_rs",
  "encoding_rs_io",

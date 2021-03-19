@@ -2,7 +2,7 @@ use static_dict::StaticFileDict;
 
 use dictentry::DictEntry;
 use user_dictionary::UserDictionary;
-use anyhow::Result;
+use crate::error::CskkError;
 
 pub(crate) mod file_dictionary;
 pub(crate) mod dictentry;
@@ -33,7 +33,7 @@ pub trait Dictionary {
 
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
-    fn save_dictionary(&self) -> Result<bool> {
+    fn save_dictionary(&self) -> Result<bool, CskkError> {
         Ok(false)
     }
 

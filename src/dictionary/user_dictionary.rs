@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use anyhow::Result;
 
 use crate::dictionary::{DictEntry, Dictionary};
 use crate::dictionary::file_dictionary::{FileDictionary, load_dictionary};
@@ -7,6 +6,7 @@ use std::fs::{rename, File};
 use encoding_rs::{Encoding, EncoderResult, Encoder};
 use std::io::{BufWriter, Write};
 use crate::error::CskkError::Error;
+use crate::error::CskkError;
 
 ///
 /// User dictionary that can load from file and save entries to file.
@@ -46,13 +46,13 @@ impl Dictionary for UserDictionary {
     }
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
-    fn save_dictionary(&self) -> Result<bool> {
+    fn save_dictionary(&self) -> Result<bool, CskkError> {
         rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
         let dict_file = File::create(&self.file_path)?;
 
         let mut stream = BufWriter::new(dict_file);
         let mut enc = Encoding::for_label(&self.encode.as_bytes()).expect("It should be same as encoding name succeeded when loading file.").new_encoder();
-        for (_, dictentry) in &self.dictionary {
+        for dictentry in self.dictionary.values() {
             let mut source = dictentry.to_skk_jisyo_string();
             if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
                 stream.write_all(encoded.as_slice())?;
@@ -77,18 +77,18 @@ impl FileDictionary for UserDictionary {
     }
 }
 
-fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>> {
+fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>, CskkError> {
     let mut encoded_vec = Vec::with_capacity(BUF_SIZE);
     let mut source = to_encode;
     let mut tmp_buf = Vec::with_capacity(BUF_SIZE);
     loop {
         let (result, read) = encoder.encode_from_utf8_to_vec_without_replacement(&source, &mut tmp_buf, true);
         if read == 0 {
-            Err(Error("Cannot read on encoding. Give up whole string.".to_string()))?
+            return Err(Error("Cannot read on encoding. Give up whole string.".to_string()));
         }
         match result {
             EncoderResult::Unmappable(_char) => {
-                Err(Error("Encoding failed. Give up whole string.".to_string()))?
+                return Err(Error("Encoding failed. Give up whole string.".to_string()));
             }
             EncoderResult::InputEmpty => {
                 encoded_vec.append(&mut tmp_buf);

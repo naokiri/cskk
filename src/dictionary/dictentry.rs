@@ -1,6 +1,5 @@
 use crate::dictionary::candidate::Candidate;
 use std::sync::Arc;
-use anyhow::Result;
 use crate::error::CskkError;
 
 #[derive(Debug)]
@@ -14,11 +13,11 @@ impl DictEntry {
         &self.candidates
     }
 
-    pub fn from_skkjisyo_line(line: &str) -> Result<DictEntry> {
+    pub fn from_skkjisyo_line(line: &str) -> Result<DictEntry, CskkError> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
-        let midashi = if let Some(midashi) = line.next() { midashi } else { return Err(CskkError::Error("No midshi".to_string()))?; };
-        let entries = if let Some(entries) = line.next() { entries } else { return Err(CskkError::Error("No entries".to_string()))?; };
+        let midashi = if let Some(midashi) = line.next() { midashi } else { return Err(CskkError::Error("No midshi".to_string())); };
+        let entries = if let Some(entries) = line.next() { entries } else { return Err(CskkError::Error("No entries".to_string())); };
         let entries = entries.split('/');
         for entry in entries {
             if !entry.is_empty() {

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use anyhow::Result;
 use crate::error::CskkError;
 
 // Blind copy of libskk vala Candidate class
@@ -32,7 +31,7 @@ impl Candidate {
         }
     }
 
-    pub fn from_skk_jisyo_string(midashi: &str, entry: &str) -> Result<Self> {
+    pub fn from_skk_jisyo_string(midashi: &str, entry: &str) -> Result<Self, CskkError> {
         let mut chunk = entry.split(';');
         if let Some(text) = chunk.next() {
             let kouho = text;
@@ -47,7 +46,7 @@ impl Candidate {
                 )
             )
         } else {
-            Err(CskkError::Error("No candidate".to_string()))?
+            Err(CskkError::Error("No candidate".to_string()))
         }
     }
 

@@ -1,12 +1,12 @@
 use crate::dictionary::Dictionary;
 use std::collections::BTreeMap;
 use crate::dictionary::dictentry::DictEntry;
-use anyhow::Result;
 use std::fs::File;
 use encoding_rs::Encoding;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use std::io::{BufRead, BufReader};
 use log::warn;
+use crate::error::CskkError;
 
 
 pub trait FileDictionary: Dictionary {
@@ -16,14 +16,14 @@ pub trait FileDictionary: Dictionary {
 
     fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>);
 
-    fn reload(&mut self) -> Result<()> {
+    fn reload(&mut self) -> Result<(), CskkError> {
         let dictionary = load_dictionary(&self.file_path(), self.encode().as_bytes())?;
         self.set_dictionary(dictionary);
         Ok(())
     }
 }
 
-pub(crate) fn load_dictionary(file_path: &str, encode: &[u8]) -> Result<BTreeMap<String, DictEntry>> {
+pub(crate) fn load_dictionary(file_path: &str, encode: &[u8]) -> Result<BTreeMap<String, DictEntry>, CskkError> {
     let dict_file = File::open(file_path)?;
     let enc = Encoding::for_label(encode);
     let decoder = DecodeReaderBytesBuilder::new()
