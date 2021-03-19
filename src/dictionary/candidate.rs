@@ -2,7 +2,7 @@ use std::sync::Arc;
 use crate::error::CskkError;
 
 // Blind copy of libskk vala Candidate class
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Candidate {
     pub(crate) midashi: Arc<String>,
     #[allow(dead_code)]

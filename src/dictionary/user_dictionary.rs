@@ -7,6 +7,7 @@ use encoding_rs::{Encoding, EncoderResult, Encoder};
 use std::io::{BufWriter, Write};
 use crate::error::CskkError::Error;
 use crate::error::CskkError;
+use crate::dictionary::candidate::Candidate;
 
 ///
 /// User dictionary that can load from file and save entries to file.
@@ -46,6 +47,7 @@ impl Dictionary for UserDictionary {
     }
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
+    /// TODO: 現在は他の辞書と互換性がないただのエントリの羅列なので、okuri-ari entriesとokuri-nasi entriesに分けてddskkのようにファイル上で走査する辞書互換にする。
     fn save_dictionary(&self) -> Result<bool, CskkError> {
         rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
         let dict_file = File::create(&self.file_path)?;
@@ -59,6 +61,33 @@ impl Dictionary for UserDictionary {
             }
         }
         stream.flush()?;
+        Ok(true)
+    }
+
+    fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+        let midashi = &candidate.midashi;
+        let entry = self.dictionary.get_mut(midashi.as_str());
+        match entry {
+            Some(dict_entry) => {
+                dict_entry.remove_matching_candidate(candidate);
+                dict_entry.insert_as_first_candidate(candidate.clone());
+            }
+            None => {
+                self.dictionary.insert((*candidate.midashi).clone(), DictEntry {
+                    midashi: (*candidate.midashi).clone(),
+                    candidates: vec![(*candidate).clone()],
+                });
+            }
+        }
+        Ok(false)
+    }
+
+    fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+        let midashi = &candidate.midashi;
+        let entry = self.dictionary.get_mut(midashi.as_str());
+        if let Some(dict_entry) = entry {
+            dict_entry.remove_matching_candidate(candidate);
+        }
         Ok(true)
     }
 }
@@ -101,4 +130,20 @@ fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>, Cskk
         }
     }
     Ok(encoded_vec)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn userdict() -> Result<(), CskkError> {
+        let mut user_dictionary = UserDictionary::new("tests/data/empty.dat", "utf-8");
+        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
+        user_dictionary.select_candidate(&candidate)?;
+        user_dictionary.save_dictionary()?;
+        user_dictionary.purge_candidate(&candidate)?;
+        user_dictionary.save_dictionary()?;
+        Ok(())
+    }
 }

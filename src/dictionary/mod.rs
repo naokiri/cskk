@@ -3,6 +3,7 @@ use static_dict::StaticFileDict;
 use dictentry::DictEntry;
 use user_dictionary::UserDictionary;
 use crate::error::CskkError;
+use crate::dictionary::candidate::Candidate;
 
 pub(crate) mod file_dictionary;
 pub(crate) mod dictentry;
@@ -37,11 +38,17 @@ pub trait Dictionary {
         Ok(false)
     }
 
-    // Select that candidate.
-    // Supporting dictionary will move that candidate to the first place so that next time it comes to candidate early.
-    // Safe to call to read_only dictionary.
-    // fn select_candidate(&self, _candidate: &Candidate) {}
-    // fn purge_candidate(&self/* ,midashi, &candidate */) -> bool
+    /// Select that candidate.
+    /// Supporting dictionary will add and move that candidate to the first place so that next time it comes to candidate early.
+    /// Safe to call to read_only dictionary.
+    fn select_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+        Ok(false)
+    }
+    /// Remove that candidate if dictionary supports editing.
+    /// Safe to call to read_only dictionary
+    fn purge_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+        Ok(false)
+    }
 }
 
 
