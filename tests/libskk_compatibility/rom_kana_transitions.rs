@@ -2,13 +2,13 @@
 //! ueno/libskk_compatibility tests/basic.c rom_kana_transitionsより
 //!
 
-use crate::utils::{transition_check,new_test_context};
+use crate::utils::{transition_check, default_test_context};
 use cskk::{skk_context_reset};
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
 fn rom_kana_transitions_basic() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -85,7 +85,7 @@ fn rom_kana_transitions_basic() {
 
 #[test]
 fn rom_kana_transitions_include_command_letter() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -97,7 +97,7 @@ fn rom_kana_transitions_include_command_letter() {
 
 #[test]
 fn rom_kana_transitions_abort() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -117,7 +117,7 @@ fn rom_kana_transitions_abort() {
 
 #[test]
 fn rom_kana_transitions_kana_form_change_without_input_mode() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -137,7 +137,7 @@ fn rom_kana_transitions_kana_form_change_without_input_mode() {
 
 #[test]
 fn rom_kana_conversion_longer_conversion() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -181,7 +181,7 @@ fn rom_kana_conversion_longer_conversion() {
 
 #[test]
 fn rom_kana_transitions_with_inputs() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,

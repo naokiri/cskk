@@ -3,11 +3,14 @@ extern crate cskk;
 mod utils;
 
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::{transition_check, new_test_context};
+use crate::utils::{transition_check, default_test_context};
+use cskk::dictionary::CskkDictionary;
+use cskk::{skk_context_new_rs, skk_context_save_dictionaries, skk_context_reload_dictionary};
+use cskk::dictionary::user_dictionary::UserDictionary;
 
 #[test]
 fn basic_hiragana_input() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -19,7 +22,7 @@ fn basic_hiragana_input() {
 
 #[test]
 fn simple_composition() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -38,7 +41,7 @@ fn simple_composition() {
 /// "k A" -> ▽か
 #[test]
 fn composition_mode_from_middle() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -51,7 +54,7 @@ fn composition_mode_from_middle() {
 
 #[test]
 fn okuri_nashi_henkan() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -63,7 +66,7 @@ fn okuri_nashi_henkan() {
 
 #[test]
 fn skip_on_impossible_kana() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -75,7 +78,7 @@ fn skip_on_impossible_kana() {
 
 #[test]
 fn okuri_ari_henkan_precomposition() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -87,7 +90,7 @@ fn okuri_ari_henkan_precomposition() {
 
 #[test]
 fn okuri_ari_henkan_to_composition_selection() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -99,7 +102,7 @@ fn okuri_ari_henkan_to_composition_selection() {
 
 #[test]
 fn okuri_nashi_henkan_kakutei() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -111,7 +114,7 @@ fn okuri_nashi_henkan_kakutei() {
 
 #[test]
 fn okuri_ari_henkan_kakutei() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -123,7 +126,7 @@ fn okuri_ari_henkan_kakutei() {
 
 #[test]
 fn katakana_input() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -131,4 +134,21 @@ fn katakana_input() {
                      "",
                      "ッ",
                      InputMode::Katakana);
+}
+
+#[test]
+fn save_dict() {
+    let dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/userdict.dat", "utf-8"));
+    let mut context = skk_context_new_rs(vec![dict]);
+    skk_context_save_dictionaries(&mut context);
+    skk_context_reload_dictionary(&mut context);
+    transition_check(&mut context,
+                     CompositionMode::Direct,
+                     InputMode::Hiragana,
+                     "Z o u g o space Return",
+                     "",
+                     "象語",
+                     InputMode::Hiragana
+    )
+
 }

@@ -22,7 +22,7 @@ pub fn transition_check(context: &mut CskkContext,
     assert_eq!(input_mode, expected_input_mode, "(input_mode == expected) failed for '{}'", key_inputs);
 }
 
-pub fn new_test_context() -> CskkContext {
+pub fn default_test_context() -> CskkContext {
     let dict = CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
     skk_context_new_rs(vec![dict])
 }

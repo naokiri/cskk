@@ -4,12 +4,12 @@
 
 use cskk::{skk_context_reset};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use crate::utils::{transition_check,new_test_context};
+use crate::utils::{transition_check, default_test_context};
 
 
 #[test]
 fn basic() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -54,7 +54,7 @@ fn basic() {
 
 #[test]
 fn check_nn_on_composition_mode_switching() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -83,7 +83,7 @@ fn check_nn_on_composition_mode_switching() {
 
 #[test]
 fn check_small_tsu_on_okuri() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -103,7 +103,7 @@ fn check_small_tsu_on_okuri() {
 
 #[test]
 fn katakana_okuri() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -117,7 +117,7 @@ fn katakana_okuri() {
 #[ignore]
 #[test]
 fn cancel_dict_edit() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -130,7 +130,7 @@ fn cancel_dict_edit() {
 #[ignore]
 #[test]
 fn dict_edit_initial_state() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -144,7 +144,7 @@ fn dict_edit_initial_state() {
 #[ignore]
 #[test]
 fn setsubiji() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,
@@ -174,7 +174,7 @@ fn setsubiji() {
 #[ignore]
 #[test]
 fn settouji() {
-    let mut context = new_test_context();
+    let mut context = default_test_context();
     transition_check(&mut context,
                      CompositionMode::Direct,
                      InputMode::Hiragana,

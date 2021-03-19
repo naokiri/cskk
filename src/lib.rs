@@ -31,8 +31,10 @@ use std::os::raw::c_char;
 use crate::kana_form_changer::KanaFormChanger;
 use xkbcommon::xkb;
 use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
-use crate::dictionary::{CskkDictionary};
+use crate::dictionary::{CskkDictionary, Dictionary};
 use crate::dictionary::static_dict::StaticFileDict;
+use crate::dictionary::file_dictionary::FileDictionary;
+use log::warn;
 
 pub mod dictionary;
 pub mod skk_modes;
@@ -40,15 +42,7 @@ mod kana_builder;
 mod keyevent;
 mod command_handler;
 mod kana_form_changer;
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct RuleMeta {
-    name: String,
-    root: bool,
-    description: String,
-    import: Vec<String>,
-}
+pub mod error;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Instruction<'a> {
@@ -280,6 +274,23 @@ pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
     }
     // Get back ownership in Rust side, then do nothing.
     CString::from_raw(ptr);
+}
+
+
+///
+/// save current dictionaries
+///
+#[no_mangle]
+pub extern "C" fn skk_context_save_dictionaries(context: &mut CskkContext) {
+    context.save_dictionary();
+}
+
+///
+/// reload current dictionaries
+/// For integration test purpose.
+///
+pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
+    context.reload_dictionary();
 }
 
 ///
@@ -519,9 +530,46 @@ impl CskkContext {
     /// process that key event and change the internal states.
     /// if key_event is not processable by current CSKK state, then return false
     ///
-    #[allow(dead_code)]
     pub fn process_key_event(&self, key_event: &KeyEvent) -> bool {
         self.process_key_event_inner(key_event, false)
+    }
+
+    pub fn save_dictionary(&mut self) {
+        for dictionary in self.kana_composition_handler.get_dictionaries() {
+            let result = match dictionary {
+                CskkDictionary::StaticFile(dictionary) => {
+                    dictionary.save_dictionary()
+                }
+                CskkDictionary::UserFile(dictionary) => {
+                    dictionary.save_dictionary()
+                }
+            };
+            match result {
+                Ok(_) => {}
+                Err(error) => {
+                    warn!("{}", &error.to_string());
+                }
+            }
+        }
+    }
+
+    pub fn reload_dictionary(&mut self) {
+        for cskkdict in self.kana_composition_handler.get_dictionaries() {
+            let result = match cskkdict {
+                CskkDictionary::StaticFile(ref mut dictionary) => {
+                    dictionary.reload()
+                }
+                CskkDictionary::UserFile(ref mut dictionary) => {
+                    dictionary.reload()
+                }
+            };
+            match result {
+                Ok(_) => {}
+                Err(error) => {
+                    warn!("{}", &error.to_string());
+                }
+            }
+        }
     }
 
 
