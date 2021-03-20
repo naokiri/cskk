@@ -60,10 +60,16 @@ impl KanaCompositionHandler {
                         kanji: &candidate.kouho_text,
                     });
                 }
-                None => unimplemented!("no more entry. Delegate to registration mode."),
+                None => instructions.push(Instruction::ChangeCompositionMode {
+                    composition_mode: CompositionMode::Register,
+                    delegate: false,
+                }),
             }
         } else {
-            unimplemented!("no entry. Delegate to registration mode.")
+            instructions.push(Instruction::ChangeCompositionMode {
+                composition_mode: CompositionMode::Register,
+                delegate: false,
+            })
         }
         instructions
     }

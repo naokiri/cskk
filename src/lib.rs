@@ -114,6 +114,34 @@ struct CskkState {
     selection_pointer: usize,
 }
 
+impl CskkState {
+    fn preedit_string(&self) -> String {
+        let converted = &self.confirmed;
+        let unconverted = &self.pre_conversion;
+        let kana_to_composite = &self.converted_kana_to_composite;
+        let kana_to_okuri = &self.converted_kana_to_okuri;
+        let composited = &self.composited;
+
+        match self.composition_mode {
+            CompositionMode::Direct => String::from_iter(unconverted.iter()),
+            CompositionMode::PreComposition => "▽".to_owned() + converted + kana_to_composite,
+            CompositionMode::PreCompositionOkurigana => {
+                "▽".to_owned()
+                    + converted
+                    + kana_to_composite
+                    + "*"
+                    + kana_to_okuri
+                    + &String::from_iter(unconverted.iter())
+            }
+            CompositionMode::CompositionSelection => "▼".to_owned() + composited,
+            CompositionMode::Register => "▼".to_string() + composited,
+            CompositionMode::Abbreviation => {
+                "Abbreviaton mode. detail not implemented.".to_string()
+            }
+        }
+    }
+}
+
 ///
 /// Creates a skk file dict based on the path_string. Returns the pointer of it.
 ///
@@ -331,31 +359,19 @@ impl CskkContext {
     }
 
     pub fn get_preedit(&self) -> Option<String> {
-        let converted = self.retrieve_output(false);
-        let unconverted = &self.current_state().borrow().pre_conversion;
-        let kana_to_composite = &self.current_state().borrow().converted_kana_to_composite;
-        let kana_to_okuri = &self.current_state().borrow().converted_kana_to_okuri;
-        let composited = &self.current_state().borrow().composited;
-
-        match self.current_state().borrow().composition_mode {
-            CompositionMode::Direct => Some(String::from_iter(unconverted.iter())),
-            CompositionMode::PreComposition => Some(
-                "▽".to_owned() + &converted.unwrap_or_else(|| "".to_string()) + kana_to_composite,
-            ),
-            CompositionMode::PreCompositionOkurigana => Some(
-                "▽".to_owned()
-                    + &converted.unwrap_or_else(|| "".to_string())
-                    + kana_to_composite
-                    + "*"
-                    + kana_to_okuri
-                    + &String::from_iter(unconverted.iter()),
-            ),
-            CompositionMode::CompositionSelection => Some("▼".to_owned() + composited),
-            _ => {
-                // FIXME: putting Direct as _ for match, TODO other modes
-                Some("Unimplemented".to_owned())
+        let mut result = String::new();
+        let mut stack_count = 0;
+        for state in &self.state_stack {
+            result.push_str(&state.borrow().preedit_string());
+            if state.borrow().composition_mode == CompositionMode::Register {
+                stack_count = stack_count + 1;
+                result.push_str("【");
             }
         }
+        for _ in 0..stack_count {
+            result.push_str("】");
+        }
+        Some(result)
     }
 
     ///
