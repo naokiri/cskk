@@ -31,7 +31,11 @@ impl InputConverter {
     /// Consume one KeyEvent and make the next unconverted string and converted string.
     /// make the next unconverted and converted string, and also change the copositionstate?
     ///
-    pub fn process_key_event(self, key_event: KeyEvent, mut unprocessed: &Unprocessed) -> Result<Instruction, InputConverterError> {
+    pub fn process_key_event(
+        self,
+        key_event: KeyEvent,
+        mut unprocessed: &Unprocessed,
+    ) -> Result<Instruction, InputConverterError> {
         let convert = &self.rule.convert;
 
         let command = InputConverter::keyevent_to_command(key_event, convert);
@@ -40,13 +44,11 @@ impl InputConverter {
             Some(command) => {
                 return Ok(Instruction::Operation { operation: command });
             }
-            None => {
-                ; // fall thru
+            None => { // fall thru
             }
         }
 
-//        InputConverter::keyevent_to_
-
+        //        InputConverter::keyevent_to_
 
         return Err(String.from(""));
     }
@@ -55,16 +57,14 @@ impl InputConverter {
         match convert.command.get(&key_event) {
             Some(x) => {
                 match x.as_ref() {
-                    "abort" => {
-                        Option::from(Command::Abort)
-                    }
+                    "abort" => Option::from(Command::Abort),
                     _ => {
-                        None// Do nothing
+                        None // Do nothing
                     }
                 }
             }
             None => {
-                None// Do nothing
+                None // Do nothing
             }
         }
     }
@@ -94,11 +94,10 @@ impl InputConverter {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use keyevent::KeyEvent;
     use super::*;
+    use keyevent::KeyEvent;
 
     #[test]
     fn load_rule() {
@@ -128,7 +127,10 @@ mod tests {
         let str = "".to_string();
         let instruction = converter.process_key_event(a_event, &str).unwrap();
         match instruction {
-            Instruction::Input { converted, unconverted } => {
+            Instruction::Input {
+                converted,
+                unconverted,
+            } => {
                 assert_eq!("あ", converted);
                 assert_eq!("", unconverted)
             }

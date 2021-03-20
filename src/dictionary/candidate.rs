@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use crate::error::CskkError;
+use std::sync::Arc;
 
 // Blind copy of libskk vala Candidate class
 #[derive(Debug, Clone)]
@@ -16,11 +16,12 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    fn new(midashi: Arc<String>,
-           okuri: bool,
-           kouho_text: Arc<String>,
-           annotation: Option<Arc<String>>,
-           output: Option<String>,
+    fn new(
+        midashi: Arc<String>,
+        okuri: bool,
+        kouho_text: Arc<String>,
+        annotation: Option<Arc<String>>,
+        output: Option<String>,
     ) -> Self {
         Candidate {
             midashi,
@@ -36,15 +37,13 @@ impl Candidate {
         if let Some(text) = chunk.next() {
             let kouho = text;
             let annotation = chunk.next().map(|entry| Arc::new(entry.to_string()));
-            Ok(
-                Candidate::new(
-                    Arc::new(midashi.to_string()),
-                    false,
-                    Arc::new(kouho.to_string()),
-                    annotation,
-                    Some(kouho.to_string()),
-                )
-            )
+            Ok(Candidate::new(
+                Arc::new(midashi.to_string()),
+                false,
+                Arc::new(kouho.to_string()),
+                annotation,
+                Some(kouho.to_string()),
+            ))
         } else {
             Err(CskkError::Error("No candidate".to_string()))
         }
@@ -80,5 +79,3 @@ mod test {
         assert_eq!("候補", candidate.to_skk_jisyo_string())
     }
 }
-
-

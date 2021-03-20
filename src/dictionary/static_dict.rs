@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
 use crate::dictionary::{DictEntry, Dictionary};
-use crate::dictionary::file_dictionary::{FileDictionary, load_dictionary};
 
 #[derive(Debug)]
 pub struct StaticFileDict {

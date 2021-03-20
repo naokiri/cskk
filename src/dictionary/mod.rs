@@ -1,13 +1,13 @@
 use static_dict::StaticFileDict;
 
+use crate::dictionary::candidate::Candidate;
+use crate::error::CskkError;
 use dictentry::DictEntry;
 use user_dictionary::UserDictionary;
-use crate::error::CskkError;
-use crate::dictionary::candidate::Candidate;
 
-pub(crate) mod file_dictionary;
-pub(crate) mod dictentry;
 pub(crate) mod candidate;
+pub(crate) mod dictentry;
+pub(crate) mod file_dictionary;
 pub mod static_dict;
 pub mod user_dictionary;
 
@@ -30,8 +30,6 @@ pub trait Dictionary {
     // complete('あ') -> ["あい", "あいさつ"]
     //
     // fn complete(&self, _midashi: &str) /* -> Option<&Vec<&str>>?*/
-
-
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
     fn save_dictionary(&self) -> Result<bool, CskkError> {
@@ -50,7 +48,3 @@ pub trait Dictionary {
         Ok(false)
     }
 }
-
-
-
-
