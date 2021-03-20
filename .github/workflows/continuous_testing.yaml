@@ -17,7 +17,8 @@ jobs:
       - name: Format check
         uses: actions-rs/cargo@v1
         with:
-          command: fmt -- --check
+          command: fmt
+          args: -- --check
       - name: Lint check
         uses: actions-rs/clippy-check@v1
         with:
@@ -27,7 +28,7 @@ jobs:
     name: cargo test
     strategy:
       matrix:
-        channel: [stable, nightly, beta]
+        channel: [ stable, nightly, beta ]
     runs-on: ubuntu-latest
     steps:
       - name: Install required libs (Ubuntu)
