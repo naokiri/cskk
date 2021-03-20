@@ -71,10 +71,7 @@ impl KanaBuilder {
     // k j -> false
     // t t -> true ('っt' として続けられるため)
     pub fn can_continue(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
-        match self.get_node(key_event, unprocessed) {
-            None => false,
-            Some(_) => true,
-        }
+        self.get_node(key_event, unprocessed).is_some()
     }
 
     fn get_node(

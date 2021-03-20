@@ -42,10 +42,10 @@ pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &Compos
     match composition_mode {
         CompositionMode::Direct
         | CompositionMode::PreComposition
-        | CompositionMode::PreCompositionOkurigana => match input_mode {
-            InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => true,
-            _ => false,
-        },
+        | CompositionMode::PreCompositionOkurigana => matches!(
+            input_mode,
+            InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana
+        ),
         _ => false,
     }
 }
