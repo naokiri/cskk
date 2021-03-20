@@ -40,23 +40,13 @@ pub enum CompositionMode {
 
 pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &CompositionMode) -> bool {
     match composition_mode {
-        CompositionMode::Direct |
-        CompositionMode::PreComposition |
-        CompositionMode::PreCompositionOkurigana => {
-            match input_mode {
-                InputMode::Hiragana |
-                InputMode::Katakana |
-                InputMode::HankakuKatakana => {
-                    true
-                }
-                _ => {
-                    false
-                }
-            }
-        }
-        _ => {
-            false
-        }
+        CompositionMode::Direct
+        | CompositionMode::PreComposition
+        | CompositionMode::PreCompositionOkurigana => match input_mode {
+            InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => true,
+            _ => false,
+        },
+        _ => false,
     }
 }
 

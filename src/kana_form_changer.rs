@@ -1,8 +1,7 @@
+use crate::skk_modes::InputMode;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
-use std::collections::{BTreeMap};
-use crate::skk_modes::InputMode;
-
 
 pub(crate) struct KanaFormChanger {
     maps: KanaFormMap,
@@ -27,10 +26,25 @@ impl KanaFormChanger {
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
 
-        let kana_form_map: KanaFormMap = toml::from_str(&contents).expect("source data file for kana form is broken");
-        let katakana_key_maxlen = kana_form_map.katakana.keys().map(|x| x.chars().count()).max().unwrap();
-        let jisx0201_key_maxlen =  kana_form_map.jisx0201.keys().map(|x| x.chars().count()).max().unwrap();
-        KanaFormChanger { maps: kana_form_map, katakana_key_maxlen , jisx0201_key_maxlen}
+        let kana_form_map: KanaFormMap =
+            toml::from_str(&contents).expect("source data file for kana form is broken");
+        let katakana_key_maxlen = kana_form_map
+            .katakana
+            .keys()
+            .map(|x| x.chars().count())
+            .max()
+            .unwrap();
+        let jisx0201_key_maxlen = kana_form_map
+            .jisx0201
+            .keys()
+            .map(|x| x.chars().count())
+            .max()
+            .unwrap();
+        KanaFormChanger {
+            maps: kana_form_map,
+            katakana_key_maxlen,
+            jisx0201_key_maxlen,
+        }
     }
 
     ///
@@ -40,18 +54,20 @@ impl KanaFormChanger {
     #[allow(dead_code)]
     fn adjust_one_kana(&self, input_mode: &InputMode, kana: &str) -> String {
         match input_mode {
-            InputMode::Katakana => {
-                self.maps.katakana.get(kana).unwrap_or(&kana.to_string()).to_owned()
-            }
-            InputMode::HankakuKatakana => {
-                self.maps.jisx0201.get(kana).unwrap_or(&kana.to_string()).to_owned()
-            }
-            InputMode::Hiragana => {
-                kana.to_string()
-            }
-            _ => {
-                kana.to_string()
-            }
+            InputMode::Katakana => self
+                .maps
+                .katakana
+                .get(kana)
+                .unwrap_or(&kana.to_string())
+                .to_owned(),
+            InputMode::HankakuKatakana => self
+                .maps
+                .jisx0201
+                .get(kana)
+                .unwrap_or(&kana.to_string())
+                .to_owned(),
+            InputMode::Hiragana => kana.to_string(),
+            _ => kana.to_string(),
         }
     }
 
@@ -61,8 +77,16 @@ impl KanaFormChanger {
     ///
     pub fn adjust_kana_string(&self, input_mode: &InputMode, kana: &str) -> String {
         if *input_mode == InputMode::Katakana || *input_mode == InputMode::HankakuKatakana {
-            let replace_map = if *input_mode == InputMode::Katakana { &self.maps.katakana } else { &self.maps.jisx0201 };
-            let maxlen = if *input_mode == InputMode::Katakana { self.katakana_key_maxlen } else { self.jisx0201_key_maxlen };
+            let replace_map = if *input_mode == InputMode::Katakana {
+                &self.maps.katakana
+            } else {
+                &self.maps.jisx0201
+            };
+            let maxlen = if *input_mode == InputMode::Katakana {
+                self.katakana_key_maxlen
+            } else {
+                self.jisx0201_key_maxlen
+            };
             let mut result = "".to_string();
             KanaFormChanger::adjust_kana_string_inner_recur(replace_map, maxlen, kana, &mut result);
             result
@@ -71,21 +95,35 @@ impl KanaFormChanger {
         }
     }
 
-
     /// Greedy match and replace recursion.
-    fn adjust_kana_string_inner_recur(map: &BTreeMap<String,String>, max_len: usize, to_adjust: &str, adjusted: &mut String)  {
+    fn adjust_kana_string_inner_recur(
+        map: &BTreeMap<String, String>,
+        max_len: usize,
+        to_adjust: &str,
+        adjusted: &mut String,
+    ) {
         if to_adjust.is_empty() {
-            return
+            return;
         };
 
-        for i in (1..max_len+1).rev() {
+        for i in (1..max_len + 1).rev() {
             if let Some(replace) = map.get(&to_adjust.chars().take(i).collect::<String>()) {
                 adjusted.push_str(replace);
-                return KanaFormChanger::adjust_kana_string_inner_recur(map, max_len,&to_adjust.chars().skip(i).collect::<String>(), adjusted)
+                return KanaFormChanger::adjust_kana_string_inner_recur(
+                    map,
+                    max_len,
+                    &to_adjust.chars().skip(i).collect::<String>(),
+                    adjusted,
+                );
             }
-        };
+        }
         adjusted.push(to_adjust.chars().next().unwrap());
-        KanaFormChanger::adjust_kana_string_inner_recur(map, max_len,&to_adjust.chars().skip(1).collect::<String>(), adjusted)
+        KanaFormChanger::adjust_kana_string_inner_recur(
+            map,
+            max_len,
+            &to_adjust.chars().skip(1).collect::<String>(),
+            adjusted,
+        )
     }
 }
 
@@ -93,13 +131,11 @@ impl KanaFormChanger {
 mod tests {
     use super::*;
 
-
     #[test]
     fn sanity_check() {
         let changer = KanaFormChanger::default_kanaform_changer();
         assert_eq!(changer.maps.jisx0201.get("あ").unwrap(), "ｱ");
         assert_eq!(changer.katakana_key_maxlen, 2);
-
     }
 
     #[test]

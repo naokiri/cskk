@@ -21,16 +21,13 @@ impl KanaBuilder {
     //! 未決時にもconvertすると確定してしまうので、ddskkのskk-kana-input実装と違う作りになっている。要再検討
     //!
 
-
     /// returns unprocessed vector appending the key_event
     pub fn combined_key(key_event: &KeyEvent, unprocessed: &[char]) -> Vec<char> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
 
         match key_event.get_symbol_char() {
-            None => {
-                combined
-            }
+            None => combined,
             Some(key_char) => {
                 combined.push(key_char.to_ascii_lowercase());
                 combined
@@ -75,23 +72,24 @@ impl KanaBuilder {
     // t t -> true ('っt' として続けられるため)
     pub fn can_continue(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
         match self.get_node(key_event, unprocessed) {
-            None => {
-                false
-            }
-            Some(_) => {
-                true
-            }
+            None => false,
+            Some(_) => true,
         }
     }
 
-    fn get_node(&self, key_event: &KeyEvent, unprocessed: &[char]) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
+    fn get_node(
+        &self,
+        key_event: &KeyEvent,
+        unprocessed: &[char],
+    ) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
         let key = KanaBuilder::combined_key(key_event, unprocessed);
         self.process_map.get_node(&key)
     }
 
     fn converter_from_string(contents: &str) -> Self {
         let mut process_map = SequenceTrie::new();
-        let map: HashMap<String, (String, String)> = serde_json::from_str(&contents).expect("content error");
+        let map: HashMap<String, (String, String)> =
+            serde_json::from_str(&contents).expect("content error");
         for (k, (carry, conv)) in &map {
             let mut key = vec![];
             for c in k.chars() {
@@ -127,7 +125,6 @@ impl KanaBuilder {
     }
 }
 
-
 #[cfg(test)]
 impl KanaBuilder {
     fn test_converter() -> Self {
@@ -162,14 +159,12 @@ impl KanaBuilder {
         process_list.insert(&['t', 'a'], ("た".to_string(), vec![]));
         process_list.insert(&['t', 't'], ("っ".to_string(), vec!['t']));
 
-
         KanaBuilder {
             process_map: process_list,
             period_style: PeriodStyle::JaJa,
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -202,7 +197,8 @@ mod tests {
             "ba": ["", "ば" ],
             "be": ["", "べ" ]
         }
-        "#.to_string();
+        "#
+        .to_string();
         let converter = KanaBuilder::converter_from_string(&content);
 
         let (converted, carry_over) = converter.convert(&['a']).unwrap();

@@ -2,8 +2,8 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use serde::{Deserialize, Deserializer};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
 
@@ -62,23 +62,19 @@ pub struct KeyEvent {
 
 impl KeyEvent {
     #[cfg(test)]
-    pub(crate) fn from_keysym(keysym: xkb::Keysym,
-                              modifier: SkkKeyModifier) -> KeyEvent {
-        KeyEvent { symbol: keysym, modifiers: modifier }
+    pub(crate) fn from_keysym(keysym: xkb::Keysym, modifier: SkkKeyModifier) -> KeyEvent {
+        KeyEvent {
+            symbol: keysym,
+            modifiers: modifier,
+        }
     }
 
     /// wrapper of keysym_from_name to pretend some words as a known key name.
     fn keysym_from_name(word: &str) -> xkb::Keysym {
         match word {
-            "." => {
-                xkb::keysym_from_name(&"period", xkb::KEYSYM_NO_FLAGS)
-            }
-            "-" => {
-                xkb::keysym_from_name(&"minus", xkb::KEYSYM_NO_FLAGS)
-            }
-            _ => {
-                xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS)
-            }
+            "." => xkb::keysym_from_name(&"period", xkb::KEYSYM_NO_FLAGS),
+            "-" => xkb::keysym_from_name(&"minus", xkb::KEYSYM_NO_FLAGS),
+            _ => xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS),
         }
     }
 
@@ -133,9 +129,7 @@ impl KeyEvent {
                         modifier.set(SkkKeyModifier::MOD5, true);
                         &key[2..]
                     }
-                    _ => {
-                        key
-                    }
+                    _ => key,
                 }
             } else {
                 key
@@ -169,16 +163,15 @@ impl KeyEvent {
 
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
         match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
-            Ok(result) => {
-                Ok(result)
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(result) => Ok(result),
+            Err(e) => Err(e),
         }
     }
 
-    fn deserialize_seq_inner(keys: &str, mut current: Vec<KeyEvent>) -> Result<KeyEventSeq, KeyEventError> {
+    fn deserialize_seq_inner(
+        keys: &str,
+        mut current: Vec<KeyEvent>,
+    ) -> Result<KeyEventSeq, KeyEventError> {
         let keys = keys.trim();
         if keys.is_empty() {
             return Ok(current);
@@ -191,14 +184,10 @@ impl KeyEvent {
                         current.push(keyevent);
                         KeyEvent::deserialize_seq_inner(left, current)
                     }
-                    Err(e) => {
-                        Err(e)
-                    }
+                    Err(e) => Err(e),
                 }
             }
-            _ => {
-                Err(format!("Syntax error. keys: {}", keys))
-            }
+            _ => Err(format!("Syntax error. keys: {}", keys)),
         }
     }
 
@@ -216,22 +205,14 @@ impl KeyEvent {
         if keys.starts_with('(') {
             let len = keys.find(')');
             match len {
-                Some(x) => {
-                    Some(&keys[0..=x])
-                }
-                _ => {
-                    None
-                }
+                Some(x) => Some(&keys[0..=x]),
+                _ => None,
             }
         } else {
             let len = keys.find(' ');
             match len {
-                Some(x) => {
-                    Some(&keys[0..x])
-                }
-                _ => {
-                    Some(keys)
-                }
+                Some(x) => Some(&keys[0..x]),
+                _ => Some(keys),
             }
         }
     }
@@ -239,19 +220,23 @@ impl KeyEvent {
 
 impl Display for KeyEvent {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "{}", xkb::keysym_to_utf8(self.symbol).trim_end_matches('\u{0}'))
+        write!(
+            formatter,
+            "{}",
+            xkb::keysym_to_utf8(self.symbol).trim_end_matches('\u{0}')
+        )
     }
 }
 
 impl<'de> Deserialize<'de> for KeyEvent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
         KeyEvent::from_str(s).map_err(D::Error::custom)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -276,7 +261,10 @@ mod tests {
         let control_b = KeyEvent::from_str("(control b)").unwrap();
         let control_modifier: SkkKeyModifier = SkkKeyModifier::CONTROL;
         assert_eq!(control_b.symbol, keysyms::KEY_b, "equals small b");
-        assert_eq!(control_b.modifiers, control_modifier, "long modifier control");
+        assert_eq!(
+            control_b.modifiers, control_modifier,
+            "long modifier control"
+        );
 
         let not_u = KeyEvent::from_str("LATIN SMALL LETTER U WITH ACUTE");
         assert!(not_u.is_err());

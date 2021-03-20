@@ -9,7 +9,10 @@ pub struct DictEntry {
 
 impl DictEntry {
     pub fn remove_matching_candidate(&mut self, candidate: &Candidate) {
-        let index = self.candidates.iter().position(|it| *(it.kouho_text) == *candidate.kouho_text);
+        let index = self
+            .candidates
+            .iter()
+            .position(|it| *(it.kouho_text) == *candidate.kouho_text);
         if let Some(index) = index {
             (*self).candidates.remove(index);
         }
@@ -28,15 +31,21 @@ impl DictEntry {
     pub fn from_skkjisyo_line(line: &str) -> Result<DictEntry, CskkError> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
-        let midashi = if let Some(midashi) = line.next() { midashi } else { return Err(CskkError::Error("No midshi".to_string())); };
-        let entries = if let Some(entries) = line.next() { entries } else { return Err(CskkError::Error("No entries".to_string())); };
+        let midashi = if let Some(midashi) = line.next() {
+            midashi
+        } else {
+            return Err(CskkError::Error("No midshi".to_string()));
+        };
+        let entries = if let Some(entries) = line.next() {
+            entries
+        } else {
+            return Err(CskkError::Error("No entries".to_string()));
+        };
         let entries = entries.split('/');
         for entry in entries {
             if !entry.is_empty() {
                 if let Ok(candidate) = Candidate::from_skk_jisyo_string(midashi, entry) {
-                    result.push(
-                        candidate
-                    )
+                    result.push(candidate)
                 }
             }
         }
@@ -45,7 +54,6 @@ impl DictEntry {
             candidates: result,
         })
     }
-
 
     // one line of dictionary.
     // e.g.
@@ -77,27 +85,56 @@ mod test {
         );
         let result = result.unwrap();
         assert_eq!("あい", result.midashi);
-        let Candidate { kouho_text, annotation, .. } = &result.candidates[0];
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &result.candidates[0];
         assert_eq!("愛", *kouho_text.as_ref());
         assert_eq!(None, *annotation);
-        let Candidate { kouho_text, annotation, .. } = &result.candidates[5];
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &result.candidates[5];
         assert_eq!("亜衣", *kouho_text.as_ref());
-        assert_eq!("人名", *(annotation.as_ref()).expect("亜衣 doesn't have annotation").as_ref());
+        assert_eq!(
+            "人名",
+            *(annotation.as_ref())
+                .expect("亜衣 doesn't have annotation")
+                .as_ref()
+        );
     }
 
     #[test]
     fn split_candidate_okuri_ari() {
-        let result = DictEntry::from_skkjisyo_line(
-            "おどr /踊;dance/躍;jump/踴;「踊」の異体字/"
-        );
+        let result = DictEntry::from_skkjisyo_line("おどr /踊;dance/躍;jump/踴;「踊」の異体字/");
         let result = result.unwrap();
         assert_eq!("おどr", result.midashi);
-        let Candidate { kouho_text, annotation, .. } = &result.candidates[0];
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &result.candidates[0];
         assert_eq!("踊", *kouho_text.as_ref());
-        assert_eq!("dance", *(annotation.as_ref()).expect("踊 in sense of dance doesn't have annotation").as_ref());
-        let Candidate { kouho_text, annotation, .. } = &result.candidates[1];
+        assert_eq!(
+            "dance",
+            *(annotation.as_ref())
+                .expect("踊 in sense of dance doesn't have annotation")
+                .as_ref()
+        );
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &result.candidates[1];
         assert_eq!("躍".to_string(), *kouho_text.as_ref());
-        assert_eq!("jump".to_string(), *(annotation.as_ref()).expect("躍 in sense of jump doesn't have annotation.").as_ref());
+        assert_eq!(
+            "jump".to_string(),
+            *(annotation.as_ref())
+                .expect("躍 in sense of jump doesn't have annotation.")
+                .as_ref()
+        );
     }
 
     #[test]
@@ -113,7 +150,11 @@ mod test {
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
         let candidate = Candidate::from_skk_jisyo_string("あい", "愛").unwrap();
         dict_entry.remove_matching_candidate(&candidate);
-        let Candidate { kouho_text, annotation, .. } = &dict_entry.candidates[0];
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &dict_entry.candidates[0];
         assert_eq!("相", *kouho_text.as_ref());
         assert_eq!(None, *annotation);
     }
@@ -124,7 +165,11 @@ mod test {
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
         let candidate = Candidate::from_skk_jisyo_string("あい", "アイ;foo").unwrap();
         dict_entry.insert_as_first_candidate(candidate);
-        let Candidate { kouho_text, annotation, .. } = &dict_entry.candidates[0];
+        let Candidate {
+            kouho_text,
+            annotation,
+            ..
+        } = &dict_entry.candidates[0];
         assert_eq!("アイ", *kouho_text.as_ref());
         assert_eq!(Some(Arc::new("foo".to_string())), *annotation);
     }
