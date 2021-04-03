@@ -57,7 +57,7 @@ impl KanaCompositionHandler {
             match candidate {
                 Some(candidate) => {
                     instructions.push(Instruction::SetComposition {
-                        kanji: &candidate.kouho_text,
+                        kanji: candidate.kouho_text.to_string(),
                     });
                 }
                 None => instructions.push(Instruction::ChangeCompositionMode {
