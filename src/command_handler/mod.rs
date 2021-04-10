@@ -30,6 +30,7 @@ where
         (*self).can_process(key_event)
     }
 
+    /// Only return instruction, never change state.
     fn get_instruction(
         &self,
         key_event: &KeyEvent,

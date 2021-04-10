@@ -69,6 +69,8 @@ pub(crate) enum Instruction {
     SetComposition {
         kanji: String,
     },
+    // 変換候補ポインタを進める
+    NextCandidatePointer,
     // 現在の変換候補で確定する
     ConfirmComposition,
     ConfirmAsHiragana,
@@ -513,6 +515,11 @@ impl CskkContext {
         current_state.pre_conversion = unconv.to_owned();
     }
 
+    fn increment_selection_pointer(&mut self) {
+        let current_state = self.current_state();
+        current_state.selection_pointer += 1;
+    }
+
     fn set_composition_candidate(&mut self, kanji: &str) {
         let current_state = self.current_state();
         let okuri = current_state.converted_kana_to_okuri.to_owned();
@@ -626,8 +633,20 @@ impl CskkContext {
     fn abort_register_mode(&mut self) {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
-            self.current_state().composition_mode =
-                self.current_state_ref().previous_composition_mode;
+            if self.current_state_ref().previous_composition_mode
+                == CompositionMode::PreCompositionOkurigana
+            {
+                // おくり文字を繋げてPreCompositionにする
+                self.current_state().composition_mode = CompositionMode::PreComposition;
+            } else {
+                self.current_state().composition_mode =
+                    self.current_state_ref().previous_composition_mode;
+            }
+            let mut kana_to_composite =
+                self.current_state_ref().converted_kana_to_composite.clone();
+            kana_to_composite.push_str(&self.current_state_ref().converted_kana_to_okuri);
+            self.current_state().converted_kana_to_composite = kana_to_composite;
+            self.current_state().converted_kana_to_okuri.clear();
         }
     }
 
@@ -891,6 +910,9 @@ impl CskkContext {
                 }
                 Instruction::Purge => {
                     self.purge_current_composition_candidate();
+                }
+                Instruction::NextCandidatePointer => {
+                    self.increment_selection_pointer();
                 }
                 #[allow(unreachable_patterns)]
                 _ => {

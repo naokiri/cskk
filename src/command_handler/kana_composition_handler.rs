@@ -186,9 +186,10 @@ impl CommandHandler for KanaCompositionHandler {
         } else if symbol == xkb::keysyms::KEY_space {
             // 次の候補を返す
             let raw_to_composite = &*current_state.raw_to_composite;
-            let mut selection_pointer = current_state.selection_pointer;
-            selection_pointer += 1;
-            instructions.append(&mut self.indicate_candidate(raw_to_composite, selection_pointer));
+            let selection_pointer = current_state.selection_pointer;
+            instructions.push(Instruction::NextCandidatePointer);
+            instructions
+                .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)
             || (xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z)
         {
