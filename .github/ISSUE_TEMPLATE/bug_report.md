@@ -1,38 +1,38 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: バグレポート Bug report
+about: バグ報告の方法 Create a report to help us improve
 title: ''
 labels: ''
 assignees: ''
 
 ---
 
-**Describe the bug**
+**バグの簡潔な説明 Describe the bug**
+まず、簡潔な短文でバグ内容を説明してください。
+
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+**再現手順 To Reproduce**
+バグを再現する方法を説明してください。
+1. 句読点を英英モードに設定する
+2. 'a i u ,'と入力する
+3. バグが発生する
+
 Steps to reproduce the behavior:
 1. Go to '...'
 2. Click on '....'
-3. Scroll down to '....'
-4. See error
+3. See error
 
-**Expected behavior**
+**期待した動作 Expected behavior**
+再現手順を行うと本来ならば起こると思われる内容を説明してください。
+
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**動作環境 (次の内容を挙げてください) Environment (please complete the following information):**
+ - cskkのバージョン Version [e.g. commit 1acf43, v0.2.0]
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**その他の情報 Additional context**
+バグ内容について、他の情報をこちらに説明してください。
 
-**Additional context**
 Add any other context about the problem here.
