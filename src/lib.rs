@@ -941,7 +941,8 @@ impl CskkContext {
                 | CompositionMode::PreCompositionOkurigana => {
                     match &self.current_state_ref().input_mode {
                         InputMode::Ascii => {
-                            if key_event.is_ascii_inputtable() && key_event.get_modifier().is_empty()
+                            if key_event.is_ascii_inputtable()
+                                && key_event.get_modifier().is_empty()
                             {
                                 if let Some(key_char) = key_event.get_symbol_char() {
                                     match &self.current_state_ref().composition_mode {
@@ -960,7 +961,8 @@ impl CskkContext {
                         }
                         InputMode::Zenkaku => {
                             // TODO: Change input to wide latin
-                            if key_event.is_ascii_inputtable() && key_event.get_modifier().is_empty()
+                            if key_event.is_ascii_inputtable()
+                                && key_event.get_modifier().is_empty()
                             {
                                 if let Some(key_char) = key_event.get_symbol_char() {
                                     match &self.current_state_ref().composition_mode {
