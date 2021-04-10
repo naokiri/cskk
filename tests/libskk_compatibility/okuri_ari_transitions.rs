@@ -133,8 +133,6 @@ fn katakana_okuri() {
     );
 }
 
-// TODO: 辞書登録実装 関連テストをignoreしないようにする
-#[ignore]
 #[test]
 fn cancel_dict_edit() {
     let mut context = default_test_context();
@@ -145,22 +143,22 @@ fn cancel_dict_edit() {
         "T e t u d a I space C-g",
         "▼手伝い",
         "",
-        InputMode::Katakana,
+        InputMode::Hiragana,
     );
 }
 
-#[ignore]
 #[test]
 fn dict_edit_initial_state() {
     let mut context = default_test_context();
+    // Space removed from original to match actual test it has to test.
     transition_check(
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "N e o C h i space N",
-        "▼ねお*ち【 ▽n】",
+        "N e o C h i N",
+        "▼ねお*ち【▽n】",
         "",
-        InputMode::Katakana,
+        InputMode::Hiragana,
     );
 }
 

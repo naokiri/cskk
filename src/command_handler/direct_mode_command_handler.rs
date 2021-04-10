@@ -54,7 +54,7 @@ impl CommandHandler for DirectModeCommandHandler {
             // SKK 16.2 manual 4.2.2 input mode changing
             xkb::keysyms::KEY_l => match current_state.input_mode {
                 InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                    instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                    instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                     instructions.push(Instruction::ChangeInputMode(InputMode::Ascii));
                     instructions.push(Instruction::FlushPreviousCarryOver);
                     instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -63,7 +63,7 @@ impl CommandHandler for DirectModeCommandHandler {
             },
             xkb::keysyms::KEY_L => match current_state.input_mode {
                 InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                    instructions.push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                    instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                     instructions.push(Instruction::ChangeInputMode(InputMode::Zenkaku));
                     instructions.push(Instruction::FlushPreviousCarryOver);
                     instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -74,16 +74,14 @@ impl CommandHandler for DirectModeCommandHandler {
                 if modifier.contains(SkkKeyModifier::CONTROL) {
                     match current_state.input_mode {
                         InputMode::Hiragana | InputMode::Katakana => {
-                            instructions
-                                .push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                             instructions
                                 .push(Instruction::ChangeInputMode(InputMode::HankakuKatakana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
                         }
                         InputMode::HankakuKatakana => {
-                            instructions
-                                .push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Hiragana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -93,15 +91,13 @@ impl CommandHandler for DirectModeCommandHandler {
                 } else {
                     match current_state.input_mode {
                         InputMode::Hiragana => {
-                            instructions
-                                .push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Katakana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
                         }
                         InputMode::Katakana | InputMode::HankakuKatakana => {
-                            instructions
-                                .push(Instruction::OutputNNIfAny(current_state.input_mode.clone()));
+                            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
                             instructions.push(Instruction::ChangeInputMode(InputMode::Hiragana));
                             instructions.push(Instruction::FlushPreviousCarryOver);
                             instructions.push(Instruction::FinishConsumingKeyEvent);
@@ -137,7 +133,17 @@ impl CommandHandler for DirectModeCommandHandler {
                     &current_state.composition_mode,
                 ) {
                     instructions.push(Instruction::FlushPreviousCarryOver);
+                    // To abort from registration mode
+                    instructions.push(Instruction::Abort);
                     instructions.push(Instruction::FinishConsumingKeyEvent);
+                }
+            }
+            xkb::keysyms::KEY_Return => {
+                instructions.push(Instruction::ConfirmDirect);
+            }
+            xkb::keysyms::KEY_m => {
+                if modifier.contains(SkkKeyModifier::CONTROL) {
+                    instructions.push(Instruction::ConfirmDirect)
                 }
             }
             _ => {}

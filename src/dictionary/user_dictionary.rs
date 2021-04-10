@@ -84,7 +84,7 @@ impl Dictionary for UserDictionary {
                 );
             }
         }
-        Ok(false)
+        Ok(true)
     }
 
     fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {

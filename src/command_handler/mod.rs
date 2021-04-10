@@ -14,12 +14,12 @@ pub(crate) trait CommandHandler {
     /// FIXME: Should this be in this trait?
     /// FIXME: get_instructionの配列長さで呼び出し側で置きかえていってしまっているので廃止するかも
     fn can_process(&self, key_event: &KeyEvent) -> bool;
-    fn get_instruction<'a>(
-        &'a self,
+    fn get_instruction(
+        &self,
         key_event: &KeyEvent,
         current_state: &CskkState,
         is_delegated: bool,
-    ) -> Vec<Instruction<'a>>;
+    ) -> Vec<Instruction>;
 }
 
 impl<T> CommandHandler for &T

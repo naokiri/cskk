@@ -204,10 +204,7 @@ impl KeyEvent {
     fn next_tok(keys: &str) -> Option<&str> {
         if keys.starts_with('(') {
             let len = keys.find(')');
-            match len {
-                Some(x) => Some(&keys[0..=x]),
-                _ => None,
-            }
+            len.map(|x| &keys[0..=x])
         } else {
             let len = keys.find(' ');
             match len {

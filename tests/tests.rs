@@ -3,10 +3,14 @@ extern crate cskk;
 mod utils;
 
 use crate::utils::{default_test_context, transition_check};
+use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{skk_context_new_rs, skk_context_reload_dictionary, skk_context_save_dictionaries};
+use cskk::{
+    skk_context_new_rs, skk_context_reload_dictionary, skk_context_reset,
+    skk_context_save_dictionaries,
+};
 
 #[test]
 fn basic_hiragana_input() {
@@ -128,6 +132,20 @@ fn okuri_nashi_henkan_kakutei() {
 }
 
 #[test]
+fn okuri_nashi_henkan_continuous() {
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space A i space C-j",
+        "",
+        "愛愛",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
 fn okuri_ari_henkan_kakutei() {
     let mut context = default_test_context();
     transition_check(
@@ -170,4 +188,31 @@ fn save_dict() {
         "象語",
         InputMode::Hiragana,
     )
+}
+
+#[test]
+fn register_and_read() {
+    let static_dict =
+        CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
+    let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
+    let mut context = skk_context_new_rs(vec![static_dict, user_dict]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o g e space A i space Return Return",
+        "",
+        "愛",
+        InputMode::Hiragana,
+    );
+    skk_context_reset(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o g e space",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
 }
