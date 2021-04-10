@@ -29,7 +29,7 @@ impl CommandHandler for KanaPrecompositionHandler {
     ) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let current_composition_mode = &current_state.composition_mode;
-        let current_input_mode = &current_state.input_mode;
+        let current_input_mode = current_state.input_mode;
         debug_assert!(
             current_composition_mode == &CompositionMode::PreComposition
                 || current_composition_mode == &CompositionMode::PreCompositionOkurigana
@@ -42,7 +42,7 @@ impl CommandHandler for KanaPrecompositionHandler {
         let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
         if symbol == xkb::keysyms::KEY_space {
             // space
-            instructions.push(Instruction::OutputNNIfAny(current_input_mode.clone()));
+            instructions.push(Instruction::OutputNNIfAny(current_input_mode));
             instructions.push(Instruction::FlushPreviousCarryOver);
             instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::CompositionSelection,
@@ -61,7 +61,7 @@ impl CommandHandler for KanaPrecompositionHandler {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
         } else if symbol == xkb::keysyms::KEY_q && !modifier.contains(SkkKeyModifier::CONTROL) {
             // q
-            if *current_input_mode == InputMode::Katakana {
+            if current_input_mode == InputMode::Katakana {
                 instructions.push(Instruction::OutputNNIfAny(InputMode::Hiragana));
                 instructions.push(Instruction::FlushPreviousCarryOver);
                 instructions.push(Instruction::ConfirmAsHiragana);

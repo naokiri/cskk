@@ -45,19 +45,18 @@ pub mod skk_modes;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Instruction {
-    #[allow(dead_code)]
+    // Abort current composition selection, registration
     Abort,
     ChangeInputMode(InputMode),
-    //StackRegisterMode,
     /// Try to convert preconversion if in input mode which has conversion. Mostly (or only?) just for single 'n' conversion.
     OutputNNIfAny(InputMode),
     FlushPreviousCarryOver,
     // Aborts if empty after flush. flush条件用に必要？
     // AbortIfEmptyKanaToConvert,
-    // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
-    // delegate: delegate processing current key. Run the key event handling again on the next mode with current key.
     ChangeCompositionMode {
         composition_mode: CompositionMode,
+        // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
+        // delegate: delegate processing current key. Run the key event handling again on the next mode with current key.
         delegate: bool,
     },
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
@@ -74,6 +73,7 @@ pub(crate) enum Instruction {
     ConfirmAsHiragana,
     ConfirmAsKatakana,
     ConfirmAsJISX0201,
+    ConfirmDirect,
 }
 
 /// Rough design prototype yet
@@ -95,6 +95,8 @@ pub struct CskkContext {
 struct CskkState {
     input_mode: InputMode,
     composition_mode: CompositionMode,
+    // 直前のCompositionMode。Abort時に元に戻すmode。
+    previous_composition_mode: CompositionMode,
     // 入力文字で、かな確定済みでないものすべて
     pre_conversion: Vec<char>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。送りあり変換時には加えてconverted_kana_to_okuriの一文字目の子音や'>'付き。Abbrebiation変換の場合kana-convertされる前の入力など
@@ -103,8 +105,10 @@ struct CskkState {
     converted_kana_to_composite: String,
     // 未確定入力をInputモードにあわせてかな変換したもののうち、おくり仮名部分。convertがあるInputMode時のみ使用
     converted_kana_to_okuri: String,
-    // 入力を漢字変換した現在の選択肢。送り仮名含む。
-    composited: String,
+    // 入力を漢字変換した現在の選択肢。送り仮名含まない
+    composited_kanji: String,
+    // 入力を漢字変換した現在の選択肢の送り仮名部分。
+    composited_okuri: String,
     // 確定済み入力列。pollされた時に渡してflushされるもの。
     confirmed: String,
     // 変換中の選択肢
@@ -114,15 +118,34 @@ struct CskkState {
 }
 
 impl CskkState {
+    pub fn new(input_mode: InputMode, composition_mode: CompositionMode) -> Self {
+        CskkState {
+            input_mode,
+            composition_mode,
+            previous_composition_mode: composition_mode,
+            pre_conversion: vec![],
+            raw_to_composite: "".to_string(),
+            converted_kana_to_composite: "".to_string(),
+            converted_kana_to_okuri: "".to_string(),
+            composited_kanji: "".to_string(),
+            composited_okuri: "".to_string(),
+            confirmed: "".to_string(),
+            selection_pointer: 0,
+        }
+    }
+
     fn preedit_string(&self) -> String {
         let converted = &self.confirmed;
         let unconverted = &self.pre_conversion;
         let kana_to_composite = &self.converted_kana_to_composite;
         let kana_to_okuri = &self.converted_kana_to_okuri;
-        let composited = &self.composited;
+        let composited = &self.composited_kanji;
+        let composited_okuri = &self.composited_okuri;
 
         match self.composition_mode {
-            CompositionMode::Direct => String::from_iter(unconverted.iter()),
+            CompositionMode::Direct => {
+                converted.to_owned() + &String::from_iter(unconverted.iter())
+            }
             CompositionMode::PreComposition => "▽".to_owned() + converted + kana_to_composite,
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
@@ -132,7 +155,7 @@ impl CskkState {
                     + kana_to_okuri
                     + &String::from_iter(unconverted.iter())
             }
-            CompositionMode::CompositionSelection => "▼".to_owned() + composited,
+            CompositionMode::CompositionSelection => "▼".to_owned() + composited + composited_okuri,
             CompositionMode::Register => {
                 if kana_to_okuri.is_empty() {
                     "▼".to_string() + kana_to_composite
@@ -204,10 +227,7 @@ pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
     // TODO: Flush all the state stack after implementing the register mode
     // TODO: あとまわし。他のテストがこけはじめたらちゃんと実装する。
     context.poll_output();
-    context.reset_unconverted();
-    context.reset_carry_over();
-    context.reset_converted_kanas();
-    context.reset_composited();
+    context.reset_state_stack();
 }
 
 /// Test purpose
@@ -299,12 +319,12 @@ pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
 
 /// テスト用途？
 pub fn skk_context_get_compositon_mode(context: &CskkContext) -> CompositionMode {
-    context.current_state_ref().composition_mode.clone()
+    context.current_state_ref().composition_mode
 }
 
 /// テスト用途？
 pub fn skk_context_get_input_mode(context: &CskkContext) -> InputMode {
-    context.current_state_ref().input_mode.clone()
+    context.current_state_ref().input_mode
 }
 
 ///
@@ -363,13 +383,17 @@ impl CskkContext {
         self.retrieve_output(true)
     }
 
+    ///
+    /// pollされていない入力を状態に応じて修飾して返す。
+    /// preeditという名称はueno/libskkより。
+    ///
     pub fn get_preedit(&self) -> Option<String> {
         let mut result = String::new();
         let mut stack_count = 0;
         for state in &self.state_stack {
             result.push_str(&state.preedit_string());
             if state.composition_mode == CompositionMode::Register {
-                stack_count = stack_count + 1;
+                stack_count += 1;
                 result.push_str("【");
             }
         }
@@ -385,14 +409,17 @@ impl CskkContext {
     /// IMからのpollingで出力用途ならば、flushする。
     ///
     fn retrieve_output(&mut self, is_polling: bool) -> Option<String> {
-        let current_state = self.current_state();
+        let topmost_state = self
+            .state_stack
+            .get_mut(0)
+            .expect("State would never be empty");
 
-        if current_state.confirmed.is_empty() {
+        if topmost_state.confirmed.is_empty() {
             None
         } else {
-            let out = current_state.confirmed.clone();
+            let out = topmost_state.confirmed.clone();
             if is_polling {
-                current_state.confirmed.clear();
+                topmost_state.confirmed.clear();
             }
             Some(out)
         }
@@ -405,7 +432,7 @@ impl CskkContext {
 
     fn append_converted(&mut self, result: &str) {
         let current_state = self.current_state();
-        let current_input_mode = current_state.input_mode.clone();
+        let current_input_mode = current_state.input_mode;
         self.append_converted_in_input_mode(result, &current_input_mode)
     }
 
@@ -480,16 +507,28 @@ impl CskkContext {
     fn set_composition_candidate(&mut self, kanji: &str) {
         let current_state = self.current_state();
         let okuri = current_state.converted_kana_to_okuri.to_owned();
-        let mut kanji_okuri = kanji.to_owned();
-        kanji_okuri.push_str(&okuri);
-        current_state.composited = kanji_okuri;
+        current_state.composited_kanji = kanji.to_owned();
+        current_state.composited_okuri = okuri;
     }
 
     fn confirm_current_composition_candidate(&mut self) {
+        let composited_kanji = self.current_state_ref().composited_kanji.to_owned();
+        let raw_to_composite = self.current_state_ref().raw_to_composite.to_owned();
+        self.kana_composition_handler.confirm_candidate(
+            &raw_to_composite,
+            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+            &composited_kanji,
+        );
+
+        let composited_okuri = &self.current_state_ref().composited_okuri;
+        let composited_kanji_okuri = composited_kanji + composited_okuri;
         let current_state = self.current_state();
-        let composited = current_state.composited.to_owned();
-        current_state.confirmed.push_str(&composited);
-        current_state.composited.clear();
+        current_state.confirmed.push_str(&composited_kanji_okuri);
+        current_state.composited_kanji.clear();
+        current_state.composited_okuri.clear();
+        current_state.raw_to_composite.clear();
+        current_state.converted_kana_to_composite.clear();
+        current_state.converted_kana_to_okuri.clear();
     }
 
     fn confirm_current_kana_to_composite(&mut self, temporary_input_mode: &InputMode) {
@@ -523,7 +562,8 @@ impl CskkContext {
 
     fn reset_composited(&mut self) {
         let current_state = self.current_state();
-        current_state.composited.clear();
+        current_state.composited_kanji.clear();
+        current_state.composited_okuri.clear();
     }
 
     fn consolidate_converted_to_to_composite(&mut self) {
@@ -533,10 +573,47 @@ impl CskkContext {
         current_state.converted_kana_to_okuri.clear();
     }
 
+    /// Set the current composition mode.
     fn set_composition_mode(&mut self, composition_mode: CompositionMode) {
         let mut current_state = self.current_state();
+        current_state.previous_composition_mode = current_state.composition_mode;
         current_state.composition_mode = composition_mode;
         current_state.selection_pointer = 0;
+    }
+
+    fn enter_register_mode(&mut self, previous_composition_mode: CompositionMode) {
+        self.current_state().previous_composition_mode = previous_composition_mode;
+        self.current_state().composition_mode = CompositionMode::Register;
+        self.state_stack
+            .push(CskkState::new(InputMode::Hiragana, CompositionMode::Direct))
+    }
+
+    fn reset_state_stack(&mut self) {
+        while self.state_stack.len() > 1 {
+            self.state_stack.pop();
+        }
+        self.reset_carry_over();
+        self.reset_converted_kanas();
+        self.reset_unconverted();
+        self.reset_composited();
+    }
+
+    fn abort_register_mode(&mut self) {
+        if self.state_stack.len() > 1 {
+            self.state_stack.pop();
+            self.current_state().composition_mode =
+                self.current_state_ref().previous_composition_mode;
+        }
+    }
+
+    fn exit_register_mode(&mut self, kanji: &str) {
+        if self.state_stack.len() > 1 {
+            self.state_stack.pop();
+            let current_state = self.current_state();
+            current_state.composition_mode = CompositionMode::Direct;
+            self.set_composition_candidate(kanji);
+            self.confirm_current_composition_candidate();
+        }
     }
 
     fn set_input_mode(&mut self, input_mode: InputMode) {
@@ -629,13 +706,13 @@ impl CskkContext {
         dbg!(key_event);
         let kana_converter = &self.kana_converter;
         let current_state = self.current_state_ref();
-        let initial_composition_mode = current_state.composition_mode.clone();
+        let initial_composition_mode = current_state.composition_mode;
         let initial_unprocessed_vector = &current_state.pre_conversion.clone();
         let combined_keys = KanaBuilder::combined_key(key_event, initial_unprocessed_vector);
         let modifier = key_event.get_modifier();
 
-        if !is_delegated
-            && (modifier - SkkKeyModifier::SHIFT).is_empty()
+        // Shift以外のmodifierがある場合はかな変換とみなさない。
+        if (modifier - SkkKeyModifier::SHIFT).is_empty()
             && has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode)
         {
             if let Some((converted, carry_over)) = kana_converter.convert(&combined_keys) {
@@ -718,8 +795,19 @@ impl CskkContext {
                     composition_mode,
                     delegate,
                 } => {
-                    self.set_composition_mode(composition_mode);
-                    must_delegate = delegate;
+                    if composition_mode == CompositionMode::Register {
+                        let previous_mode;
+                        if is_delegated {
+                            previous_mode = self.current_state_ref().previous_composition_mode;
+                        } else {
+                            previous_mode = self.current_state_ref().composition_mode;
+                        }
+                        self.enter_register_mode(previous_mode);
+                        must_delegate = delegate;
+                    } else {
+                        self.set_composition_mode(composition_mode);
+                        must_delegate = delegate;
+                    }
                 }
                 Instruction::ChangeInputMode(input_mode) => {
                     self.set_input_mode(input_mode);
@@ -742,6 +830,7 @@ impl CskkContext {
                     // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
                     self.reset_composited();
                     self.consolidate_converted_to_to_composite();
+                    self.abort_register_mode();
                 }
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
@@ -763,6 +852,13 @@ impl CskkContext {
                 Instruction::ConfirmAsJISX0201 => {
                     self.confirm_current_kana_to_composite(&InputMode::HankakuKatakana);
                     self.set_composition_mode(CompositionMode::Direct);
+                }
+                Instruction::ConfirmDirect => {
+                    if self.state_stack.len() > 1 {
+                        // self.register
+                        self.exit_register_mode(&self.current_state_ref().confirmed.to_owned());
+                        return true;
+                    }
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
@@ -792,7 +888,7 @@ impl CskkContext {
                 CompositionMode::Direct
                 | CompositionMode::PreComposition
                 | CompositionMode::PreCompositionOkurigana => {
-                    match  &self.current_state_ref().input_mode {
+                    match &self.current_state_ref().input_mode {
                         InputMode::Ascii => {
                             if let Some(key_char) = key_event.get_symbol_char() {
                                 match &self.current_state_ref().composition_mode {
@@ -839,7 +935,8 @@ impl CskkContext {
                             } else {
                                 // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
                                 // "n d" 等の場合、直前の'n'を'ん'とする。
-                                let current_input_mode = &self.current_state_ref().input_mode.clone();
+                                let current_input_mode =
+                                    &self.current_state_ref().input_mode.clone();
                                 self.output_nn_if_any(
                                     current_input_mode,
                                     &initial_composition_mode,
@@ -967,7 +1064,8 @@ impl CskkContext {
             if !processed {
                 dbg!("Key event not processed", key_event);
             }
-            dbg!(self.current_state_ref());
+            dbg!(&self.state_stack);
+            //dbg!(self.current_state_ref());
         }
         true
     }
@@ -983,17 +1081,7 @@ impl CskkContext {
         let kana_converter = Box::new(KanaBuilder::default_converter());
 
         let mut initial_stack = Vec::new();
-        initial_stack.push(CskkState {
-            input_mode,
-            composition_mode,
-            pre_conversion: vec![],
-            raw_to_composite: "".to_string(),
-            converted_kana_to_composite: "".to_string(),
-            converted_kana_to_okuri: "".to_string(),
-            composited: "".to_string(),
-            confirmed: "".to_string(),
-            selection_pointer: 0,
-        });
+        initial_stack.push(CskkState::new(input_mode, composition_mode));
         Self {
             state_stack: initial_stack,
             direct_handler: kana_direct_handler,
@@ -1056,12 +1144,14 @@ impl CskkState {
         CskkState {
             input_mode,
             composition_mode,
+            previous_composition_mode: composition_mode,
             pre_conversion,
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(), // TODO
             converted_kana_to_okuri: "".to_string(),     // TODO
-            composited: "".to_string(),                  // TODO
-            confirmed: "".to_string(),                   // TODO
+            composited_kanji: "".to_string(),            // TODO
+            composited_okuri: "".to_string(),
+            confirmed: "".to_string(), // TODO
             selection_pointer: 0,
         }
     }
@@ -1143,5 +1233,19 @@ mod unit_tests {
             cskkcontext.current_state_ref()
         ));
         assert_eq!("▽あ", actual);
+    }
+
+    #[test]
+    fn get_preedit_register_mode() {
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        cskkcontext.append_converted_to_composite("ほげ");
+        cskkcontext.enter_register_mode(CompositionMode::Direct);
+        cskkcontext.append_converted("あか");
+        cskkcontext.append_unconverted('s');
+        let actual = cskkcontext.get_preedit().expect(&format!(
+            "No preedit. context: {:?}",
+            cskkcontext.current_state_ref()
+        ));
+        assert_eq!("▼ほげ【あかs】", actual);
     }
 }

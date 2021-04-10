@@ -16,7 +16,7 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    fn new(
+    pub fn new(
         midashi: Arc<String>,
         okuri: bool,
         kouho_text: Arc<String>,

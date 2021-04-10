@@ -1,7 +1,7 @@
 /// Rough design prototype yet
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[repr(C)]
 pub enum InputMode {
     // かなモード
@@ -19,7 +19,7 @@ pub enum InputMode {
 /// Rough design prototype yet
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[repr(C)]
 pub enum CompositionMode {
     // ■モード 確定入力モード
@@ -50,7 +50,7 @@ pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &Compos
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(C)]
 pub enum PeriodStyle {
     /// Use "。" and "、" for "." and ",".
