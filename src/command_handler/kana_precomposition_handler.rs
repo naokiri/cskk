@@ -61,7 +61,9 @@ impl CommandHandler for KanaPrecompositionHandler {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
         } else if symbol == xkb::keysyms::KEY_q && !modifier.contains(SkkKeyModifier::CONTROL) {
             // q
-            if current_input_mode == InputMode::Katakana {
+            if current_input_mode == InputMode::Katakana
+                || current_input_mode == InputMode::HankakuKatakana
+            {
                 instructions.push(Instruction::OutputNNIfAny(InputMode::Hiragana));
                 instructions.push(Instruction::FlushPreviousCarryOver);
                 instructions.push(Instruction::ConfirmAsHiragana);

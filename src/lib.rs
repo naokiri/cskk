@@ -76,6 +76,8 @@ pub(crate) enum Instruction {
     #[allow(clippy::upper_case_acronyms)]
     ConfirmAsJISX0201,
     ConfirmDirect,
+    // 現在の候補を辞書から消す
+    Purge,
 }
 
 /// Rough design prototype yet
@@ -148,7 +150,12 @@ impl CskkState {
             CompositionMode::Direct => {
                 converted.to_owned() + &String::from_iter(unconverted.iter())
             }
-            CompositionMode::PreComposition => "▽".to_owned() + converted + kana_to_composite,
+            CompositionMode::PreComposition => {
+                "▽".to_owned()
+                    + converted
+                    + kana_to_composite
+                    + &String::from_iter(unconverted.iter())
+            }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
                     + converted
@@ -513,6 +520,18 @@ impl CskkContext {
         current_state.composited_okuri = okuri;
     }
 
+    fn purge_current_composition_candidate(&mut self) {
+        let composited_kanji = self.current_state_ref().composited_kanji.to_owned();
+        let raw_to_composite = self.current_state_ref().raw_to_composite.to_owned();
+        self.kana_composition_handler.purge_candidate(
+            &raw_to_composite,
+            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+            &composited_kanji,
+        );
+
+        self.reset_current_state();
+    }
+
     fn confirm_current_composition_candidate(&mut self) {
         let composited_kanji = self.current_state_ref().composited_kanji.to_owned();
         let raw_to_composite = self.current_state_ref().raw_to_composite.to_owned();
@@ -594,6 +613,10 @@ impl CskkContext {
         while self.state_stack.len() > 1 {
             self.state_stack.pop();
         }
+        self.reset_current_state();
+    }
+
+    fn reset_current_state(&mut self) {
         self.reset_carry_over();
         self.reset_converted_kanas();
         self.reset_unconverted();
@@ -865,6 +888,9 @@ impl CskkContext {
                         self.exit_register_mode(&self.current_state_ref().confirmed.to_owned());
                         return true;
                     }
+                }
+                Instruction::Purge => {
+                    self.purge_current_composition_candidate();
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
