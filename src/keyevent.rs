@@ -79,6 +79,14 @@ impl KeyEvent {
     }
 
     ///
+    /// いわゆるAsciiの範囲で表示できる文字
+    ///
+    pub fn is_ascii_inputtable(&self) -> bool {
+        //　ueno/libskkに倣っているが、Latin 1 全部に拡張可能？
+        xkb::keysyms::KEY_space <= self.symbol && self.symbol <= xkb::keysyms::KEY_asciitilde
+    }
+
+    ///
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
@@ -317,6 +325,10 @@ mod tests {
 
         let key_event = KeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::NONE);
         assert_eq!('C', key_event.get_symbol_char().unwrap());
+
+        // エラーにならず、1byte目を返してしまう。
+        let key_event = KeyEvent::from_keysym(keysyms::KEY_BackSpace, SkkKeyModifier::NONE);
+        assert_eq!('\u{8}', key_event.get_symbol_char().unwrap());
     }
 
     #[test]
