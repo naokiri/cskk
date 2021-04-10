@@ -833,7 +833,6 @@ impl CskkContext {
         //     return false;
         // }
         let instructions = handler.get_instruction(key_event, &current_state, is_delegated);
-        //let instructions = instructions.clone().to_owned();
         drop(handler);
 
         let mut must_delegate = false;
@@ -931,8 +930,6 @@ impl CskkContext {
         }
 
         // ここまで来たらかな変換もなく、ステート変更等の命令としての処理が済み、素の入力として処理する状態
-        // let current_composition_mode = &self.current_state_ref().composition_mode;
-        // let current_input_mode = &self.current_state_ref().input_mode;
         if (modifier - SkkKeyModifier::SHIFT).is_empty() {
             match &self.current_state_ref().composition_mode {
                 CompositionMode::CompositionSelection => {
@@ -944,25 +941,45 @@ impl CskkContext {
                 | CompositionMode::PreCompositionOkurigana => {
                     match &self.current_state_ref().input_mode {
                         InputMode::Ascii => {
-                            if let Some(key_char) = key_event.get_symbol_char() {
-                                match &self.current_state_ref().composition_mode {
-                                    CompositionMode::Direct => {
-                                        self.append_confirmed_raw_char(key_char);
-                                    }
-                                    _ => {
-                                        debug!(
-                                            "Unreachable. Ascii should be always in Direct mode."
-                                        );
-                                        return false;
+                            if key_event.is_ascii_inputtable()
+                                && key_event.get_modifier().is_empty()
+                            {
+                                if let Some(key_char) = key_event.get_symbol_char() {
+                                    match &self.current_state_ref().composition_mode {
+                                        CompositionMode::Direct => {
+                                            self.append_confirmed_raw_char(key_char);
+                                        }
+                                        _ => {
+                                            debug!(
+                                                "Unreachable. Ascii should be always in Direct mode."
+                                            );
+                                            return false;
+                                        }
                                     }
                                 }
                             }
                         }
                         InputMode::Zenkaku => {
-                            // TODO
+                            // TODO: Change input to wide latin
+                            if key_event.is_ascii_inputtable()
+                                && key_event.get_modifier().is_empty()
+                            {
+                                if let Some(key_char) = key_event.get_symbol_char() {
+                                    match &self.current_state_ref().composition_mode {
+                                        CompositionMode::Direct => {
+                                            self.append_confirmed_raw_char(key_char);
+                                        }
+                                        _ => {
+                                            debug!(
+                                                "Unreachable. Ascii should be always in Direct mode."
+                                            );
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
                         }
                         InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                            // let unprocessed = &current_state.pre_conversion.clone();
                             if self
                                 .kana_converter
                                 .can_continue(key_event, &initial_unprocessed_vector)
