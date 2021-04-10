@@ -78,9 +78,7 @@ fn register_mode_transition_abort() {
     );
 }
 
-// 実際の登録を実装するまでignore
 #[test]
-#[ignore]
 fn register_mode_dont_register_empty() {
     let mut context = default_test_context();
     transition_check(

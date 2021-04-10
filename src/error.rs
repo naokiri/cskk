@@ -8,5 +8,5 @@ pub enum CskkError {
     #[error("Some kind of error: {0}")]
     Error(String),
     #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    IoError(#[from] std::io::Error),
 }

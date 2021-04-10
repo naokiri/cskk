@@ -49,6 +49,7 @@ pub(crate) enum Instruction {
     Abort,
     ChangeInputMode(InputMode),
     /// Try to convert preconversion if in input mode which has conversion. Mostly (or only?) just for single 'n' conversion.
+    #[allow(clippy::upper_case_acronyms)]
     OutputNNIfAny(InputMode),
     FlushPreviousCarryOver,
     // Aborts if empty after flush. flush条件用に必要？
@@ -72,6 +73,7 @@ pub(crate) enum Instruction {
     ConfirmComposition,
     ConfirmAsHiragana,
     ConfirmAsKatakana,
+    #[allow(clippy::upper_case_acronyms)]
     ConfirmAsJISX0201,
     ConfirmDirect,
 }
@@ -394,11 +396,11 @@ impl CskkContext {
             result.push_str(&state.preedit_string());
             if state.composition_mode == CompositionMode::Register {
                 stack_count += 1;
-                result.push_str("【");
+                result.push('【');
             }
         }
         for _ in 0..stack_count {
-            result.push_str("】");
+            result.push('】');
         }
         Some(result)
     }
@@ -609,10 +611,15 @@ impl CskkContext {
     fn exit_register_mode(&mut self, kanji: &str) {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
-            let current_state = self.current_state();
-            current_state.composition_mode = CompositionMode::Direct;
-            self.set_composition_candidate(kanji);
-            self.confirm_current_composition_candidate();
+            if kanji.is_empty() {
+                self.current_state().composition_mode =
+                    self.current_state_ref().previous_composition_mode;
+            } else {
+                let current_state = self.current_state();
+                current_state.composition_mode = CompositionMode::Direct;
+                self.set_composition_candidate(kanji);
+                self.confirm_current_composition_candidate();
+            }
         }
     }
 
@@ -855,7 +862,6 @@ impl CskkContext {
                 }
                 Instruction::ConfirmDirect => {
                     if self.state_stack.len() > 1 {
-                        // self.register
                         self.exit_register_mode(&self.current_state_ref().confirmed.to_owned());
                         return true;
                     }
@@ -1080,8 +1086,7 @@ impl CskkContext {
         let kana_composition_handler = KanaCompositionHandler::new(dictionaries);
         let kana_converter = Box::new(KanaBuilder::default_converter());
 
-        let mut initial_stack = Vec::new();
-        initial_stack.push(CskkState::new(input_mode, composition_mode));
+        let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
         Self {
             state_stack: initial_stack,
             direct_handler: kana_direct_handler,
