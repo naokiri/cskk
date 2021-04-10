@@ -3,11 +3,14 @@ extern crate cskk;
 mod utils;
 
 use crate::utils::{default_test_context, transition_check};
+use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{skk_context_new_rs, skk_context_reload_dictionary, skk_context_save_dictionaries, skk_context_reset};
-use cskk::dictionary::static_dict::StaticFileDict;
+use cskk::{
+    skk_context_new_rs, skk_context_reload_dictionary, skk_context_reset,
+    skk_context_save_dictionaries,
+};
 
 #[test]
 fn basic_hiragana_input() {
@@ -189,22 +192,27 @@ fn save_dict() {
 
 #[test]
 fn register_and_read() {
-    let static_dict = CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
+    let static_dict =
+        CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
     let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
     let mut context = skk_context_new_rs(vec![static_dict, user_dict]);
-    transition_check(&mut context,
-                     CompositionMode::Direct,
-                     InputMode::Hiragana,
-                     "H o g e space A i space Return Return",
-                     "",
-                     "愛",
-                     InputMode::Hiragana);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o g e space A i space Return Return",
+        "",
+        "愛",
+        InputMode::Hiragana,
+    );
     skk_context_reset(&mut context);
-    transition_check(&mut context,
-                     CompositionMode::Direct,
-                     InputMode::Hiragana,
-                     "H o g e space",
-                     "▼愛",
-                     "",
-                     InputMode::Hiragana);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o g e space",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
 }

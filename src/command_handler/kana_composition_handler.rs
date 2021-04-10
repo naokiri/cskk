@@ -37,7 +37,7 @@ impl KanaCompositionHandler {
                 CskkDictionary::StaticFile(dict) => dict.lookup(a, false),
                 CskkDictionary::UserFile(dict) => dict.lookup(a, false),
             } {
-                return Some(dict_entry)
+                return Some(dict_entry);
             }
         }
         // if let Some(dictionary) = self.dictionaries.get(0) {
