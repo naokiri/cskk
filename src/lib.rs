@@ -80,6 +80,12 @@ pub(crate) enum Instruction {
     ConfirmDirect,
     // 現在の候補を辞書から消す
     Purge,
+    // PreComposition時に一文字消去する。
+    // ueno/libskk StartStateHandler のdelete時？
+    DeletePrecomposition,
+    // Direct時に一文字消去する。
+    // ueno/libskk NoneStateHandler のdelete時？
+    DeleteDirect,
 }
 
 /// Rough design prototype yet
@@ -505,6 +511,41 @@ impl CskkContext {
         current_state.raw_to_composite = current_state.converted_kana_to_composite.clone()
     }
 
+    fn delete_precomposition(&mut self) {
+        let mut current_state = self.current_state();
+        if !current_state.pre_conversion.is_empty() {
+            current_state.pre_conversion.pop();
+            current_state.raw_to_composite.pop();
+            if current_state.pre_conversion.is_empty()
+                && current_state.composition_mode == CompositionMode::PreCompositionOkurigana
+            {
+                current_state.composition_mode = CompositionMode::PreComposition;
+            }
+        } else if !current_state.converted_kana_to_okuri.is_empty() {
+            current_state.converted_kana_to_okuri.pop();
+            current_state.raw_to_composite.pop();
+            if current_state.converted_kana_to_okuri.is_empty()
+                && current_state.composition_mode == CompositionMode::PreCompositionOkurigana
+            {
+                current_state.composition_mode = CompositionMode::PreComposition;
+            }
+        } else if !current_state.converted_kana_to_composite.is_empty() {
+            current_state.converted_kana_to_composite.pop();
+            current_state.raw_to_composite.pop();
+        } else {
+            current_state.composition_mode = CompositionMode::Direct;
+        }
+    }
+
+    fn delete_direct(&mut self) {
+        let current_state = self.current_state();
+        if !current_state.pre_conversion.is_empty() {
+            current_state.pre_conversion.pop();
+        } else if !current_state.confirmed.is_empty() {
+            current_state.confirmed.pop();
+        }
+    }
+
     fn reset_unconverted(&mut self) {
         let current_state = self.current_state();
         current_state.pre_conversion.clear();
@@ -912,6 +953,12 @@ impl CskkContext {
                 }
                 Instruction::NextCandidatePointer => {
                     self.increment_selection_pointer();
+                }
+                Instruction::DeletePrecomposition => {
+                    self.delete_precomposition();
+                }
+                Instruction::DeleteDirect => {
+                    self.delete_direct();
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
