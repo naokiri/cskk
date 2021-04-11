@@ -192,6 +192,7 @@ impl CommandHandler for KanaCompositionHandler {
                 .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)
             || (xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z)
+            || symbol == xkb::keysyms::KEY_BackSpace
         {
             // 現在の変換で確定させ、次のモードでキー入力を処理させる。 "I s i space k" の kのような時。
             // 後続で入力として処理させるので、Finishしない。
