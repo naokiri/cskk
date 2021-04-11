@@ -956,6 +956,7 @@ impl CskkContext {
                                             return false;
                                         }
                                     }
+                                    return true;
                                 }
                             }
                         }
@@ -976,100 +977,131 @@ impl CskkContext {
                                             return false;
                                         }
                                     }
+                                    return true;
                                 }
                             }
                         }
                         InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                            if self
-                                .kana_converter
-                                .can_continue(key_event, &initial_unprocessed_vector)
+                            if key_event.is_ascii_inputtable()
+                                && key_event.get_modifier().is_empty()
                             {
-                                // かな変換できる可能性が残るのでFlushはされない
-                                if let Some(key_char) = key_event.get_symbol_char() {
-                                    match &self.current_state_ref().composition_mode {
-                                        CompositionMode::Direct
-                                        | CompositionMode::PreComposition => {
-                                            self.append_unconverted(key_char.to_ascii_lowercase())
-                                        }
-                                        CompositionMode::PreCompositionOkurigana => {
-                                            self.append_to_composite_iff_no_preconversion(
-                                                key_char.to_ascii_lowercase(),
-                                            );
-                                            self.append_unconverted(key_char.to_ascii_lowercase());
-                                        }
-                                        _ => {
-                                            debug!("Unreachable.");
-                                            return false;
-                                        }
-                                    }
-                                }
-                            } else {
-                                // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
-                                // "n d" 等の場合、直前の'n'を'ん'とする。
-                                let current_input_mode =
-                                    &self.current_state_ref().input_mode.clone();
-                                self.output_nn_if_any(
-                                    current_input_mode,
-                                    &initial_composition_mode,
-                                );
-                                self.reset_unconverted();
-                                let unprocessed_vector =
-                                    self.current_state_ref().pre_conversion.clone();
-                                if let Some(key_char) = key_event.get_symbol_char() {
-                                    // カンマピリオドは特殊な設定と処理がある。
-                                    if let Some(converted) =
-                                        self.kana_converter.convert_periods(&key_char)
-                                    {
-                                        match &self.current_state_ref().composition_mode {
-                                            CompositionMode::Direct => {
-                                                self.append_converted(&converted);
-                                            }
-                                            CompositionMode::PreComposition
-                                            | CompositionMode::PreCompositionOkurigana => {
-                                                // 入力単独によらない特殊な遷移で、",."は送り仮名のように扱われて▽モードから▼モードへ移行する。
-                                                self.reset_unconverted();
-                                                self.append_converted_to_okuri(&converted);
-                                                self.set_composition_mode(
-                                                    CompositionMode::CompositionSelection,
-                                                );
-                                                return self
-                                                    .process_key_event_inner(key_event, true);
-                                            }
-                                            _ => {
-                                                debug!("Unreachable");
-                                                return false;
-                                            }
-                                        }
-                                    } else if self
-                                        .kana_converter
-                                        .can_continue(key_event, &unprocessed_vector)
-                                    {
+                                if self
+                                    .kana_converter
+                                    .can_continue(key_event, &initial_unprocessed_vector)
+                                {
+                                    // かな変換できる可能性が残るのでFlushはされない
+                                    if let Some(key_char) = key_event.get_symbol_char() {
                                         match &self.current_state_ref().composition_mode {
                                             CompositionMode::Direct
                                             | CompositionMode::PreComposition => self
                                                 .append_unconverted(key_char.to_ascii_lowercase()),
                                             CompositionMode::PreCompositionOkurigana => {
-                                                if initial_composition_mode
-                                                    != PreCompositionOkurigana
-                                                {
-                                                    self.append_to_composite_iff_no_preconversion(
-                                                        key_char.to_ascii_lowercase(),
-                                                    );
-                                                }
+                                                self.append_to_composite_iff_no_preconversion(
+                                                    key_char.to_ascii_lowercase(),
+                                                );
                                                 self.append_unconverted(
                                                     key_char.to_ascii_lowercase(),
                                                 );
                                             }
                                             _ => {
-                                                debug!("Unreachable");
+                                                debug!("Unreachable.");
                                                 return false;
                                             }
                                         }
-                                    } else {
-                                        // kana builderで該当がない記号や、表示されないキー
-                                        // TODO: 表示がある文字であればAsciiモード扱いで入力する。 '%','!'などが該当
-                                        // とりあえず無視する。
-                                        return false;
+                                        return true;
+                                    }
+                                } else {
+                                    // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
+                                    // "n d" 等の場合、直前の'n'を'ん'とする。
+                                    let current_input_mode =
+                                        &self.current_state_ref().input_mode.clone();
+                                    self.output_nn_if_any(
+                                        current_input_mode,
+                                        &initial_composition_mode,
+                                    );
+                                    self.reset_unconverted();
+                                    let unprocessed_vector =
+                                        self.current_state_ref().pre_conversion.clone();
+                                    if let Some(key_char) = key_event.get_symbol_char() {
+                                        // カンマピリオドは特殊な設定と処理がある。
+                                        if let Some(converted) =
+                                            self.kana_converter.convert_periods(&key_char)
+                                        {
+                                            // TODO: 上のflush前と同じ？ 本当に同じならば適当なメソッドで共通化する。
+                                            match &self.current_state_ref().composition_mode {
+                                                CompositionMode::Direct => {
+                                                    self.append_converted(&converted);
+                                                }
+                                                CompositionMode::PreComposition
+                                                | CompositionMode::PreCompositionOkurigana => {
+                                                    // 入力単独によらない特殊な遷移で、",."は送り仮名のように扱われて▽モードから▼モードへ移行する？
+                                                    // TODO: ,.以外を知らなかったので直書きしてしまったが、Auto-start-henkanは別でまとめて行うべきだった。
+                                                    self.reset_unconverted();
+                                                    self.append_converted_to_okuri(&converted);
+                                                    self.set_composition_mode(
+                                                        CompositionMode::CompositionSelection,
+                                                    );
+                                                    return self
+                                                        .process_key_event_inner(key_event, true);
+                                                }
+                                                _ => {
+                                                    debug!("Unreachable");
+                                                    return false;
+                                                }
+                                            }
+                                        } else if self
+                                            .kana_converter
+                                            .can_continue(key_event, &unprocessed_vector)
+                                        {
+                                            // TODO: 上のflush前と同じ？ 本当に同じならば適当なメソッドで共通化する。
+                                            match &self.current_state_ref().composition_mode {
+                                                CompositionMode::Direct
+                                                | CompositionMode::PreComposition => self
+                                                    .append_unconverted(
+                                                        key_char.to_ascii_lowercase(),
+                                                    ),
+                                                CompositionMode::PreCompositionOkurigana => {
+                                                    if initial_composition_mode
+                                                        != PreCompositionOkurigana
+                                                    {
+                                                        self.append_to_composite_iff_no_preconversion(
+                                                            key_char.to_ascii_lowercase(),
+                                                        );
+                                                    }
+                                                    self.append_unconverted(
+                                                        key_char.to_ascii_lowercase(),
+                                                    );
+                                                }
+                                                _ => {
+                                                    debug!("Unreachable");
+                                                    return false;
+                                                }
+                                            }
+                                            return true;
+                                        } else {
+                                            // kana builderで該当がない記号等
+                                            match &self.current_state_ref().composition_mode {
+                                                CompositionMode::Direct => {
+                                                    self.append_confirmed_raw_char(key_char);
+                                                }
+                                                CompositionMode::PreComposition => {
+                                                    self.append_converted_to_composite(
+                                                        &key_char.to_string(),
+                                                    );
+                                                }
+                                                CompositionMode::PreCompositionOkurigana => {
+                                                    self.append_converted_to_okuri(
+                                                        &key_char.to_string(),
+                                                    );
+                                                }
+
+                                                _ => {
+                                                    debug!("Unreachable");
+                                                    return false;
+                                                }
+                                            }
+                                            return true;
+                                        }
                                     }
                                 }
                             }
@@ -1082,7 +1114,7 @@ impl CskkContext {
             }
         }
         // TODO: 入力として内部では処理しつつunhandledで返す命令は必要か調べる。ueno/libskkのviとの連携関連issueとか読むとわかるか？
-        true
+        false
     }
 
     fn current_state_ref(&self) -> &CskkState {
