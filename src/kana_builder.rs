@@ -36,8 +36,10 @@ impl KanaBuilder {
     }
 
     /// TODO: Ignored yet.
+    #[cfg(feature = "capi")]
     pub fn set_period_style(&mut self, period_style: PeriodStyle) {
         self.period_style = period_style;
+        unimplemented!();
     }
 
     fn get_period(&self) -> Converted {
