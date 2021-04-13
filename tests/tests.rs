@@ -262,7 +262,6 @@ fn non_ascii_transition() {
     );
 }
 
-
 #[test]
 fn capital_q_transition() {
     let mut context = default_test_context();
