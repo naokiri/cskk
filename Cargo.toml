@@ -8,6 +8,9 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib", "lib"]
 
+[features]
+capi = []
+
 [dependencies]
 log = "0.4"
 xkbcommon = "0.3"
@@ -24,4 +27,16 @@ thiserror = "1.0"
 
 [dev-dependencies]
 env_logger = "*"
+
+[package.metadata.capi]
+min_version = "0.6.10"
+
+[package.metadata.capi.header]
+name = "libcskk"
+generation = true
+
+[package.metadata.capi.pkg_config]
+name = "libcskk"
+description = "SKK (Simple Kana Kanji) henkan library"
+
 

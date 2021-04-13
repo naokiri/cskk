@@ -9,7 +9,7 @@ use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
     skk_context_new_rs, skk_context_reload_dictionary, skk_context_reset,
-    skk_context_save_dictionaries,
+    skk_context_save_dictionaries_rs,
 };
 
 #[test]
@@ -177,7 +177,7 @@ fn katakana_input() {
 fn save_dict() {
     let dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/userdict.dat", "utf-8"));
     let mut context = skk_context_new_rs(vec![dict]);
-    skk_context_save_dictionaries(&mut context);
+    skk_context_save_dictionaries_rs(&mut context);
     skk_context_reload_dictionary(&mut context);
     transition_check(
         &mut context,

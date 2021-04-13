@@ -82,6 +82,11 @@ impl CommandHandler for KanaPrecompositionHandler {
                 delegate: false,
             });
             instructions.push(Instruction::FinishConsumingKeyEvent);
+        } else if symbol == xkb::keysyms::KEY_BackSpace
+            || (modifier.contains(SkkKeyModifier::CONTROL)
+                && (symbol == xkb::keysyms::KEY_h || symbol == xkb::keysyms::KEY_H))
+        {
+            instructions.push(Instruction::DeletePrecomposition);
         } else if is_capital
             && symbol != xkb::keysyms::KEY_Q
             && current_state.composition_mode == CompositionMode::PreComposition
