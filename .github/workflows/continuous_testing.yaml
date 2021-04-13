@@ -80,10 +80,23 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cbuild
-      - name: copy header file
-        run: ls -la && ls -la ./target/ && cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
-      - name: Build lib test
+# TODO: Use variable in github actions? Only target directory is different here.
+      - name: copy header file (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
+      - name: Build lib test (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o ./tests/lib_test
-      - name: Run lib test
+      - name: Run lib test (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
+      - name: copy header file (MacOS)
+        if: matrix.os == 'macOS-latest'
+        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+      - name: Build lib test (MacOS)
+        if: matrix.os == 'macOS-latest'
+        run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-apple-darwin/debug/ -lcskk -o ./tests/lib_test
+      - name: Run lib test (MacOS)
+        if: matrix.os == 'macOS-latest'
+        run: LD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug ./tests/lib_test
         
