@@ -231,4 +231,12 @@ mod tests {
         assert_eq!(kana, "っ");
         assert_eq!(*carry_over, vec!['t'])
     }
+
+    #[test]
+    fn can_continue() {
+        let converter = KanaBuilder::default_converter();
+        let unprocessed = vec![];
+        let actual = converter.can_continue(&KeyEvent::from_str("Q").unwrap(), &unprocessed);
+        assert_eq!(actual, false);
+    }
 }

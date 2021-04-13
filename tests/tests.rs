@@ -216,3 +216,63 @@ fn register_and_read() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn non_ascii_transition() {
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Ascii,
+        "plus",
+        "",
+        "+",
+        InputMode::Ascii,
+    );
+    skk_context_reset(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "plus",
+        "",
+        "+",
+        InputMode::Hiragana,
+    );
+    skk_context_reset(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K plus",
+        "▽+",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset(&mut context);
+    // 現在のueno/libskk と差異がある部分？
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a K plus",
+        "▽か*+",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn capital_q_transition() {
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A a Q",
+        "▽ああ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset(&mut context);
+}

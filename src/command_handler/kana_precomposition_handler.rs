@@ -49,14 +49,6 @@ impl CommandHandler for KanaPrecompositionHandler {
                 delegate: true,
             });
             return instructions;
-        } else if is_capital && current_state.composition_mode == CompositionMode::PreComposition {
-            // 大文字
-            if !current_state.raw_to_composite.is_empty() {
-                instructions.push(Instruction::ChangeCompositionMode {
-                    composition_mode: CompositionMode::PreCompositionOkurigana,
-                    delegate: false,
-                });
-            }
         } else if symbol == xkb::keysyms::KEY_greater {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
         } else if symbol == xkb::keysyms::KEY_q && !modifier.contains(SkkKeyModifier::CONTROL) {
@@ -95,6 +87,17 @@ impl CommandHandler for KanaPrecompositionHandler {
                 && (symbol == xkb::keysyms::KEY_h || symbol == xkb::keysyms::KEY_H))
         {
             instructions.push(Instruction::DeletePrecomposition);
+        } else if is_capital
+            && symbol != xkb::keysyms::KEY_Q
+            && current_state.composition_mode == CompositionMode::PreComposition
+        {
+            // 大文字
+            if !current_state.raw_to_composite.is_empty() {
+                instructions.push(Instruction::ChangeCompositionMode {
+                    composition_mode: CompositionMode::PreCompositionOkurigana,
+                    delegate: false,
+                });
+            }
         }
 
         instructions
