@@ -942,7 +942,7 @@ impl CskkContext {
                     match &self.current_state_ref().input_mode {
                         InputMode::Ascii => {
                             if key_event.is_ascii_inputtable()
-                                && key_event.get_modifier().is_empty()
+                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
                             {
                                 if let Some(key_char) = key_event.get_symbol_char() {
                                     match &self.current_state_ref().composition_mode {
@@ -983,7 +983,7 @@ impl CskkContext {
                         }
                         InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
                             if key_event.is_ascii_inputtable()
-                                && key_event.get_modifier().is_empty()
+                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
                             {
                                 if self
                                     .kana_converter
@@ -1077,6 +1077,14 @@ impl CskkContext {
                                                     return false;
                                                 }
                                             }
+                                            return true;
+                                        } else if key_event.get_symbol() == xkb::keysyms::KEY_q
+                                            || key_event.get_symbol() == xkb::keysyms::KEY_Q
+                                        {
+                                            // kana builder で該当がないが記号ではない文字。
+                                            // コマンドとして処理するとddskkの実装から離れることでlibskkとも動作を合わせるのが難しく、ここで直接指定。
+                                            // TODO: kanaとして続けられないかもしれないが、記号ではない文字であるかどうかの判定をどこかに統合。[a-zA-Z]判定だけで良い？
+                                            // do nothing.
                                             return true;
                                         } else {
                                             // kana builderで該当がない記号等

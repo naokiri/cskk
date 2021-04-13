@@ -261,3 +261,19 @@ fn non_ascii_transition() {
         InputMode::Hiragana,
     );
 }
+
+
+#[test]
+fn capital_q_transition() {
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A a Q",
+        "▽ああ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset(&mut context);
+}
