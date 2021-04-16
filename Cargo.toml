@@ -32,9 +32,11 @@ env_logger = "*"
 min_version = "0.6.10"
 
 [package.metadata.capi.header]
+name = "libcskk"
 generation = true
 
 [package.metadata.capi.pkg_config]
+name = "libcskk"
 description = "SKK (Simple Kana Kanji) henkan library"
 
 
