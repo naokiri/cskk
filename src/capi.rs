@@ -1,6 +1,9 @@
 use crate::dictionary::CskkDictionary;
-use crate::skk_modes::PeriodStyle;
-use crate::{skk_context_new_rs, skk_context_poll_output_rs, skk_file_dict_new_rs, CskkContext};
+use crate::skk_modes::{InputMode, PeriodStyle};
+use crate::{
+    skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
+    skk_context_set_input_mode_rs, skk_file_dict_new_rs, CskkContext,
+};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::slice;
@@ -67,13 +70,23 @@ pub unsafe extern "C" fn skk_file_dict_new(
 //     context.set_composition_mode(composition_mode)
 // }
 //
-// /// テスト用途。input_modeを設定する。
-// /// 他のステートとの整合性は無視される。
-// #[no_mangle]
-// pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mode: InputMode) {
-//     context.set_input_mode(input_mode)
-// }
-//
+
+///
+/// Set the input mode of current state.
+///
+#[no_mangle]
+pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mode: InputMode) {
+    skk_context_set_input_mode_rs(context, input_mode)
+}
+
+///
+/// Get the input mode of current state.
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> InputMode {
+    skk_context_get_input_mode_rs(context)
+}
+
 /// Library test purpose
 /// # Safety
 ///

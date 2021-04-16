@@ -220,8 +220,7 @@ pub fn skk_context_get_compositon_mode(context: &CskkContext) -> CompositionMode
     context.current_state_ref().composition_mode
 }
 
-/// テスト用途？
-pub fn skk_context_get_input_mode(context: &CskkContext) -> InputMode {
+pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
 }
 
@@ -242,9 +241,8 @@ pub fn skk_context_set_composition_mode(
     context.set_composition_mode(composition_mode)
 }
 
-/// テスト用途
 /// 他のステートとの整合性は無視される。
-pub fn skk_context_set_input_mode(context: &mut CskkContext, input_mode: InputMode) {
+pub fn skk_context_set_input_mode_rs(context: &mut CskkContext, input_mode: InputMode) {
     context.set_input_mode(input_mode)
 }
 
