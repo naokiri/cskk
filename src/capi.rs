@@ -4,8 +4,9 @@ use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
     skk_context_set_input_mode_rs, skk_file_dict_new_rs, CskkContext,
 };
+use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
+use std::os::raw::{c_char, c_int};
 use std::slice;
 
 /// Returns newly allocated CSKKContext.
@@ -124,7 +125,6 @@ pub extern "C" fn skk_context_set_period_style(
     context.kana_converter.set_period_style(period_style)
 }
 
-/// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -175,4 +175,23 @@ pub unsafe extern "C" fn skk_context_free(context_ptr: *mut CskkContext) {
         return;
     }
     Box::from_raw(context_ptr);
+}
+
+///
+/// Get emphasizing range of preedit.
+/// offset: starting offset (in UTF-8 chars) of underline
+/// nchars: number of characters to be underlined
+///
+/// # Safety
+///
+/// offset, nchars must be a valid pointer to int type that memory is allocated by the caller.
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_preedit_underline(
+    context: &mut CskkContext,
+    offset: *mut c_int,
+    nchars: *mut c_int,
+) {
+    let (offset_size, nchars_size) = context.get_preedit_underline();
+    *offset = c_int::try_from(offset_size).unwrap_or(0);
+    *nchars = c_int::try_from(nchars_size).unwrap_or(0);
 }

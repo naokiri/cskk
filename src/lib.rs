@@ -287,6 +287,15 @@ impl CskkContext {
     }
 
     ///
+    /// UTF-8 character range of text to emphasize in preedit.
+    ///
+    /// Currently we don't have expand/shrink-preedit feature, thus we have no text we want to emphasize.
+    ///
+    pub fn get_preedit_underline(&self) -> (isize, isize) {
+        (0, 0)
+    }
+
+    ///
     /// 確定済文字を返す。
     /// IM側からのpolling用途でなければ、状態を変えない。
     /// IMからのpollingで出力用途ならば、flushする。
