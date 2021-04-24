@@ -2,12 +2,12 @@
 //! ueno/libskk_compatibility tests/basic.c dict_edit_transitionsより
 //!
 
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
+use cskk::skk_context_reset;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{skk_context_new_rs, skk_context_reset};
 
 #[test]
 fn register_mode_transitions_hiragana() {
@@ -97,7 +97,7 @@ fn register_mode_transitions_composition() {
     let static_dict =
         CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
     let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
-    let mut context = skk_context_new_rs(vec![static_dict, user_dict]);
+    let mut context = test_context_with_dictionaries(vec![static_dict, user_dict]);
 
     transition_check(
         &mut context,
@@ -145,7 +145,7 @@ fn register_mode_purge_candidate() {
     let static_dict =
         CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
     let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
-    let mut context = skk_context_new_rs(vec![static_dict, user_dict]);
+    let mut context = test_context_with_dictionaries(vec![static_dict, user_dict]);
 
     transition_check(
         &mut context,

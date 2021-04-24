@@ -63,7 +63,7 @@ jobs:
         with:
           command: install
           args: --force cbindgen
-      - name: Install cbindgen
+      - name: Install cargo-c
         uses: actions-rs/cargo@v1
         with:
           command: install
@@ -80,7 +80,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cbuild
-# TODO: Use variable in github actions? Only target directory is different here.
+      - name: copy shared data
+        run: mkdir -p ~/.local/share/libcskk && cp -r ./shared/* ~/.local/share/libcskk
+      # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/

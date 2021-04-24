@@ -2,9 +2,9 @@ use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_get_input_mode_rs, skk_context_get_preedit_rs, skk_context_new_rs,
-    skk_context_poll_output_rs, skk_context_process_key_events_rs,
-    skk_context_set_composition_mode, skk_context_set_input_mode_rs, CskkContext,
+    skk_context_get_input_mode_rs, skk_context_get_preedit_rs, skk_context_poll_output_rs,
+    skk_context_process_key_events_rs, skk_context_set_composition_mode,
+    skk_context_set_input_mode_rs, CskkContext,
 };
 
 pub fn transition_check(
@@ -41,5 +41,15 @@ pub fn transition_check(
 
 pub fn default_test_context() -> CskkContext {
     let dict = CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
-    skk_context_new_rs(vec![dict])
+    test_context_with_dictionaries(vec![dict])
+}
+
+pub fn test_context_with_dictionaries(dictionaries: Vec<CskkDictionary>) -> CskkContext {
+    CskkContext::new_from_shared_files(
+        InputMode::Hiragana,
+        CompositionMode::Direct,
+        dictionaries,
+        "shared/rule/hiragana.json",
+        "shared/rule/kana_form.toml",
+    )
 }

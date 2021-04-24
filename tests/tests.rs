@@ -2,15 +2,12 @@ extern crate cskk;
 
 mod utils;
 
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{
-    skk_context_new_rs, skk_context_reload_dictionary, skk_context_reset,
-    skk_context_save_dictionaries_rs,
-};
+use cskk::{skk_context_reload_dictionary, skk_context_reset, skk_context_save_dictionaries_rs};
 
 #[test]
 fn basic_hiragana_input() {
@@ -176,7 +173,7 @@ fn katakana_input() {
 #[test]
 fn save_dict() {
     let dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/userdict.dat", "utf-8"));
-    let mut context = skk_context_new_rs(vec![dict]);
+    let mut context = test_context_with_dictionaries(vec![dict]);
     skk_context_save_dictionaries_rs(&mut context);
     skk_context_reload_dictionary(&mut context);
     transition_check(
@@ -195,7 +192,7 @@ fn register_and_read() {
     let static_dict =
         CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
     let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
-    let mut context = skk_context_new_rs(vec![static_dict, user_dict]);
+    let mut context = test_context_with_dictionaries(vec![static_dict, user_dict]);
     transition_check(
         &mut context,
         CompositionMode::Direct,
