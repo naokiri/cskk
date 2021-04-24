@@ -4,6 +4,7 @@ use std::io::Read;
 
 use sequence_trie::SequenceTrie;
 
+use crate::env::filepath_from_xdg_data_dir;
 use crate::keyevent::KeyEvent;
 use crate::skk_modes::PeriodStyle;
 
@@ -111,7 +112,8 @@ impl KanaBuilder {
         }
     }
 
-    fn converter_from_file(filename: &str) -> Self {
+    /// For e2e test purpose. Use default_converter instead.
+    pub fn converter_from_file(filename: &str) -> Self {
         let mut file = File::open(filename).expect("file not found");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
@@ -120,13 +122,18 @@ impl KanaBuilder {
     }
 
     pub fn default_converter() -> Self {
-        KanaBuilder::converter_from_file("src/rule/hiragana.json")
+        let filepath = filepath_from_xdg_data_dir("libcskk/rule/hiragana.json");
+        if let Ok(filepath) = filepath {
+            KanaBuilder::converter_from_file(&filepath)
+        } else {
+            KanaBuilder::converter_from_string("")
+        }
     }
 }
 
 #[cfg(test)]
 impl KanaBuilder {
-    fn test_converter() -> Self {
+    pub fn test_converter() -> Self {
         let mut process_list = SequenceTrie::new();
 
         process_list.insert(&['a'], ("あ".to_string(), vec![]));
@@ -225,16 +232,8 @@ mod tests {
     }
 
     #[test]
-    fn default_converter() {
-        let converter = KanaBuilder::default_converter();
-        let (kana, carry_over) = converter.convert(&['t', 't']).unwrap();
-        assert_eq!(kana, "っ");
-        assert_eq!(*carry_over, vec!['t'])
-    }
-
-    #[test]
     fn can_continue() {
-        let converter = KanaBuilder::default_converter();
+        let converter = KanaBuilder::test_converter();
         let unprocessed = vec![];
         let actual = converter.can_continue(&KeyEvent::from_str("Q").unwrap(), &unprocessed);
         assert_eq!(actual, false);

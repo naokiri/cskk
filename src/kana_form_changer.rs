@@ -1,3 +1,4 @@
+use crate::env::filepath_from_xdg_data_dir;
 use crate::skk_modes::InputMode;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -18,14 +19,23 @@ struct KanaFormMap {
 
 impl KanaFormChanger {
     pub fn default_kanaform_changer() -> Self {
-        KanaFormChanger::from_file("src/rule/kana_form.toml")
+        let filepath = filepath_from_xdg_data_dir("libcskk/rule/kana_form.toml");
+        if let Ok(filepath) = filepath {
+            KanaFormChanger::from_file(&filepath)
+        } else {
+            KanaFormChanger::from_string(&"")
+        }
     }
 
-    fn from_file(filename: &str) -> Self {
+    /// pub for e2e test. Use default_kanaform_changer instead.
+    pub fn from_file(filename: &str) -> Self {
         let mut file = File::open(filename).expect("file not found");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
+        KanaFormChanger::from_string(&contents)
+    }
 
+    fn from_string(contents: &str) -> Self {
         let kana_form_map: KanaFormMap =
             toml::from_str(&contents).expect("source data file for kana form is broken");
         let katakana_key_maxlen = kana_form_map
@@ -128,26 +138,47 @@ impl KanaFormChanger {
 }
 
 #[cfg(test)]
+impl KanaFormChanger {
+    pub fn test_kana_form_changer() -> Self {
+        KanaFormChanger::from_string(
+            &"\
+[katakana]
+\"あ\" = \"ア\"
+\"ぁ\" = \"ァ\"
+\"い\" = \"イ\"
+\"き\" = \"キ\"
+\"ん\" = \"ン\"
+\"う゛\" = \"ヴ\"
+\"ぐ\" = \"グ\"
+\"っ\" = \"ッ\"
+[jisx0201]
+\"あ\" = \"ｱ\"
+",
+        )
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn sanity_check() {
-        let changer = KanaFormChanger::default_kanaform_changer();
+        let changer = KanaFormChanger::test_kana_form_changer();
         assert_eq!(changer.maps.jisx0201.get("あ").unwrap(), "ｱ");
         assert_eq!(changer.katakana_key_maxlen, 2);
     }
 
     #[test]
     fn adjust_kana_string() {
-        let changer = KanaFormChanger::default_kanaform_changer();
+        let changer = KanaFormChanger::test_kana_form_changer();
         let actual = changer.adjust_kana_string(&InputMode::Katakana, "う゛ぁいきんぐ");
         assert_eq!("ヴァイキング", actual);
     }
 
     #[test]
     fn adjust_kana_string_small_tu() {
-        let changer = KanaFormChanger::default_kanaform_changer();
+        let changer = KanaFormChanger::test_kana_form_changer();
         let actual = changer.adjust_kana_string(&InputMode::Hiragana, "っ");
         assert_eq!("っ", actual);
     }

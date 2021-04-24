@@ -7,6 +7,8 @@ use thiserror::Error;
 pub enum CskkError {
     #[error("Some kind of error: {0}")]
     Error(String),
+    #[error("File not found")]
+    FileNotFound(String),
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 }

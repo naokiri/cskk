@@ -37,6 +37,7 @@ use xkbcommon::xkb;
 pub mod capi;
 mod command_handler;
 pub mod dictionary;
+mod env;
 pub mod error;
 mod kana_builder;
 mod kana_form_changer;
@@ -1123,6 +1124,30 @@ impl CskkContext {
             kana_form_changer: KanaFormChanger::default_kanaform_changer(),
         }
     }
+
+    /// For e2e test purpose. Use new() instead.
+    pub fn new_from_shared_files(
+        input_mode: InputMode,
+        composition_mode: CompositionMode,
+        dictionaries: Vec<CskkDictionary>,
+        kana_converter_filepath: &str,
+        kana_form_changer_filepath: &str,
+    ) -> Self {
+        let kana_direct_handler = DirectModeCommandHandler::new();
+        let kana_precomposition_handler = KanaPrecompositionHandler::new();
+        let kana_composition_handler = KanaCompositionHandler::new(dictionaries);
+        let kana_converter = Box::new(KanaBuilder::converter_from_file(kana_converter_filepath));
+
+        let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
+        Self {
+            state_stack: initial_stack,
+            direct_handler: kana_direct_handler,
+            kana_precomposition_handler,
+            kana_composition_handler,
+            kana_converter,
+            kana_form_changer: KanaFormChanger::from_file(kana_form_changer_filepath),
+        }
+    }
 }
 
 impl Display for Instruction {
@@ -1207,10 +1232,20 @@ mod unit_tests {
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
         let dict = skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp");
-        let mut context = skk_context_new_rs(vec![dict]);
-        context.set_input_mode(input_mode);
-        context.set_composition_mode(composition_mode);
-        context
+        let kana_direct_handler = DirectModeCommandHandler::new();
+        let kana_precomposition_handler = KanaPrecompositionHandler::new();
+        let kana_composition_handler = KanaCompositionHandler::new(vec![dict]);
+        let kana_converter = Box::new(KanaBuilder::test_converter());
+
+        let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
+        CskkContext {
+            state_stack: initial_stack,
+            direct_handler: kana_direct_handler,
+            kana_precomposition_handler,
+            kana_composition_handler,
+            kana_converter,
+            kana_form_changer: KanaFormChanger::test_kana_form_changer(),
+        }
     }
 
     #[test]
