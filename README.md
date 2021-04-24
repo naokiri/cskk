@@ -42,7 +42,7 @@ Run
 ```shell
     cargo cinstall --release
     mkdir -p ~/.local/share/libcskk
-    cp ./shared ~/.local/share/libcskk
+    cp -r ./shared/* ~/.local/share/libcskk
 ```
 
 To install to non-standard directories, append following options like this. See
