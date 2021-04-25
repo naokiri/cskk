@@ -2,7 +2,8 @@ use crate::dictionary::CskkDictionary;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
-    skk_context_set_input_mode_rs, skk_file_dict_new_rs, CskkContext,
+    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
+    CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -12,20 +13,16 @@ use std::slice;
 /// Returns newly allocated CSKKContext.
 ///
 /// # Safety
-/// Caller have to retain the pointer
-/// Caller must free the memory using skk_context_destroy
+/// Caller have to retain the pointer returned from this function
+/// Caller must free it using skk_context_destroy
+/// dictionary_array must have at least dictionary_count number of CskkDictionary
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_new(
     dictionary_array: *const *mut CskkDictionary,
     dictionary_count: usize,
 ) -> *mut CskkContext {
-    let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
-    let mut dict_array = vec![];
-    for dictref in tmp_array {
-        let cskkdict = *Box::from_raw(*dictref);
-        dict_array.push(cskkdict);
-    }
+    let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
     Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
 }
 
@@ -194,4 +191,36 @@ pub unsafe extern "C" fn skk_context_get_preedit_underline(
     let (offset_size, nchars_size) = context.get_preedit_underline();
     *offset = c_int::try_from(offset_size).unwrap_or(0);
     *nchars = c_int::try_from(nchars_size).unwrap_or(0);
+}
+
+///
+/// Set dictionaries to context.
+///
+/// # Safety
+/// dictionary_array must have at least dictionary_count number of CskkDictionary
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_set_dictionaries(
+    context: &mut CskkContext,
+    dictionary_array: *const *mut CskkDictionary,
+    dictionary_count: usize,
+) {
+    let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
+    skk_context_set_dictionaries_rs(context, dict_array);
+}
+
+///
+/// #Safety
+///
+/// dictionary_array must have at least dictionary_count number of CskkDictionary
+unsafe fn dictionaries_from_c_repr(
+    dictionary_array: *const *mut CskkDictionary,
+    dictionary_count: usize,
+) -> Vec<CskkDictionary> {
+    let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
+    let mut dict_array = vec![];
+    for dictref in tmp_array {
+        let cskkdict = *Box::from_raw(*dictref);
+        dict_array.push(cskkdict);
+    }
+    dict_array
 }
