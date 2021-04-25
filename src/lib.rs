@@ -259,6 +259,13 @@ pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
     context.reload_dictionary();
 }
 
+pub fn skk_context_set_dictionaries_rs(
+    context: &mut CskkContext,
+    dictionaries: Vec<CskkDictionary>,
+) {
+    context.set_dictionaries(dictionaries);
+}
+
 impl CskkContext {
     ///
     /// Retrieve and remove the current output string
@@ -658,6 +665,10 @@ impl CskkContext {
                 }
             }
         }
+    }
+
+    pub fn set_dictionaries(&mut self, dictionaries: Vec<CskkDictionary>) {
+        self.kana_composition_handler = KanaCompositionHandler::new(dictionaries);
     }
 
     // FIXME: まだ良いルールが把握できていない中でインクリメンタルに機能を追加しているのでぐちゃぐちゃ。一通り機能ができてバグ修正できたらリファクタリング
