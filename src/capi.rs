@@ -1,9 +1,10 @@
+use crate::dictionary::candidate::Candidate;
 use crate::dictionary::CskkDictionary;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
-    skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
-    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
-    CskkContext,
+    skk_context_get_candidates_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
+    skk_context_poll_output_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
+    skk_file_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -209,6 +210,35 @@ pub unsafe extern "C" fn skk_context_set_dictionaries(
 }
 
 ///
+/// return the copy of current list of candidates
+///
+/// # Safety
+/// Returned pointer must be freed by skk_free_candidate_list or it will leak the memory.
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_candidates(
+    context: &mut CskkContext,
+) -> *mut CandidateList {
+    let candidates = skk_context_get_candidates_rs(context);
+    Box::into_raw(Box::new(CandidateList { candidates }))
+}
+
+///
+/// Free the candidate list.
+///
+/// # Safety
+/// ptr must be a valid candidate list pointer returned from this context
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_candidate_list(candidate_list_ptr: *mut CandidateList) {
+    if candidate_list_ptr.is_null() {
+        return;
+    }
+    // Get back ownership in Rust side, then do nothing.
+    Box::from_raw(candidate_list_ptr);
+}
+
+///
 /// #Safety
 ///
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
@@ -223,4 +253,8 @@ unsafe fn dictionaries_from_c_repr(
         dict_array.push(cskkdict);
     }
     dict_array
+}
+
+pub struct CandidateList {
+    candidates: Vec<Candidate>,
 }

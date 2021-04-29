@@ -20,6 +20,7 @@ use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandle
 use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::command_handler::CommandHandler;
+use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
 use crate::dictionary::{CskkDictionary, Dictionary};
@@ -72,6 +73,9 @@ pub(crate) enum Instruction {
     },
     // 変換候補ポインタを進める
     NextCandidatePointer,
+    UpdateCurrentCandidateList {
+        candidates: Vec<Candidate>,
+    },
     // 現在の変換候補で確定する
     ConfirmComposition,
     ConfirmAsHiragana,
@@ -125,7 +129,7 @@ struct CskkState {
     // 確定済み入力列。pollされた時に渡してflushされるもの。
     confirmed: String,
     // 変換中の選択肢
-    //composition_candidates: &Vec<Arc<Candidate>>,
+    composition_candidates: Vec<Candidate>,
     // 変換中の選択肢のうち、どれをさしているか
     selection_pointer: usize,
 }
@@ -143,6 +147,7 @@ impl CskkState {
             composited_kanji: "".to_string(),
             composited_okuri: "".to_string(),
             confirmed: "".to_string(),
+            composition_candidates: vec![],
             selection_pointer: 0,
         }
     }
@@ -264,6 +269,13 @@ pub fn skk_context_set_dictionaries_rs(
     dictionaries: Vec<CskkDictionary>,
 ) {
     context.set_dictionaries(dictionaries);
+}
+
+///
+/// Return the copy of current candidate list.
+///
+pub fn skk_context_get_candidates_rs(context: &mut CskkContext) -> Vec<Candidate> {
+    context.get_current_candidates()
 }
 
 impl CskkContext {
@@ -671,6 +683,16 @@ impl CskkContext {
         self.kana_composition_handler = KanaCompositionHandler::new(dictionaries);
     }
 
+    pub fn get_current_candidates(&mut self) -> Vec<Candidate> {
+        let current_state = self.current_state();
+        current_state.composition_candidates.clone()
+    }
+
+    pub fn set_current_candidates(&mut self, candidates: Vec<Candidate>) {
+        let current_state = self.current_state();
+        current_state.composition_candidates = candidates;
+    }
+
     // FIXME: まだ良いルールが把握できていない中でインクリメンタルに機能を追加しているのでぐちゃぐちゃ。一通り機能ができてバグ修正できたらリファクタリング
     ///
     /// 上から順に
@@ -840,6 +862,9 @@ impl CskkContext {
                 }
                 Instruction::NextCandidatePointer => {
                     self.increment_selection_pointer();
+                }
+                Instruction::UpdateCurrentCandidateList { candidates } => {
+                    self.set_current_candidates(candidates);
                 }
                 Instruction::DeletePrecomposition => {
                     self.delete_precomposition();
@@ -1220,6 +1245,7 @@ impl CskkState {
             composited_kanji: "".to_string(),            // TODO
             composited_okuri: "".to_string(),
             confirmed: "".to_string(), // TODO
+            composition_candidates: vec![],
             selection_pointer: 0,
         }
     }

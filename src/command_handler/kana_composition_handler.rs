@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use xkbcommon::xkb;
 
 use crate::dictionary::candidate::Candidate;
-use crate::dictionary::dictentry::DictEntry;
+
 use crate::dictionary::{CskkDictionary, Dictionary};
 use crate::keyevent::{KeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
@@ -29,17 +29,39 @@ impl KanaCompositionHandler {
         self.dictionaries.iter_mut()
     }
 
-    // dictionary list order search, dedupe by kouho and add to list and return all candidates
-    fn get_all_candidates(&self, a: &str) -> Option<&DictEntry> {
+    /// 現在ueno/libskk同様にDedupはkouho_textのみ、候補の順序はdictの順番通り。
+    /// annotationについては特に決めていないが、現在のところsortの仕様により先の候補が優先される。
+    pub fn get_all_candidates(&self, midashi: &str) -> Vec<Candidate> {
+        let mut deduped_candidates = vec![];
+        let mut ordered_candidates = vec![];
         for dictionary in self.dictionaries.iter() {
             if let Some(dict_entry) = match dictionary {
-                CskkDictionary::StaticFile(dict) => dict.lookup(a, false),
-                CskkDictionary::UserFile(dict) => dict.lookup(a, false),
+                CskkDictionary::StaticFile(dict) => dict.lookup(midashi, false),
+                CskkDictionary::UserFile(dict) => dict.lookup(midashi, false),
             } {
-                return Some(dict_entry);
+                ordered_candidates.extend(dict_entry.get_candidates());
+                deduped_candidates.extend(dict_entry.get_candidates());
             }
         }
-        None
+        if deduped_candidates.is_empty() {
+            return vec![];
+        }
+        deduped_candidates.sort_by(|a, b| a.kouho_text.cmp(&b.kouho_text));
+        deduped_candidates.dedup_by(|a, b| a.kouho_text == b.kouho_text);
+        let mut result = vec![];
+        for candidate in ordered_candidates {
+            let mut matched_index = usize::MAX;
+            for (pos, deduped) in deduped_candidates.iter().enumerate() {
+                if (*deduped).eq(candidate) {
+                    result.push((*deduped).clone());
+                    matched_index = pos;
+                }
+            }
+            if matched_index < usize::MAX {
+                deduped_candidates.remove(matched_index);
+            }
+        }
+        result
     }
 
     /// confirm the candidate.
@@ -96,23 +118,14 @@ impl KanaCompositionHandler {
     /// Returns the nth candidate.
     /// first selection_pointer == 0
     ///
-    fn get_nth_candidate(
-        &self,
-        to_composite: &str,
-        selection_pointer: usize,
-    ) -> Option<&Candidate> {
-        let dict_entry = self.get_all_candidates(to_composite);
-
-        if let Some(entry) = dict_entry {
-            let candidates = entry.get_candidates();
-            candidates.get(selection_pointer)
-        } else {
-            None
-        }
+    fn get_nth_candidate(&self, to_composite: &str, selection_pointer: usize) -> Option<Candidate> {
+        let candidates = self.get_all_candidates(to_composite);
+        candidates.get(selection_pointer).cloned()
     }
 
     /// instruction to inidicate the candidate at the pointer.
     fn indicate_candidate(&self, to_composite: &str, selection_pointer: usize) -> Vec<Instruction> {
+        // TODO: 後からget_all_candidateやget_candidate_listを足したので、再度辞書から探してくる二度手間になっている。Instructionごとリファクタリング候補。
         let mut instructions = vec![];
         if let Some(candidate) = self.get_nth_candidate(to_composite, selection_pointer) {
             instructions.push(Instruction::SetComposition {
@@ -188,6 +201,9 @@ impl CommandHandler for KanaCompositionHandler {
             let raw_to_composite = &*current_state.raw_to_composite;
             let selection_pointer = current_state.selection_pointer;
             instructions.push(Instruction::NextCandidatePointer);
+            // TODO: とりあえずueno/libskk同様現在のcandidate_listの元となった見出しに関わらずupdateしているが、同じ見出しの場合に省略可能かもしれない。
+            let candidates = self.get_all_candidates(raw_to_composite);
+            instructions.push(Instruction::UpdateCurrentCandidateList { candidates });
             instructions
                 .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)

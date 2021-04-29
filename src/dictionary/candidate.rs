@@ -15,6 +15,15 @@ pub struct Candidate {
     output: Option<String>,
 }
 
+impl PartialEq for Candidate {
+    fn eq(&self, other: &Self) -> bool {
+        if self.midashi.eq(&other.midashi) && self.kouho_text.eq(&other.kouho_text) {
+            return true;
+        }
+        false
+    }
+}
+
 impl Candidate {
     pub fn new(
         midashi: Arc<String>,
