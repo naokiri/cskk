@@ -1,4 +1,5 @@
 use crate::dictionary::CskkDictionary;
+use crate::keyevent::KeyEvent;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
@@ -14,7 +15,7 @@ use std::slice;
 ///
 /// # Safety
 /// Caller have to retain the pointer returned from this function
-/// Caller must free it using skk_context_destroy
+/// Caller must free it using skk_free_context
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
 ///
 #[no_mangle]
@@ -98,7 +99,27 @@ pub unsafe extern "C" fn skk_context_process_key_events(
     context.process_key_events_string(keyevents.to_str().unwrap())
 }
 
+///
+/// 1入力を処理する
+///
+/// keyeventは消費される。
+///
+/// # Safety
+/// context and keyevent must be a valid non-null pointer created from this library.
+/// keyevent must not be reused after this function call
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_process_key_event(
+    context: &mut CskkContext,
+    keyevent: *mut KeyEvent,
+) -> bool {
+    let raw_keyevent = Box::from_raw(keyevent);
+    context.process_key_event(raw_keyevent.as_ref())
+}
+
 /// 現在のoutputをpollingする。
+///
+/// RustでallocateされたUTF-8のバイト配列を返す
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -167,7 +188,7 @@ pub extern "C" fn skk_context_save_dictionaries(context: &mut CskkContext) {
 /// context_ptr は必ずCskkContextのポインタでなければならない。
 ///
 #[no_mangle]
-pub unsafe extern "C" fn skk_context_free(context_ptr: *mut CskkContext) {
+pub unsafe extern "C" fn skk_free_context(context_ptr: *mut CskkContext) {
     if context_ptr.is_null() {
         return;
     }
@@ -209,7 +230,27 @@ pub unsafe extern "C" fn skk_context_set_dictionaries(
 }
 
 ///
-/// #Safety
+/// Create a cskk keyevent type
+/// keysym: u32  "X11 Window System Protocol" Appendix A based keysym code.
+/// modifier: Fcitx modifier
+/// is_release: True if this event for releasing the key
+///
+/// # Safety
+/// Must use this return value with process_key_event. If not, memory leaks.
+///
+#[no_mangle]
+pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
+    keysym: u32,
+    modifier: u32,
+    is_release: bool,
+) -> *mut KeyEvent {
+    Box::into_raw(Box::new(KeyEvent::from_fcitx_keyevent(
+        keysym, modifier, is_release,
+    )))
+}
+
+///
+/// # Safety
 ///
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
 unsafe fn dictionaries_from_c_repr(

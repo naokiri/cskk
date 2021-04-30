@@ -680,7 +680,7 @@ impl CskkContext {
     /// rom2kana継続不可能 -all-> Flush後に入力として処理
     ///
     fn process_key_event_inner(&mut self, key_event: &KeyEvent, is_delegated: bool) -> bool {
-        dbg!(key_event);
+        //dbg!(key_event);
         let kana_converter = &self.kana_converter;
         let current_state = self.current_state_ref();
         let initial_composition_mode = current_state.composition_mode;
@@ -765,7 +765,7 @@ impl CskkContext {
 
         let mut must_delegate = false;
         for instruction in instructions {
-            dbg!(&instruction);
+            // dbg!(&instruction);
             match instruction {
                 Instruction::ChangeCompositionMode {
                     composition_mode,
@@ -1103,13 +1103,13 @@ impl CskkContext {
     /// FIXME: Remove this clippy rule allow when parameterize on array length is stable in Rust. maybe 1.51?
     #[allow(clippy::ptr_arg)]
     fn process_key_events(&mut self, key_event_seq: &KeyEventSeq) -> bool {
-        dbg!(key_event_seq);
+        // dbg!(key_event_seq);
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);
             if !processed {
-                dbg!("Key event not processed", key_event);
+                // dbg!("Key event not processed", key_event);
             }
-            dbg!(&self.state_stack);
+            //dbg!(&self.state_stack);
             //dbg!(self.current_state_ref());
         }
         true

@@ -7,6 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
@@ -31,9 +38,16 @@ jobs:
         channel: [ stable, nightly, beta ]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
-      - uses: actions/checkout@master
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
@@ -58,16 +72,23 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --force cbindgen
+          args: cbindgen
       - name: Install cargo-c
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --force cargo-c
+          args: cargo-c
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev

@@ -6,24 +6,31 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
-
-type KeyEventError = String; // TODO: Make better error structure?
+// Hidden by bitflags macro
+use crate::error::CskkError;
+#[allow(unused_imports)]
+use std::ops::BitAndAssign;
 
 bitflags! {
     ///
-    /// modifier mask ported from fcitx-skk and libskk.
+    /// modifier mask ported from fcitx and libskk.
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
     pub(crate) struct SkkKeyModifier: u32 {
         const NONE = 0;
         const SHIFT = 1;
-        const LOCK = 1 << 1;
+        const CAPS_LOCK = 1 << 1;
         const CONTROL = 1 << 2;
         const MOD1 = 1 << 3;
+        const ALT = 1 << 3; // == MOD1
         const MOD2 = 1 << 4;
+        const NUM_LOCK = 1 << 4; // == MOD2
         const MOD3 = 1 << 5;
+        const HYPER = 1 << 5; // == MOD3
         const MOD4 = 1 << 6;
+        const SUPER = 1 << 6; // == MOD4
         const MOD5 = 1 << 7;
+        const MOUSE_PRESSED = 1 << 8;
 
         /// Reserved for nicola
         const L_SHIFT = 1 << 22;
@@ -32,10 +39,19 @@ bitflags! {
         /// Reserved for nicola
         /// works specially that sleeps (int)keysym usec for simulating non-double key press event.
         const USLEEP = 1 << 24;
-        const SUPER = 1 << 26;
-        const HYPER = 1 << 27;
+
+        const SUPER2 = 1 << 26;
+        const HYPER2 = 1 << 27;
         const META = 1 << 28;
+
         const RELEASE = 1 << 30;
+
+        const REPEAT = 1 << 31;
+
+        /// Mask for bits that can be actually given from the fcitx ime
+        const NON_DUMMY_MASK = Self::SHIFT.bits | Self::CAPS_LOCK.bits | Self::CONTROL.bits | Self::ALT.bits
+        | Self::NUM_LOCK.bits | Self::HYPER.bits | Self::SUPER.bits | Self::MOUSE_PRESSED.bits | Self::SUPER2.bits | Self::HYPER2.bits
+        | Self::META.bits | Self::REPEAT.bits;
     }
 }
 
@@ -62,10 +78,23 @@ pub struct KeyEvent {
 
 impl KeyEvent {
     #[cfg(test)]
-    pub(crate) fn from_keysym(keysym: xkb::Keysym, modifier: SkkKeyModifier) -> KeyEvent {
-        KeyEvent {
+    pub(crate) fn from_keysym(keysym: xkb::Keysym, modifier: SkkKeyModifier) -> Self {
+        Self {
             symbol: keysym,
             modifiers: modifier,
+        }
+    }
+
+    #[cfg(feature = "capi")]
+    pub(crate) fn from_fcitx_keyevent(keysym: u32, raw_modifier: u32, is_release: bool) -> Self {
+        let mut modifiers: SkkKeyModifier = SkkKeyModifier::from_bits_truncate(raw_modifier);
+        modifiers.bitand_assign(SkkKeyModifier::NON_DUMMY_MASK);
+        if is_release {
+            modifiers.set(SkkKeyModifier::RELEASE, true);
+        }
+        Self {
+            symbol: keysym,
+            modifiers,
         }
     }
 
@@ -90,7 +119,7 @@ impl KeyEvent {
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
-    pub fn from_str(key: &str) -> Result<KeyEvent, KeyEventError> {
+    pub fn from_str(key: &str) -> Result<KeyEvent, CskkError> {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
         let key = key.trim();
@@ -146,9 +175,9 @@ impl KeyEvent {
         }
 
         if keysym == xkb::keysyms::KEY_VoidSymbol {
-            Err("No str checked".to_owned())
+            Err(CskkError::Error("No str checked".to_owned()))
         } else if keysym == xkb::keysyms::KEY_NoSymbol {
-            Err("Not a key symbol: {}".to_owned())
+            Err(CskkError::Error("Not a key symbol: {}".to_owned()))
         } else {
             Ok(KeyEvent {
                 modifiers: modifier,
@@ -169,7 +198,7 @@ impl KeyEvent {
         self.symbol
     }
 
-    pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, KeyEventError> {
+    pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, CskkError> {
         match KeyEvent::deserialize_seq_inner(from, Vec::new()) {
             Ok(result) => Ok(result),
             Err(e) => Err(e),
@@ -179,7 +208,7 @@ impl KeyEvent {
     fn deserialize_seq_inner(
         keys: &str,
         mut current: Vec<KeyEvent>,
-    ) -> Result<KeyEventSeq, KeyEventError> {
+    ) -> Result<KeyEventSeq, CskkError> {
         let keys = keys.trim();
         if keys.is_empty() {
             return Ok(current);
@@ -195,7 +224,7 @@ impl KeyEvent {
                     Err(e) => Err(e),
                 }
             }
-            _ => Err(format!("Syntax error. keys: {}", keys)),
+            _ => Err(CskkError::Error(format!("Syntax error. keys: {}", keys))),
         }
     }
 
