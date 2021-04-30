@@ -234,8 +234,11 @@ mod tests {
     fn get_instruction() {
         let handler = DirectModeCommandHandler::test_handler();
 
-        let result =
-            handler.get_instruction(&CskkKeyEvent::from_str("b").unwrap(), &get_test_state(), false);
+        let result = handler.get_instruction(
+            &CskkKeyEvent::from_str("b").unwrap(),
+            &get_test_state(),
+            false,
+        );
         assert!(result.is_empty())
     }
 

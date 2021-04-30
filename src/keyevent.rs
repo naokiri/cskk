@@ -334,9 +334,18 @@ mod tests {
     #[test]
     fn deserialize_seq() {
         let result = CskkKeyEvent::deserialize_seq("a b c").unwrap();
-        assert_eq!(result.get(0).unwrap(), &CskkKeyEvent::from_str("a").unwrap());
-        assert_eq!(result.get(1).unwrap(), &CskkKeyEvent::from_str("b").unwrap());
-        assert_eq!(result.get(2).unwrap(), &CskkKeyEvent::from_str("c").unwrap());
+        assert_eq!(
+            result.get(0).unwrap(),
+            &CskkKeyEvent::from_str("a").unwrap()
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            &CskkKeyEvent::from_str("b").unwrap()
+        );
+        assert_eq!(
+            result.get(2).unwrap(),
+            &CskkKeyEvent::from_str("c").unwrap()
+        );
     }
 
     #[test]
