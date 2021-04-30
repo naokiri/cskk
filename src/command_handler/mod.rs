@@ -1,4 +1,4 @@
-use crate::keyevent::KeyEvent;
+use crate::keyevent::CskkKeyEvent;
 use crate::{CskkState, Instruction};
 
 pub mod direct_mode_command_handler;
@@ -13,10 +13,10 @@ pub(crate) trait CommandHandler {
     /// TODO: input_mode関連でcurrent_stateなしでは正しく返せない考慮漏れがあった。command_handler周辺は実際にlibで必要になったら書き直す必要があるかも。実際にlibで必要になるまで後回し。
     /// FIXME: Should this be in this trait?
     /// FIXME: get_instructionの配列長さで呼び出し側で置きかえていってしまっているので廃止するかも
-    fn can_process(&self, key_event: &KeyEvent) -> bool;
+    fn can_process(&self, key_event: &CskkKeyEvent) -> bool;
     fn get_instruction(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         current_state: &CskkState,
         is_delegated: bool,
     ) -> Vec<Instruction>;
@@ -26,14 +26,14 @@ impl<T> CommandHandler for &T
 where
     T: CommandHandler,
 {
-    fn can_process(&self, key_event: &KeyEvent) -> bool {
+    fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         (*self).can_process(key_event)
     }
 
     /// Only return instruction, never change state.
     fn get_instruction(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         current_state: &CskkState,
         is_delegated: bool,
     ) -> Vec<Instruction> {

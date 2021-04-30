@@ -1,7 +1,7 @@
 use xkbcommon::xkb;
 
 use crate::command_handler::CommandHandler;
-use crate::keyevent::{KeyEvent, SkkKeyModifier};
+use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::{CompositionMode, InputMode};
 use crate::{CskkState, Instruction};
 
@@ -16,14 +16,14 @@ impl KanaPrecompositionHandler {
 }
 
 impl CommandHandler for KanaPrecompositionHandler {
-    fn can_process(&self, key_event: &KeyEvent) -> bool {
+    fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         let symbol = key_event.get_symbol();
         xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
     }
 
     fn get_instruction(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         current_state: &CskkState,
         _is_delegated: bool,
     ) -> Vec<Instruction> {
@@ -124,14 +124,14 @@ mod tests {
     #[test]
     fn can_process_single() {
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.can_process(&KeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
         assert!(result);
     }
 
     #[test]
     fn can_process_intermediate() {
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.can_process(&KeyEvent::from_str("k").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("k").unwrap());
         assert!(result);
     }
 
@@ -140,7 +140,7 @@ mod tests {
         let handler = KanaPrecompositionHandler::test_handler();
 
         let result = handler.get_instruction(
-            &KeyEvent::from_str("space").unwrap(),
+            &CskkKeyEvent::from_str("space").unwrap(),
             &get_test_state(),
             false,
         );
@@ -160,7 +160,7 @@ mod tests {
         let mut test_state = get_test_state();
         test_state.raw_to_composite = "あ".to_string();
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.get_instruction(&KeyEvent::from_str("K").unwrap(), &test_state, false);
+        let result = handler.get_instruction(&CskkKeyEvent::from_str("K").unwrap(), &test_state, false);
         assert_eq!(
             Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::PreCompositionOkurigana,
