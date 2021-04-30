@@ -3,8 +3,8 @@ use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
-    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
-    CskkContext,
+    skk_context_reset_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
+    skk_file_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -247,6 +247,14 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
     Box::into_raw(Box::new(CskkKeyEvent::from_fcitx_keyevent(
         keysym, modifier, is_release,
     )))
+}
+
+///
+/// Reset the context. Doesn't change the inputmode and compositionmode but flushes all inputs.
+///
+#[no_mangle]
+pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
+    skk_context_reset_rs(context);
 }
 
 ///

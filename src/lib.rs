@@ -225,10 +225,7 @@ pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
 }
 
-/// テスト用途
-pub fn skk_context_reset(context: &mut CskkContext) {
-    // TODO: Flush all the state stack after implementing the register mode
-    // TODO: あとまわし。他のテストがこけはじめたらちゃんと実装する。
+pub fn skk_context_reset_rs(context: &mut CskkContext) {
     context.poll_output();
     context.reset_state_stack();
 }

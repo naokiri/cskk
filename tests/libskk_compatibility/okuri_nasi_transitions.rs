@@ -3,7 +3,7 @@
 //!
 
 use crate::utils::{default_test_context, transition_check};
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -18,7 +18,7 @@ fn okuri_nasi_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -28,7 +28,7 @@ fn okuri_nasi_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -38,7 +38,7 @@ fn okuri_nasi_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -48,7 +48,7 @@ fn okuri_nasi_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -72,7 +72,7 @@ fn okuri_nasi_transitions_all_capital() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -85,7 +85,7 @@ fn okuri_nasi_transitions_all_capital() {
 
     // TODO: Registration mode
     if false {
-        skk_context_reset(&mut context);
+        skk_context_reset_rs(&mut context);
         transition_check(
             &mut context,
             CompositionMode::Direct,
@@ -95,7 +95,7 @@ fn okuri_nasi_transitions_all_capital() {
             "",
             InputMode::Hiragana,
         );
-        skk_context_reset(&mut context);
+        skk_context_reset_rs(&mut context);
         transition_check(
             &mut context,
             CompositionMode::Direct,
@@ -120,7 +120,7 @@ fn okuri_nasi_transitions_kanjis() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -130,7 +130,7 @@ fn okuri_nasi_transitions_kanjis() {
         "漢字",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -154,7 +154,7 @@ fn okuri_nasi_transitions_other_inputmodes() {
         "",
         InputMode::HankakuKatakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -164,7 +164,7 @@ fn okuri_nasi_transitions_other_inputmodes() {
         "漢字",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
