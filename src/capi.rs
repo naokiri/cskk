@@ -1,5 +1,5 @@
 use crate::dictionary::CskkDictionary;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn skk_context_process_key_events(
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_process_key_event(
     context: &mut CskkContext,
-    keyevent: *mut KeyEvent,
+    keyevent: *mut CskkKeyEvent,
 ) -> bool {
     let raw_keyevent = Box::from_raw(keyevent);
     context.process_key_event(raw_keyevent.as_ref())
@@ -243,8 +243,8 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
     keysym: u32,
     modifier: u32,
     is_release: bool,
-) -> *mut KeyEvent {
-    Box::into_raw(Box::new(KeyEvent::from_fcitx_keyevent(
+) -> *mut CskkKeyEvent {
+    Box::into_raw(Box::new(CskkKeyEvent::from_fcitx_keyevent(
         keysym, modifier, is_release,
     )))
 }

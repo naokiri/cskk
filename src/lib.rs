@@ -26,7 +26,7 @@ use crate::dictionary::{CskkDictionary, Dictionary};
 use crate::kana_builder::KanaBuilder;
 use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
-use crate::keyevent::{KeyEvent, SkkKeyModifier};
+use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
 use crate::skk_modes::InputMode;
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
@@ -633,7 +633,7 @@ impl CskkContext {
     /// process that key event and change the internal states.
     /// if key_event is not processable by current CSKK state, then return false
     ///
-    pub fn process_key_event(&mut self, key_event: &KeyEvent) -> bool {
+    pub fn process_key_event(&mut self, key_event: &CskkKeyEvent) -> bool {
         self.process_key_event_inner(key_event, false)
     }
 
@@ -679,7 +679,7 @@ impl CskkContext {
     /// rom2kana継続可能 or ascii？ -yes-> 継続入力として処理
     /// rom2kana継続不可能 -all-> Flush後に入力として処理
     ///
-    fn process_key_event_inner(&mut self, key_event: &KeyEvent, is_delegated: bool) -> bool {
+    fn process_key_event_inner(&mut self, key_event: &CskkKeyEvent, is_delegated: bool) -> bool {
         //dbg!(key_event);
         let kana_converter = &self.kana_converter;
         let current_state = self.current_state_ref();
@@ -1073,7 +1073,7 @@ impl CskkContext {
     /// TODO: maybe not a proper impl for IM? can be replaced with just checking meta of keyevent?
     ///
     #[allow(dead_code)]
-    pub fn will_process(&self, key_event: &KeyEvent) -> bool {
+    pub fn will_process(&self, key_event: &CskkKeyEvent) -> bool {
         let current_state = self.current_state_ref();
         let handler = self.get_handler(&current_state.input_mode, &current_state.composition_mode);
         handler.can_process(key_event)
@@ -1096,7 +1096,7 @@ impl CskkContext {
 
     /// Mainly for test purpose, but exposed to test as library.
     fn process_key_events_string(&mut self, key_event_string: &str) -> bool {
-        self.process_key_events(&KeyEvent::deserialize_seq(key_event_string).unwrap())
+        self.process_key_events(&CskkKeyEvent::deserialize_seq(key_event_string).unwrap())
     }
 
     /// Mainly for test purpose, but exposed to test as library.
@@ -1262,9 +1262,9 @@ mod unit_tests {
     #[test]
     fn will_process() {
         let cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = KeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_str("a").unwrap();
         assert!(cskkcontext.will_process(&a));
-        let copy = KeyEvent::from_str("C-c").unwrap();
+        let copy = CskkKeyEvent::from_str("C-c").unwrap();
         assert!(!cskkcontext.will_process(&copy));
     }
 
@@ -1272,7 +1272,7 @@ mod unit_tests {
     fn process_key_event() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
 
-        let a = KeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_str("a").unwrap();
         let result = cskkcontext.process_key_event(&a);
         assert!(result);
     }
@@ -1280,7 +1280,7 @@ mod unit_tests {
     #[test]
     fn retrieve_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = KeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_str("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.retrieve_output(false).unwrap();
         assert_eq!("a", actual);
@@ -1293,7 +1293,7 @@ mod unit_tests {
     #[test]
     fn poll_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = KeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_str("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.poll_output().unwrap();
         assert_eq!("a", actual);
@@ -1304,7 +1304,7 @@ mod unit_tests {
     #[test]
     fn get_preedit() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let capital_a = KeyEvent::from_str("A").unwrap();
+        let capital_a = CskkKeyEvent::from_str("A").unwrap();
         cskkcontext.process_key_event(&capital_a);
         let actual = cskkcontext.get_preedit().expect(&format!(
             "No preedit. context: {:?}",

@@ -5,7 +5,7 @@ use xkbcommon::xkb;
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::dictentry::DictEntry;
 use crate::dictionary::{CskkDictionary, Dictionary};
-use crate::keyevent::{KeyEvent, SkkKeyModifier};
+use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 use crate::Instruction::ChangeCompositionMode;
 use crate::{CommandHandler, CskkState, Instruction};
@@ -130,7 +130,7 @@ impl KanaCompositionHandler {
 }
 
 impl CommandHandler for KanaCompositionHandler {
-    fn can_process(&self, key_event: &KeyEvent) -> bool {
+    fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         let symbol = key_event.get_symbol();
         (xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde)
             || symbol == xkb::keysyms::KEY_Return
@@ -138,7 +138,7 @@ impl CommandHandler for KanaCompositionHandler {
 
     fn get_instruction(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         current_state: &CskkState,
         is_delegated: bool,
     ) -> Vec<Instruction> {
@@ -224,7 +224,7 @@ mod tests {
         let dict =
             CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
         let handler = KanaCompositionHandler::test_handler(vec![dict]);
-        let result = handler.can_process(&KeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
         assert!(result);
     }
 }

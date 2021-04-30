@@ -1,7 +1,7 @@
 use xkbcommon::xkb;
 
 use crate::command_handler::CommandHandler;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::CskkKeyEvent;
 use crate::keyevent::SkkKeyModifier;
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode, InputMode};
 use crate::{CskkState, Instruction};
@@ -16,7 +16,7 @@ impl DirectModeCommandHandler {
 }
 
 impl CommandHandler for DirectModeCommandHandler {
-    fn can_process(&self, key_event: &KeyEvent) -> bool {
+    fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         let modifier = key_event.get_modifier();
         let symbol = key_event.get_symbol();
         if modifier.contains(SkkKeyModifier::CONTROL) {
@@ -44,7 +44,7 @@ impl CommandHandler for DirectModeCommandHandler {
 
     fn get_instruction(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         current_state: &CskkState,
         _is_delegated: bool,
     ) -> Vec<Instruction> {
@@ -202,14 +202,14 @@ mod tests {
     #[test]
     fn can_process_single() {
         let handler = DirectModeCommandHandler::test_handler();
-        let result = handler.can_process(&KeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
         assert!(result);
     }
 
     #[test]
     fn can_process_intermediate() {
         let handler = DirectModeCommandHandler::test_handler();
-        let result = handler.can_process(&KeyEvent::from_str("k").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("k").unwrap());
         assert!(result);
     }
 
@@ -217,16 +217,16 @@ mod tests {
     fn handler_works() {
         let handler = DirectModeCommandHandler::test_handler();
 
-        let result = handler.can_process(&KeyEvent::from_keysym(
+        let result = handler.can_process(&CskkKeyEvent::from_keysym(
             keysyms::KEY_apostrophe,
             SkkKeyModifier::NONE,
         ));
         assert!(result);
 
-        let result = handler.can_process(&KeyEvent::from_str("b").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("b").unwrap());
         assert!(result);
 
-        let result = handler.can_process(&KeyEvent::from_str("Y").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_str("Y").unwrap());
         assert!(result);
     }
 
@@ -234,8 +234,11 @@ mod tests {
     fn get_instruction() {
         let handler = DirectModeCommandHandler::test_handler();
 
-        let result =
-            handler.get_instruction(&KeyEvent::from_str("b").unwrap(), &get_test_state(), false);
+        let result = handler.get_instruction(
+            &CskkKeyEvent::from_str("b").unwrap(),
+            &get_test_state(),
+            false,
+        );
         assert!(result.is_empty())
     }
 
@@ -243,7 +246,7 @@ mod tests {
     fn switch_mode() {
         init();
         let handler = DirectModeCommandHandler::test_handler();
-        let key_event = KeyEvent::from_str("B").unwrap();
+        let key_event = CskkKeyEvent::from_str("B").unwrap();
         assert!(key_event.get_symbol() <= xkb::keysyms::KEY_asciitilde);
         assert!(xkb::keysyms::KEY_A <= key_event.get_symbol());
 

@@ -5,7 +5,7 @@ use std::io::Read;
 use sequence_trie::SequenceTrie;
 
 use crate::env::filepath_from_xdg_data_dir;
-use crate::keyevent::KeyEvent;
+use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::PeriodStyle;
 
 pub(crate) type Converted = String;
@@ -23,7 +23,7 @@ impl KanaBuilder {
     //!
 
     /// returns unprocessed vector appending the key_event
-    pub fn combined_key(key_event: &KeyEvent, unprocessed: &[char]) -> Vec<char> {
+    pub fn combined_key(key_event: &CskkKeyEvent, unprocessed: &[char]) -> Vec<char> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
 
@@ -73,13 +73,13 @@ impl KanaBuilder {
     // e.g.
     // k j -> false
     // t t -> true ('っt' として続けられるため)
-    pub fn can_continue(&self, key_event: &KeyEvent, unprocessed: &[char]) -> bool {
+    pub fn can_continue(&self, key_event: &CskkKeyEvent, unprocessed: &[char]) -> bool {
         self.get_node(key_event, unprocessed).is_some()
     }
 
     fn get_node(
         &self,
-        key_event: &KeyEvent,
+        key_event: &CskkKeyEvent,
         unprocessed: &[char],
     ) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
         let key = KanaBuilder::combined_key(key_event, unprocessed);
@@ -178,19 +178,19 @@ mod tests {
 
     #[test]
     fn combine_with_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&KeyEvent::from_str("a").unwrap(), &vec!['b']);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("a").unwrap(), &vec!['b']);
         assert_eq!(vec!['b', 'a'], next_key);
     }
 
     #[test]
     fn combine_no_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&KeyEvent::from_str("k").unwrap(), &vec![]);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("k").unwrap(), &vec![]);
         assert_eq!(vec!['k'], next_key);
     }
 
     #[test]
     fn combine_capital() {
-        let next_key = KanaBuilder::combined_key(&KeyEvent::from_str("B").unwrap(), &vec![]);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("B").unwrap(), &vec![]);
         assert_eq!(vec!['b'], next_key);
     }
 
@@ -235,7 +235,7 @@ mod tests {
     fn can_continue() {
         let converter = KanaBuilder::test_converter();
         let unprocessed = vec![];
-        let actual = converter.can_continue(&KeyEvent::from_str("Q").unwrap(), &unprocessed);
+        let actual = converter.can_continue(&CskkKeyEvent::from_str("Q").unwrap(), &unprocessed);
         assert_eq!(actual, false);
     }
 }

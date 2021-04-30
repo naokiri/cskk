@@ -16,7 +16,7 @@ int main() {
 
     context = skk_context_new(dict, 1);
     // 0x0061 = latin small a
-    KeyEvent *key_event = skk_key_event_new_from_fcitx_keyevent(0x0061, 0, false);
+    CskkKeyEvent *key_event = skk_key_event_new_from_fcitx_keyevent(0x0061, 0, false);
     bool retval = skk_context_process_key_event(context, key_event);
     assert(retval);
     char *output = skk_context_poll_output(context);
