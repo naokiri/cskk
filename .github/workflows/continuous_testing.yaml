@@ -83,12 +83,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --force cbindgen
+          args: cbindgen
       - name: Install cargo-c
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --force cargo-c
+          args: cargo-c
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
