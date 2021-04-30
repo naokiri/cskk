@@ -265,8 +265,12 @@ unsafe fn dictionaries_from_c_repr(
     dictionary_array: *const *mut CskkDictionary,
     dictionary_count: usize,
 ) -> Vec<CskkDictionary> {
-    let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
     let mut dict_array = vec![];
+    if dictionary_array.is_null() {
+        return dict_array;
+    }
+
+    let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
     for dictref in tmp_array {
         let cskkdict = *Box::from_raw(*dictref);
         dict_array.push(cskkdict);

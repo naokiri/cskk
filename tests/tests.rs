@@ -188,6 +188,20 @@ fn save_dict() {
 }
 
 #[test]
+fn empty_dict() {
+    let mut context = test_context_with_dictionaries(vec![]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space",
+        "▼あい【】",
+        "",
+        InputMode::Hiragana,
+    )
+}
+
+#[test]
 fn register_and_read() {
     let static_dict =
         CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));

@@ -3,10 +3,12 @@ use static_dict::StaticFileDict;
 use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
 use dictentry::DictEntry;
+use empty_dict::EmptyDictionary;
 use user_dictionary::UserDictionary;
 
 pub(crate) mod candidate;
 pub(crate) mod dictentry;
+pub mod empty_dict;
 pub(crate) mod file_dictionary;
 pub mod static_dict;
 pub mod user_dictionary;
@@ -16,6 +18,7 @@ pub mod user_dictionary;
 pub enum CskkDictionary {
     StaticFile(StaticFileDict),
     UserFile(UserDictionary),
+    EmptyDict(EmptyDictionary),
 }
 
 pub trait Dictionary {

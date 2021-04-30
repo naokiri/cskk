@@ -639,6 +639,7 @@ impl CskkContext {
             let result = match dictionary {
                 CskkDictionary::StaticFile(dictionary) => dictionary.save_dictionary(),
                 CskkDictionary::UserFile(dictionary) => dictionary.save_dictionary(),
+                CskkDictionary::EmptyDict(dictionary) => dictionary.save_dictionary(),
             };
             match result {
                 Ok(_) => {}
@@ -654,6 +655,7 @@ impl CskkContext {
             let result = match cskkdict {
                 CskkDictionary::StaticFile(ref mut dictionary) => dictionary.reload(),
                 CskkDictionary::UserFile(ref mut dictionary) => dictionary.reload(),
+                CskkDictionary::EmptyDict(_) => Ok(()),
             };
             match result {
                 Ok(_) => {}
