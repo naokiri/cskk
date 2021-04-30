@@ -35,6 +35,7 @@ impl KanaCompositionHandler {
             if let Some(dict_entry) = match dictionary {
                 CskkDictionary::StaticFile(dict) => dict.lookup(a, false),
                 CskkDictionary::UserFile(dict) => dict.lookup(a, false),
+                CskkDictionary::EmptyDict(dict) => dict.lookup(a, false),
             } {
                 return Some(dict_entry);
             }
@@ -58,6 +59,7 @@ impl KanaCompositionHandler {
             if let Ok(res) = match dictionary {
                 CskkDictionary::StaticFile(ref mut dict) => dict.select_candidate(&candidate),
                 CskkDictionary::UserFile(ref mut dict) => dict.select_candidate(&candidate),
+                CskkDictionary::EmptyDict(ref mut dict) => dict.select_candidate(&candidate),
             } {
                 if res {
                     result = res;
@@ -83,6 +85,7 @@ impl KanaCompositionHandler {
             if let Ok(res) = match dictionary {
                 CskkDictionary::StaticFile(ref mut dict) => dict.purge_candidate(&candidate),
                 CskkDictionary::UserFile(ref mut dict) => dict.purge_candidate(&candidate),
+                CskkDictionary::EmptyDict(ref mut dict) => dict.purge_candidate(&candidate),
             } {
                 if res {
                     result = res;
