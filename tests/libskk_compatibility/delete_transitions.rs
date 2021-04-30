@@ -2,7 +2,7 @@
 //! ueno/libskk_compatibility tests/basic.c delete_transitionsより
 //!
 use crate::utils::{default_test_context, transition_check};
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -17,7 +17,7 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -27,7 +27,7 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -37,7 +37,7 @@ fn delete_transitions() {
         "挨",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -47,7 +47,7 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -57,7 +57,7 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -67,7 +67,7 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -77,5 +77,5 @@ fn delete_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
 }

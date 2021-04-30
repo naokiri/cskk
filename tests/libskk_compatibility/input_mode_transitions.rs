@@ -3,7 +3,7 @@
 //!
 
 use crate::utils::{default_test_context, transition_check};
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -18,7 +18,7 @@ fn input_mode_transitions_hiragana() {
         "",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -28,7 +28,7 @@ fn input_mode_transitions_hiragana() {
         "",
         InputMode::HankakuKatakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -38,7 +38,7 @@ fn input_mode_transitions_hiragana() {
         "",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -48,7 +48,7 @@ fn input_mode_transitions_hiragana() {
         "",
         InputMode::Zenkaku,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -58,7 +58,7 @@ fn input_mode_transitions_hiragana() {
         "っ",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -68,7 +68,7 @@ fn input_mode_transitions_hiragana() {
         "Q",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -78,7 +78,7 @@ fn input_mode_transitions_hiragana() {
         "ん",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -103,7 +103,7 @@ fn input_mode_transition_katakana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -113,7 +113,7 @@ fn input_mode_transition_katakana() {
         "",
         InputMode::HankakuKatakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -123,7 +123,7 @@ fn input_mode_transition_katakana() {
         "",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -133,7 +133,7 @@ fn input_mode_transition_katakana() {
         "",
         InputMode::Zenkaku,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -158,7 +158,7 @@ fn input_mode_transition_hankakukatakana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -168,7 +168,7 @@ fn input_mode_transition_hankakukatakana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -178,7 +178,7 @@ fn input_mode_transition_hankakukatakana() {
         "",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,

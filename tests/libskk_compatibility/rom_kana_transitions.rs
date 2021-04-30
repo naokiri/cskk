@@ -3,7 +3,7 @@
 //!
 
 use crate::utils::{default_test_context, transition_check};
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -18,7 +18,7 @@ fn rom_kana_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -28,7 +28,7 @@ fn rom_kana_transitions_basic() {
         "か",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -38,7 +38,7 @@ fn rom_kana_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -48,7 +48,7 @@ fn rom_kana_transitions_basic() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -58,7 +58,7 @@ fn rom_kana_transitions_basic() {
         "みょ",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -68,7 +68,7 @@ fn rom_kana_transitions_basic() {
         "",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -78,7 +78,7 @@ fn rom_kana_transitions_basic() {
         "",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -88,7 +88,7 @@ fn rom_kana_transitions_basic() {
         "カ",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -98,7 +98,7 @@ fn rom_kana_transitions_basic() {
         "ン。",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn rom_kana_transitions_abort() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -151,7 +151,7 @@ fn rom_kana_transitions_kana_form_change_without_input_mode() {
         "アイ",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -175,7 +175,7 @@ fn rom_kana_conversion_longer_conversion() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -185,7 +185,7 @@ fn rom_kana_conversion_longer_conversion() {
         "ヴ",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -195,7 +195,7 @@ fn rom_kana_conversion_longer_conversion() {
         "",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -205,7 +205,7 @@ fn rom_kana_conversion_longer_conversion() {
         "",
         InputMode::Katakana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -229,7 +229,7 @@ fn rom_kana_transitions_with_inputs() {
         "ン",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -239,7 +239,7 @@ fn rom_kana_transitions_with_inputs() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,

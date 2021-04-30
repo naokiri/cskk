@@ -2,7 +2,7 @@
 //! ueno/libskk_compatibility tests/basic.c abort_transitionsより
 //!
 use crate::utils::{default_test_context, transition_check};
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -18,7 +18,7 @@ fn abort_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     // Back to preedit
     transition_check(
         &mut context,
@@ -29,7 +29,7 @@ fn abort_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -39,7 +39,7 @@ fn abort_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -49,7 +49,7 @@ fn abort_transitions() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,

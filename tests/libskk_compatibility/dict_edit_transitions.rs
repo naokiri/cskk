@@ -6,7 +6,7 @@ use crate::utils::{default_test_context, test_context_with_dictionaries, transit
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
-use cskk::skk_context_reset;
+use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
@@ -21,7 +21,7 @@ fn register_mode_transitions_hiragana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -31,7 +31,7 @@ fn register_mode_transitions_hiragana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -41,7 +41,7 @@ fn register_mode_transitions_hiragana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -51,7 +51,7 @@ fn register_mode_transitions_hiragana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn register_mode_transition_abort() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -108,7 +108,7 @@ fn register_mode_transitions_composition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -118,7 +118,7 @@ fn register_mode_transitions_composition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -128,7 +128,7 @@ fn register_mode_transitions_composition() {
         "下破",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -156,7 +156,7 @@ fn register_mode_purge_candidate() {
         "下破",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -166,7 +166,7 @@ fn register_mode_purge_candidate() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -176,7 +176,7 @@ fn register_mode_purge_candidate() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -214,7 +214,7 @@ fn register_mode_katakana() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -224,7 +224,7 @@ fn register_mode_katakana() {
         "",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     // C-m should be Return
     transition_check(
         &mut context,
@@ -235,7 +235,7 @@ fn register_mode_katakana() {
         "カタカナ",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -273,7 +273,7 @@ fn register_mode_input_modes_change() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,

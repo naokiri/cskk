@@ -7,7 +7,7 @@ use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{skk_context_reload_dictionary, skk_context_reset, skk_context_save_dictionaries_rs};
+use cskk::{skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs};
 
 #[test]
 fn basic_hiragana_input() {
@@ -202,7 +202,7 @@ fn register_and_read() {
         "愛",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -226,7 +226,7 @@ fn non_ascii_transition() {
         "+",
         InputMode::Ascii,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -236,7 +236,7 @@ fn non_ascii_transition() {
         "+",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -246,7 +246,7 @@ fn non_ascii_transition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
     // 現在のueno/libskk と差異がある部分？
     transition_check(
         &mut context,
@@ -271,5 +271,5 @@ fn capital_q_transition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset(&mut context);
+    skk_context_reset_rs(&mut context);
 }
