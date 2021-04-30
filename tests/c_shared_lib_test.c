@@ -22,5 +22,5 @@ int main() {
     char *output = skk_context_poll_output(context);
     printf("%s\n", output);
     skk_free_string(output);
-    skk_context_free(context);
+    skk_free_context(context);
 }
