@@ -631,6 +631,11 @@ impl CskkContext {
     /// if key_event is not processable by current CSKK state, then return false
     ///
     pub fn process_key_event(&mut self, key_event: &CskkKeyEvent) -> bool {
+        let modifier = key_event.get_modifier();
+        if modifier.contains(SkkKeyModifier::RELEASE) {
+            // TODO: from ueno/libskk's comment, returning false for all release might need to be reconsidered on dictionary editing.
+            return false;
+        }
         self.process_key_event_inner(key_event, false)
     }
 
