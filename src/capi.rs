@@ -100,13 +100,14 @@ pub unsafe extern "C" fn skk_context_process_key_events(
 }
 
 ///
-/// 1入力を処理する
+/// 1入力を処理する。CSKKコンテキスト内でキーが受理された場合はtrueを返す。
+/// CSKKでは入力としてもコマンドとしても受けつけられなかった場合はfalseを返す。
 ///
-/// keyeventは消費される。
+/// keyeventはfreeされる。
 ///
 /// # Safety
 /// context and keyevent must be a valid non-null pointer created from this library.
-/// keyevent must not be reused after this function call
+/// keyevent will be freed. keyevent must not be reused after this function call
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_process_key_event(
@@ -119,7 +120,8 @@ pub unsafe extern "C" fn skk_context_process_key_event(
 
 /// 現在のoutputをpollingする。
 ///
-/// RustでallocateされたUTF-8のバイト配列を返す
+/// RustでallocateされたCの文字列として扱える(=ヌル終端のある)UTF-8のバイト配列を返す。
+/// C++20のchar8_t*のようなもの。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
