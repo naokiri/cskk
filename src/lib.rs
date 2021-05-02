@@ -84,7 +84,7 @@ pub(crate) enum Instruction {
     // PreComposition時に一文字消去する。
     // ueno/libskk StartStateHandler のdelete時？
     DeletePrecomposition,
-    // Direct時に一文字消去する。
+    // Direct時に一文字消去する。消去可能時のみキー入力処理を終わる。
     // ueno/libskk NoneStateHandler のdelete時？
     DeleteDirect,
 }
@@ -418,13 +418,16 @@ impl CskkContext {
         }
     }
 
-    fn delete_direct(&mut self) {
+    fn delete_direct(&mut self) -> bool {
         let current_state = self.current_state();
         if !current_state.pre_conversion.is_empty() {
             current_state.pre_conversion.pop();
+            return true;
         } else if !current_state.confirmed.is_empty() {
             current_state.confirmed.pop();
+            return true;
         }
+        false
     }
 
     fn reset_unconverted(&mut self) {
@@ -850,7 +853,9 @@ impl CskkContext {
                     self.delete_precomposition();
                 }
                 Instruction::DeleteDirect => {
-                    self.delete_direct();
+                    if self.delete_direct() {
+                        return true;
+                    }
                 }
                 #[allow(unreachable_patterns)]
                 _ => {

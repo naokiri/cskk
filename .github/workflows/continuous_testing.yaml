@@ -77,9 +77,9 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/bin
+            ~/.cargo/.crates*
             target
-          key: ${{ runner.os }}-cargo-libtest-v2-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-libtest-v3-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
