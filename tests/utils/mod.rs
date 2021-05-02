@@ -54,7 +54,7 @@ pub fn test_context_with_dictionaries(dictionaries: Vec<CskkDictionary>) -> Cskk
     )
 }
 
-pub fn init_logger() {
+pub fn init_test_logger() {
     let _ = env_logger::builder()
         // Include all events in tests
         .filter_level(log::LevelFilter::max())

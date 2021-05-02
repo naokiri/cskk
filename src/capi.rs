@@ -146,6 +146,9 @@ pub extern "C" fn skk_context_set_period_style(
 }
 
 ///
+/// preedit文字列を返す。
+/// 返り値は\0終端のUTF-8文字配列。C++20で言うchar8_t*
+///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
 /// 返り値はcallerがskk_free_stringしないとメモリリークする。

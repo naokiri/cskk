@@ -139,18 +139,22 @@ impl CommandHandler for DirectModeCommandHandler {
             }
             xkb::keysyms::KEY_Return => {
                 instructions.push(Instruction::ConfirmDirect);
+                instructions.push(Instruction::FinishConsumingKeyEvent);
             }
             xkb::keysyms::KEY_m => {
                 if modifier.contains(SkkKeyModifier::CONTROL) {
-                    instructions.push(Instruction::ConfirmDirect)
+                    instructions.push(Instruction::ConfirmDirect);
+                    instructions.push(Instruction::FinishConsumingKeyEvent);
                 }
             }
             xkb::keysyms::KEY_BackSpace => {
                 instructions.push(Instruction::DeleteDirect);
+                instructions.push(Instruction::FinishConsumingKeyEvent);
             }
             xkb::keysyms::KEY_h | xkb::keysyms::KEY_H => {
                 if modifier.contains(SkkKeyModifier::CONTROL) {
                     instructions.push(Instruction::DeleteDirect);
+                    instructions.push(Instruction::FinishConsumingKeyEvent);
                 }
             }
             _ => {}

@@ -274,6 +274,7 @@ impl CskkContext {
     ///
     /// pollされていない入力を状態に応じて修飾して返す。
     /// preeditという名称はueno/libskkより。
+    /// TODO: 常に返るので、Optionである必要がなかった。caller側できちんとOption扱いするか、返り値の型を変えるか。
     ///
     pub fn get_preedit(&self) -> Option<String> {
         let mut result = String::new();
@@ -769,7 +770,7 @@ impl CskkContext {
 
         let mut must_delegate = false;
         for instruction in instructions {
-            debug!("{:?}", instruction);
+            debug!("{:?}", &instruction);
             match instruction {
                 Instruction::ChangeCompositionMode {
                     composition_mode,
@@ -853,14 +854,13 @@ impl CskkContext {
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
-                    debug!("unimplemented instruction: {}", instruction);
+                    debug!("unimplemented instruction: {}", &instruction);
                 }
             }
         }
         if must_delegate && is_delegated {
             // Delegated more than twice in commands. Something is wrong.
             // Return in odd state but better than infinte loop.
-            // dbg!(instructions);
             return false;
         }
         if must_delegate {
@@ -1107,13 +1107,12 @@ impl CskkContext {
     /// FIXME: Remove this clippy rule allow when parameterize on array length is stable in Rust. maybe 1.51?
     #[allow(clippy::ptr_arg)]
     fn process_key_events(&mut self, key_event_seq: &KeyEventSeq) -> bool {
-        // dbg!(key_event_seq);
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);
             if !processed {
-                // dbg!("Key event not processed", key_event);
+                debug!("Key event not processed: {:?}", key_event);
             }
-            //dbg!(&self.state_stack);
+            debug!("{:?}", &self.state_stack);
             //dbg!(self.current_state_ref());
         }
         true
@@ -1329,5 +1328,13 @@ mod unit_tests {
             cskkcontext.current_state_ref()
         ));
         assert_eq!("▼ほげ【あかs】", actual);
+    }
+
+    #[test]
+    fn process_backspace() {
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("BackSpace").unwrap());
+        assert!(actual);
     }
 }
