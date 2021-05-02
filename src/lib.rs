@@ -231,6 +231,7 @@ pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
 pub fn skk_context_reset_rs(context: &mut CskkContext) {
     context.poll_output();
     context.reset_state_stack();
+    context.set_composition_mode(CompositionMode::Direct);
 }
 
 /// テスト用途
