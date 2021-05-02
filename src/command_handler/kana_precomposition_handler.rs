@@ -87,6 +87,7 @@ impl CommandHandler for KanaPrecompositionHandler {
                 && (symbol == xkb::keysyms::KEY_h || symbol == xkb::keysyms::KEY_H))
         {
             instructions.push(Instruction::DeletePrecomposition);
+            instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if is_capital
             && symbol != xkb::keysyms::KEY_Q
             && current_state.composition_mode == CompositionMode::PreComposition
