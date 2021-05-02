@@ -2,7 +2,9 @@ extern crate cskk;
 
 mod utils;
 
-use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check, init_logger};
+use crate::utils::{
+    default_test_context, init_logger, test_context_with_dictionaries, transition_check,
+};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
