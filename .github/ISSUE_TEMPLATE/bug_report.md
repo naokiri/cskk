@@ -6,6 +6,10 @@ labels: ''
 assignees: ''
 
 ---
+日本語で書いてもらえると助かります。日本語へ機械翻訳するよりは英語で報告してもらえるとありがたいです。
+
+Japanese is recommended, but rather than using machine translation please write in English or your language translated to English. 
+
 
 **バグの簡潔な説明 Describe the bug**
 まず、簡潔な短文でバグ内容を説明してください。
