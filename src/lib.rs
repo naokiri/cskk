@@ -80,6 +80,7 @@ pub(crate) enum Instruction {
     ConfirmAsKatakana,
     #[allow(clippy::upper_case_acronyms)]
     ConfirmAsJISX0201,
+    // Direct時に確定する。辞書編集時は動作があるのでEnterをイベント消費するが、そうでない場合はcskkでイベントを消費しない。
     ConfirmDirect,
     // 現在の候補を辞書から消す
     Purge,
@@ -840,9 +841,11 @@ impl CskkContext {
                     self.set_composition_mode(CompositionMode::Direct);
                 }
                 Instruction::ConfirmDirect => {
-                    if self.state_stack.len() > 1 {
+                    return if self.state_stack.len() > 1 {
                         self.exit_register_mode(&self.current_state_ref().confirmed.to_owned());
-                        return true;
+                        true
+                    } else {
+                        false
                     }
                 }
                 Instruction::Purge => {
@@ -1303,10 +1306,9 @@ mod unit_tests {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
         let capital_a = CskkKeyEvent::from_str("A").unwrap();
         cskkcontext.process_key_event(&capital_a);
-        let actual = cskkcontext.get_preedit().expect(&format!(
-            "No preedit. context: {:?}",
-            cskkcontext.current_state_ref()
-        ));
+        let actual = cskkcontext.get_preedit().unwrap_or_else(|| {
+            panic!("No preedit. context: {:?}", cskkcontext.current_state_ref())
+        });
         assert_eq!("▽あ", actual);
     }
 
@@ -1317,10 +1319,9 @@ mod unit_tests {
         cskkcontext.enter_register_mode(CompositionMode::Direct);
         cskkcontext.append_converted("あか");
         cskkcontext.append_unconverted('s');
-        let actual = cskkcontext.get_preedit().expect(&format!(
-            "No preedit. context: {:?}",
-            cskkcontext.current_state_ref()
-        ));
+        let actual = cskkcontext.get_preedit().unwrap_or_else(|| {
+            panic!("No preedit. context: {:?}", cskkcontext.current_state_ref())
+        });
         assert_eq!("▼ほげ【あかs】", actual);
     }
 
@@ -1339,5 +1340,13 @@ mod unit_tests {
         cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
         let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("period").unwrap());
         assert!(actual);
+    }
+
+    #[test]
+    fn dont_process_return_in_direct() {
+        init_test_logger();
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("Return").unwrap());
+        assert!(!actual);
     }
 }
