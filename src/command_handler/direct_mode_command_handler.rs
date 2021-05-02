@@ -20,16 +20,19 @@ impl CommandHandler for DirectModeCommandHandler {
         let modifier = key_event.get_modifier();
         let symbol = key_event.get_symbol();
         if modifier.contains(SkkKeyModifier::CONTROL) {
-            return matches!(symbol, xkb::keysyms::KEY_l
-                | xkb::keysyms::KEY_L
-                | xkb::keysyms::KEY_q
-                | xkb::keysyms::KEY_Q
-                | xkb::keysyms::KEY_j
-                | xkb::keysyms::KEY_J
-                | xkb::keysyms::KEY_g
-                | xkb::keysyms::KEY_G
-                | xkb::keysyms::KEY_h
-                | xkb::keysyms::KEY_H);
+            return matches!(
+                symbol,
+                xkb::keysyms::KEY_l
+                    | xkb::keysyms::KEY_L
+                    | xkb::keysyms::KEY_q
+                    | xkb::keysyms::KEY_Q
+                    | xkb::keysyms::KEY_j
+                    | xkb::keysyms::KEY_J
+                    | xkb::keysyms::KEY_g
+                    | xkb::keysyms::KEY_G
+                    | xkb::keysyms::KEY_h
+                    | xkb::keysyms::KEY_H
+            );
         }
 
         xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
