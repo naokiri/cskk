@@ -13,6 +13,7 @@ capi = []
 
 [dependencies]
 log = "0.4"
+env_logger = "0.8"
 xkbcommon = "0.3"
 bitflags = "1.0.4"
 enum-display-derive = "0.1"

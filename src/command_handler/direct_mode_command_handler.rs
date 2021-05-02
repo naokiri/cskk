@@ -20,7 +20,7 @@ impl CommandHandler for DirectModeCommandHandler {
         let modifier = key_event.get_modifier();
         let symbol = key_event.get_symbol();
         if modifier.contains(SkkKeyModifier::CONTROL) {
-            match symbol {
+            return match symbol {
                 xkb::keysyms::KEY_l
                 | xkb::keysyms::KEY_L
                 | xkb::keysyms::KEY_q
@@ -30,13 +30,9 @@ impl CommandHandler for DirectModeCommandHandler {
                 | xkb::keysyms::KEY_g
                 | xkb::keysyms::KEY_G
                 | xkb::keysyms::KEY_h
-                | xkb::keysyms::KEY_H => {
-                    return true;
-                }
-                _ => {
-                    return false;
-                }
-            }
+                | xkb::keysyms::KEY_H => true,
+                _ => false,
+            };
         }
 
         xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
@@ -133,7 +129,8 @@ impl CommandHandler for DirectModeCommandHandler {
                 if has_rom2kana_conversion(
                     &current_state.input_mode,
                     &current_state.composition_mode,
-                ) {
+                ) && modifier.contains(SkkKeyModifier::CONTROL)
+                {
                     instructions.push(Instruction::FlushPreviousCarryOver);
                     // To abort from registration mode
                     instructions.push(Instruction::Abort);
