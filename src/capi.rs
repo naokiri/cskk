@@ -255,7 +255,7 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
 }
 
 ///
-/// Reset the context. Doesn't change the inputmode and compositionmode but flushes all inputs.
+/// Reset the context. Doesn't change the inputmode but flushes all inputs and compisitionmode will be reset to direct
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
