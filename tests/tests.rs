@@ -3,7 +3,7 @@ extern crate cskk;
 mod utils;
 
 use crate::utils::{
-    default_test_context, init_logger, test_context_with_dictionaries, transition_check,
+    default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
 };
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
@@ -292,7 +292,7 @@ fn capital_q_transition() {
 
 #[test]
 fn g_without_ctrl() {
-    init_logger();
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -303,5 +303,19 @@ fn g_without_ctrl() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset_rs(&mut context);
+}
+
+#[test]
+fn backspace_preedit() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "h y BackSpace",
+        "h",
+        "",
+        InputMode::Hiragana,
+    );
 }

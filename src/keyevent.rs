@@ -64,7 +64,7 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 /// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift"
 /// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 respectively
 /// KeyName := ↓
-/// https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h
+/// https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h
 /// https://xkbcommon.org/doc/current/xkbcommon_8h.html#a79e604a22703391bdfe212cfc10ea007
 ///
 /// e.g.
