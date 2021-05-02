@@ -684,7 +684,7 @@ impl CskkContext {
     /// rom2kana継続不可能 -all-> Flush後に入力として処理
     ///
     fn process_key_event_inner(&mut self, key_event: &CskkKeyEvent, is_delegated: bool) -> bool {
-        //dbg!(key_event);
+        debug!("Keyevent: {:?}", key_event);
         let kana_converter = &self.kana_converter;
         let current_state = self.current_state_ref();
         let initial_composition_mode = current_state.composition_mode;
@@ -769,7 +769,7 @@ impl CskkContext {
 
         let mut must_delegate = false;
         for instruction in instructions {
-            // dbg!(&instruction);
+            debug!("{:?}", instruction);
             match instruction {
                 Instruction::ChangeCompositionMode {
                     composition_mode,

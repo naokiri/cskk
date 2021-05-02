@@ -2,7 +2,9 @@ extern crate cskk;
 
 mod utils;
 
-use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check};
+use crate::utils::{
+    default_test_context, init_logger, test_context_with_dictionaries, transition_check,
+};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::CskkDictionary;
@@ -282,6 +284,22 @@ fn capital_q_transition() {
         InputMode::Hiragana,
         "A a Q",
         "▽ああ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
+
+#[test]
+fn g_without_ctrl() {
+    init_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "g",
+        "g",
         "",
         InputMode::Hiragana,
     );
