@@ -43,6 +43,8 @@ mod kana_builder;
 mod kana_form_changer;
 mod keyevent;
 pub mod skk_modes;
+#[cfg(test)]
+mod testhelper;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Instruction {
@@ -1049,8 +1051,8 @@ impl CskkContext {
                                                     return false;
                                                 }
                                             }
-                                            return true;
                                         }
+                                        return true;
                                     }
                                 }
                             }
@@ -1233,19 +1235,8 @@ impl CskkState {
 
 #[cfg(test)]
 mod unit_tests {
-    use std::sync::Once;
-
     use super::*;
-
-    pub static INIT_SYNC: Once = Once::new();
-
-    // TODO: setup proper debug log and move to lib test
-    #[allow(dead_code)]
-    fn init() {
-        INIT_SYNC.call_once(|| {
-            let _ = env_logger::init();
-        });
-    }
+    use crate::testhelper::init_test_logger;
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
         let dict = skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp");
@@ -1338,6 +1329,15 @@ mod unit_tests {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
         cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
         let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("BackSpace").unwrap());
+        assert!(actual);
+    }
+
+    #[test]
+    fn process_period() {
+        init_test_logger();
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("period").unwrap());
         assert!(actual);
     }
 }

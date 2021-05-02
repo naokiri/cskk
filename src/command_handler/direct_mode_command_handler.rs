@@ -187,12 +187,7 @@ mod tests {
     use crate::InputMode;
 
     use super::*;
-
-    fn init() {
-        crate::unit_tests::INIT_SYNC.call_once(|| {
-            let _ = env_logger::init();
-        });
-    }
+    use crate::testhelper::init_test_logger;
 
     fn get_test_state() -> CskkState {
         CskkState::new_test_state(InputMode::Hiragana, CompositionMode::Direct, vec![])
@@ -243,7 +238,7 @@ mod tests {
 
     #[test]
     fn switch_mode() {
-        init();
+        init_test_logger();
         let handler = DirectModeCommandHandler::test_handler();
         let key_event = CskkKeyEvent::from_str("B").unwrap();
         assert!(key_event.get_symbol() <= xkb::keysyms::KEY_asciitilde);
