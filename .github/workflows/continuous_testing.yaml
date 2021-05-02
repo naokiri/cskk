@@ -72,7 +72,8 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - uses: actions/cache@v2
+      - name: Restore cache
+        uses: actions/cache@v2
         with:
           path: |
             ~/.cargo/registry
@@ -81,6 +82,16 @@ jobs:
             ~/.cargo/bin
             target
           key: ${{ runner.os }}-cargo-libtest-v4-${{ hashFiles('**/Cargo.lock') }}
+      - name: Restore Homebrew cache (MacOS)
+        if: matrix.os == 'macOS-latest'
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/Library/Caches/Homebrew/xquartz--*
+            ~/Library/Caches/Homebrew/libxkbcommon--*
+            ~/Library/Caches/Homebrew/downloads/*--xquartz-*
+            ~/Library/Caches/Homebrew/downloads/*--libxkbcommon-*
+          key: brew-${{ hashFiles('.github/brew-formulae') }}
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
