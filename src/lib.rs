@@ -853,9 +853,7 @@ impl CskkContext {
                     self.delete_precomposition();
                 }
                 Instruction::DeleteDirect => {
-                    if self.delete_direct() {
-                        return true;
-                    }
+                    return self.delete_direct();
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
