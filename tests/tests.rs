@@ -306,7 +306,7 @@ fn g_without_ctrl() {
 }
 
 #[test]
-fn backspace_preedit() {
+fn backspace_direct_kanabuild() {
     init_test_logger();
     let mut context = default_test_context();
     transition_check(
@@ -315,6 +315,21 @@ fn backspace_preedit() {
         InputMode::Hiragana,
         "h y BackSpace",
         "h",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn backspace_precomposition() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i BackSpace",
+        "▽あ",
         "",
         InputMode::Hiragana,
     );
