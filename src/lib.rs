@@ -22,6 +22,7 @@ use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandl
 use crate::command_handler::CommandHandler;
 use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
+use crate::dictionary::user_dictionary::UserDictionary;
 use crate::dictionary::{CskkDictionary, Dictionary};
 use crate::kana_builder::KanaBuilder;
 use crate::kana_form_changer::KanaFormChanger;
@@ -193,6 +194,10 @@ impl CskkState {
 
 pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
     CskkDictionary::StaticFile(StaticFileDict::new(path_string, encoding))
+}
+
+pub fn skk_user_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
+    CskkDictionary::UserFile(UserDictionary::new(path_string, encoding))
 }
 
 pub fn skk_context_new_rs(dictionaries: Vec<CskkDictionary>) -> CskkContext {

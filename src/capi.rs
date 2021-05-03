@@ -4,7 +4,7 @@ use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
     skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
     skk_context_reset_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
-    skk_file_dict_new_rs, CskkContext,
+    skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -28,7 +28,7 @@ pub unsafe extern "C" fn skk_context_new(
 }
 
 ///
-/// Creates a skk file dict based on the path_string. Returns the pointer of it.
+/// Creates a skk static file dict based on the path_string. Returns the pointer of it.
 ///
 /// # Safety
 /// c_path_string and c_encoidng must be a valid c string that terminates with \0.
@@ -45,6 +45,29 @@ pub unsafe extern "C" fn skk_file_dict_new(
     let encoding = CStr::from_ptr(c_encoding);
 
     Box::into_raw(Box::new(skk_file_dict_new_rs(
+        path.to_str().unwrap(),
+        encoding.to_str().unwrap(),
+    )))
+}
+
+///
+/// Creates a skk read and write user dict based on the path_string. Returns the pointer of it.
+///
+/// # Safety
+/// c_path_string and c_encoidng must be a valid c string that terminates with \0.
+///
+/// Dictionary must be handled by a cskk context on creating a new context or registering later.
+/// If not, memory leaks.
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_user_dict_new(
+    c_path_string: *const c_char,
+    c_encoding: *const c_char,
+) -> *mut CskkDictionary {
+    let path = CStr::from_ptr(c_path_string);
+    let encoding = CStr::from_ptr(c_encoding);
+
+    Box::into_raw(Box::new(skk_user_dict_new_rs(
         path.to_str().unwrap(),
         encoding.to_str().unwrap(),
     )))
