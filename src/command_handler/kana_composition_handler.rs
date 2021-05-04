@@ -71,7 +71,6 @@ impl KanaCompositionHandler {
                 composition_mode: CompositionMode::Register,
                 delegate: false,
             });
-            instructions.push(Instruction::FinishConsumingKeyEvent);
         }
         instructions
     }
@@ -131,6 +130,7 @@ impl CommandHandler for KanaCompositionHandler {
             let raw_to_composite = &*current_state.raw_to_composite;
             let selection_pointer = current_state.selection_pointer;
             instructions.append(&mut self.indicate_candidate(raw_to_composite, selection_pointer));
+            instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {
             // 次の候補を返す
             let raw_to_composite = &*current_state.raw_to_composite;
@@ -138,6 +138,7 @@ impl CommandHandler for KanaCompositionHandler {
             instructions.push(Instruction::NextCandidatePointer);
             instructions
                 .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
+            instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)
             || (xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z)
             || symbol == xkb::keysyms::KEY_BackSpace
