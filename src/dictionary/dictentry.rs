@@ -1,7 +1,7 @@
 use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DictEntry {
     pub midashi: String,
     pub candidates: Vec<Candidate>,
@@ -28,7 +28,7 @@ impl DictEntry {
         &self.candidates
     }
 
-    pub fn from_skkjisyo_line(line: &str) -> Result<DictEntry, CskkError> {
+    pub fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
         let midashi = if let Some(midashi) = line.next() {
@@ -49,7 +49,7 @@ impl DictEntry {
                 }
             }
         }
-        Ok(DictEntry {
+        Ok(Self {
             midashi: midashi.to_string(),
             candidates: result,
         })

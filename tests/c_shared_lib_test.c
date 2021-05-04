@@ -10,7 +10,7 @@
  * TODO: Add a little bit more for examples to show
  */
 int main() {
-    CskkDictionary *dict[1];
+    CskkDictionaryFfi *dict[1];
     dict[0] = skk_file_dict_new("./tests/data/SKK-JISYO.S", "euc-jp");
     CskkContext *context;
 
@@ -22,5 +22,6 @@ int main() {
     char *output = skk_context_poll_output(context);
     printf("%s\n", output);
     skk_free_string(output);
+    skk_free_dictionary(dict[0]);
     skk_free_context(context);
 }

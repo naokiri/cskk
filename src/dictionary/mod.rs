@@ -4,6 +4,7 @@ use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
 use dictentry::DictEntry;
 use empty_dict::EmptyDictionary;
+use std::sync::{Arc, Mutex};
 use user_dictionary::UserDictionary;
 
 pub(crate) mod candidate;
@@ -15,10 +16,68 @@ pub mod user_dictionary;
 
 // C側に出す関係でSizedである必要があり、dyn Traitではなくenumでラップする。
 #[derive(Debug)]
-pub enum CskkDictionary {
+pub enum CskkDictionaryType {
     StaticFile(StaticFileDict),
     UserFile(UserDictionary),
     EmptyDict(EmptyDictionary),
+}
+
+pub type CskkDictionary = Mutex<CskkDictionaryType>;
+
+/// confirm the candidate.
+/// This updates writable dictionaries candidate order or add new entry which confirmed.
+/// Returns true if updated the dictionary.
+pub fn confirm_candidate(
+    dictionary: &mut Arc<CskkDictionary>,
+    midashi: &str,
+    okuri: bool,
+    kouho_text: &str,
+) -> Result<bool, CskkError> {
+    let candidate = Candidate::new(
+        Arc::new(midashi.to_string()),
+        okuri,
+        Arc::new(kouho_text.to_string()),
+        None,
+        None,
+    );
+
+    if let Ok(mut mut_dictionary) = dictionary.lock() {
+        return match *mut_dictionary {
+            CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(&candidate),
+            CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(&candidate),
+            CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(&candidate),
+        };
+    }
+    Ok(false)
+}
+//}
+
+/// purge the candidate.
+/// This updates writable dictionaries candidate order or add new entry which confirmed.
+/// Returns true if updated the dictionary.
+pub fn purge_candidate(
+    dictionary: &mut Arc<CskkDictionary>,
+    midashi: &str,
+    okuri: bool,
+    kouho_text: &str,
+) -> Result<bool, CskkError> {
+    let candidate = Candidate::new(
+        Arc::new(midashi.to_string()),
+        okuri,
+        Arc::new(kouho_text.to_string()),
+        None,
+        None,
+    );
+
+    if let Ok(mut mut_dictionary) = dictionary.lock() {
+        return match *mut_dictionary {
+            CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(&candidate),
+            CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(&candidate),
+            CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(&candidate),
+        };
+    }
+
+    Ok(false)
 }
 
 pub trait Dictionary {
