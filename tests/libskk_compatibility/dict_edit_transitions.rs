@@ -5,9 +5,10 @@
 use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
-use cskk::dictionary::CskkDictionary;
+use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
+use std::sync::Arc;
 
 #[test]
 fn register_mode_transitions_hiragana() {
@@ -94,10 +95,16 @@ fn register_mode_dont_register_empty() {
 
 #[test]
 fn register_mode_transitions_composition() {
-    let static_dict =
-        CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
-    let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
-    let mut context = test_context_with_dictionaries(vec![static_dict, user_dict]);
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/SKK-JISYO.S",
+        "euc-jp",
+    )));
+    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        "tests/data/empty.dat",
+        "utf-8",
+    )));
+    let mut context =
+        test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
 
     transition_check(
         &mut context,
@@ -142,10 +149,16 @@ fn register_mode_transitions_composition() {
 
 #[test]
 fn register_mode_purge_candidate() {
-    let static_dict =
-        CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
-    let user_dict = CskkDictionary::UserFile(UserDictionary::new("tests/data/empty.dat", "utf-8"));
-    let mut context = test_context_with_dictionaries(vec![static_dict, user_dict]);
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/SKK-JISYO.S",
+        "euc-jp",
+    )));
+    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        "tests/data/empty.dat",
+        "utf-8",
+    )));
+    let mut context =
+        test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
 
     transition_check(
         &mut context,

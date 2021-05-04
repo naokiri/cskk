@@ -1,4 +1,4 @@
-use crate::dictionary::CskkDictionary;
+use crate::dictionary::{CskkDictionary, CskkDictionaryType};
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{InputMode, PeriodStyle};
 use crate::{
@@ -10,6 +10,11 @@ use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::slice;
+use std::sync::{Arc, Mutex};
+
+pub struct CskkDictionaryFfi {
+    dictionary: Arc<Mutex<CskkDictionaryType>>,
+}
 
 /// Returns newly allocated CSKKContext.
 ///
@@ -20,7 +25,7 @@ use std::slice;
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_new(
-    dictionary_array: *const *mut CskkDictionary,
+    dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
 ) -> *mut CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
@@ -33,21 +38,23 @@ pub unsafe extern "C" fn skk_context_new(
 /// # Safety
 /// c_path_string and c_encoidng must be a valid c string that terminates with \0.
 ///
-/// Dictionary must be handled by a cskk context on creating a new context or registering later.
+/// Dictionary must be freed by skk_free_dictionary
 /// If not, memory leaks.
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_file_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *mut CskkDictionary {
+) -> *mut CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
-
-    Box::into_raw(Box::new(skk_file_dict_new_rs(
-        path.to_str().unwrap(),
-        encoding.to_str().unwrap(),
-    )))
+    let cskk_dictionary_ffi = CskkDictionaryFfi {
+        dictionary: Arc::new(skk_file_dict_new_rs(
+            path.to_str().unwrap(),
+            encoding.to_str().unwrap(),
+        )),
+    };
+    Box::into_raw(Box::new(cskk_dictionary_ffi))
 }
 
 ///
@@ -56,42 +63,24 @@ pub unsafe extern "C" fn skk_file_dict_new(
 /// # Safety
 /// c_path_string and c_encoidng must be a valid c string that terminates with \0.
 ///
-/// Dictionary must be handled by a cskk context on creating a new context or registering later.
+/// Dictionary must be freed by skk_free_dictionary
 /// If not, memory leaks.
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_user_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *mut CskkDictionary {
+) -> *mut CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
 
-    Box::into_raw(Box::new(skk_user_dict_new_rs(
-        path.to_str().unwrap(),
-        encoding.to_str().unwrap(),
-    )))
+    Box::into_raw(Box::new(CskkDictionaryFfi {
+        dictionary: Arc::new(skk_user_dict_new_rs(
+            path.to_str().unwrap(),
+            encoding.to_str().unwrap(),
+        )),
+    }))
 }
-
-// /// Reset the context
-// #[no_mangle]
-// pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
-//     // TODO: Flush all the state stack after implementing the register mode
-//     // TODO: あとまわし。他のテストがこけはじめたらちゃんと実装する。
-//     context.poll_output();
-//     context.reset_state_stack();
-// }
-
-// /// テスト用途。composition modeを設定する。
-// /// 他のステートとの整合性は無視される。
-// #[no_mangle]
-// pub extern "C" fn skk_context_set_composition_mode(
-//     context: &mut CskkContext,
-//     composition_mode: CompositionMode,
-// ) {
-//     context.set_composition_mode(composition_mode)
-// }
-//
 
 ///
 /// Set the input mode of current state.
@@ -109,7 +98,7 @@ pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> Input
     skk_context_get_input_mode_rs(context)
 }
 
-/// Library test purpose
+/// Only for library test purpose. Do not use.
 /// # Safety
 ///
 /// This function must be called by a valid C string terminated by a NULL.
@@ -224,6 +213,21 @@ pub unsafe extern "C" fn skk_free_context(context_ptr: *mut CskkContext) {
 }
 
 ///
+/// CskkDictionaryを解放する。
+///
+/// # Safety
+///
+/// context_ptr は必ずCskkDictionaryのポインタでなければならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_dictionary(context_ptr: *mut CskkDictionaryFfi) {
+    if context_ptr.is_null() {
+        return;
+    }
+    Box::from_raw(context_ptr);
+}
+
+///
 /// Get emphasizing range of preedit.
 /// offset: starting offset (in UTF-8 chars) of underline
 /// nchars: number of characters to be underlined
@@ -250,7 +254,7 @@ pub unsafe extern "C" fn skk_context_get_preedit_underline(
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_set_dictionaries(
     context: &mut CskkContext,
-    dictionary_array: *const *mut CskkDictionary,
+    dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
 ) {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
@@ -290,9 +294,9 @@ pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
 ///
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
 unsafe fn dictionaries_from_c_repr(
-    dictionary_array: *const *mut CskkDictionary,
+    dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
-) -> Vec<CskkDictionary> {
+) -> Vec<Arc<CskkDictionary>> {
     let mut dict_array = vec![];
     if dictionary_array.is_null() {
         return dict_array;
@@ -300,8 +304,9 @@ unsafe fn dictionaries_from_c_repr(
 
     let tmp_array = slice::from_raw_parts(dictionary_array, dictionary_count);
     for dictref in tmp_array {
-        let cskkdict = *Box::from_raw(*dictref);
-        dict_array.push(cskkdict);
+        let cskkdict = Box::from_raw(*dictref);
+        dict_array.push(cskkdict.dictionary.clone());
+        Box::into_raw(cskkdict);
     }
     dict_array
 }

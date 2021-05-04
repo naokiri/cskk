@@ -20,10 +20,13 @@ use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandle
 use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::command_handler::CommandHandler;
+
 use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
 use crate::dictionary::user_dictionary::UserDictionary;
-use crate::dictionary::{CskkDictionary, Dictionary};
+use crate::dictionary::{
+    confirm_candidate, purge_candidate, CskkDictionary, CskkDictionaryType, Dictionary,
+};
 use crate::kana_builder::KanaBuilder;
 use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
@@ -32,6 +35,8 @@ use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
 use crate::skk_modes::InputMode;
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use log::warn;
+
+use std::sync::Arc;
 use xkbcommon::xkb;
 
 #[cfg(feature = "capi")]
@@ -104,6 +109,7 @@ pub struct CskkContext {
     kana_composition_handler: KanaCompositionHandler,
     kana_converter: Box<KanaBuilder>,
     kana_form_changer: KanaFormChanger,
+    dictionaries: Vec<Arc<CskkDictionary>>,
 }
 
 /// Rough prototype yet.
@@ -193,14 +199,20 @@ impl CskkState {
 }
 
 pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::StaticFile(StaticFileDict::new(path_string, encoding))
+    CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        path_string,
+        encoding,
+    )))
 }
 
 pub fn skk_user_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::UserFile(UserDictionary::new(path_string, encoding))
+    CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        path_string,
+        encoding,
+    )))
 }
 
-pub fn skk_context_new_rs(dictionaries: Vec<CskkDictionary>) -> CskkContext {
+pub fn skk_context_new_rs(dictionaries: Vec<Arc<CskkDictionary>>) -> CskkContext {
     CskkContext::new(InputMode::Hiragana, CompositionMode::Direct, dictionaries)
 }
 
@@ -267,7 +279,7 @@ pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
 
 pub fn skk_context_set_dictionaries_rs(
     context: &mut CskkContext,
-    dictionaries: Vec<CskkDictionary>,
+    dictionaries: Vec<Arc<CskkDictionary>>,
 ) {
     context.set_dictionaries(dictionaries);
 }
@@ -461,26 +473,28 @@ impl CskkContext {
         current_state.composited_okuri = okuri;
     }
 
+    #[allow(unused_must_use)]
     fn purge_current_composition_candidate(&mut self) {
         let composited_kanji = self.current_state_ref().composited_kanji.to_owned();
         let raw_to_composite = self.current_state_ref().raw_to_composite.to_owned();
-        self.kana_composition_handler.purge_candidate(
-            &raw_to_composite,
-            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
-            &composited_kanji,
-        );
+
+        let has_okuri = !self.current_state_ref().converted_kana_to_okuri.is_empty();
+        for cskkdict in self.dictionaries.iter_mut() {
+            purge_candidate(cskkdict, &raw_to_composite, has_okuri, &composited_kanji);
+        }
 
         self.reset_current_state();
     }
 
+    #[allow(unused_must_use)]
     fn confirm_current_composition_candidate(&mut self) {
         let composited_kanji = self.current_state_ref().composited_kanji.to_owned();
         let raw_to_composite = self.current_state_ref().raw_to_composite.to_owned();
-        self.kana_composition_handler.confirm_candidate(
-            &raw_to_composite,
-            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
-            &composited_kanji,
-        );
+
+        let has_okuri = !self.current_state_ref().converted_kana_to_okuri.is_empty();
+        for cskkdict in self.dictionaries.iter_mut() {
+            confirm_candidate(cskkdict, &raw_to_composite, has_okuri, &composited_kanji);
+        }
 
         let composited_okuri = &self.current_state_ref().composited_okuri;
         let composited_kanji_okuri = composited_kanji + composited_okuri;
@@ -653,39 +667,45 @@ impl CskkContext {
     }
 
     pub fn save_dictionary(&mut self) {
-        for dictionary in self.kana_composition_handler.get_dictionaries() {
-            let result = match dictionary {
-                CskkDictionary::StaticFile(dictionary) => dictionary.save_dictionary(),
-                CskkDictionary::UserFile(dictionary) => dictionary.save_dictionary(),
-                CskkDictionary::EmptyDict(dictionary) => dictionary.save_dictionary(),
-            };
-            match result {
-                Ok(_) => {}
-                Err(error) => {
-                    warn!("{}", &error.to_string());
+        for cskkdict in &self.dictionaries {
+            if let Ok(lock) = cskkdict.lock() {
+                let result = match &*lock {
+                    CskkDictionaryType::StaticFile(dictionary) => dictionary.save_dictionary(),
+                    CskkDictionaryType::UserFile(dictionary) => dictionary.save_dictionary(),
+                    CskkDictionaryType::EmptyDict(dictionary) => dictionary.save_dictionary(),
+                };
+                match result {
+                    Ok(_) => {}
+                    Err(error) => {
+                        warn!("{}", &error.to_string());
+                    }
                 }
             }
         }
     }
 
     pub fn reload_dictionary(&mut self) {
-        for cskkdict in self.kana_composition_handler.get_dictionaries() {
-            let result = match cskkdict {
-                CskkDictionary::StaticFile(ref mut dictionary) => dictionary.reload(),
-                CskkDictionary::UserFile(ref mut dictionary) => dictionary.reload(),
-                CskkDictionary::EmptyDict(_) => Ok(()),
-            };
-            match result {
-                Ok(_) => {}
-                Err(error) => {
-                    warn!("{}", &error.to_string());
+        for cskkdict in &self.dictionaries {
+            if let Ok(mut lock) = cskkdict.lock() {
+                let result = match *lock {
+                    CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.reload(),
+                    CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.reload(),
+                    CskkDictionaryType::EmptyDict(_) => Ok(()),
+                };
+                match result {
+                    Ok(_) => {}
+                    Err(error) => {
+                        warn!("{}", &error.to_string());
+                    }
                 }
             }
         }
     }
 
-    pub fn set_dictionaries(&mut self, dictionaries: Vec<CskkDictionary>) {
-        self.kana_composition_handler = KanaCompositionHandler::new(dictionaries);
+    pub fn set_dictionaries(&mut self, dicts: Vec<Arc<CskkDictionary>>) {
+        self.kana_composition_handler
+            .set_dictionaries(dicts.clone());
+        self.dictionaries = dicts;
     }
 
     // FIXME: まだ良いルールが把握できていない中でインクリメンタルに機能を追加しているのでぐちゃぐちゃ。一通り機能ができてバグ修正できたらリファクタリング
@@ -1097,11 +1117,11 @@ impl CskkContext {
         handler.can_process(key_event)
     }
 
-    fn get_handler<'a>(
-        &'a self,
+    fn get_handler<'b>(
+        &'b self,
         _input_mode: &InputMode,
         composition_mode: &CompositionMode,
-    ) -> Box<dyn CommandHandler + 'a> {
+    ) -> Box<dyn CommandHandler + 'b> {
         // FIXME: this _ => default handler looks error prone
         match composition_mode {
             CompositionMode::Direct => Box::new(&self.direct_handler),
@@ -1135,11 +1155,11 @@ impl CskkContext {
     pub fn new(
         input_mode: InputMode,
         composition_mode: CompositionMode,
-        dictionaries: Vec<CskkDictionary>,
+        dictionaries: Vec<Arc<CskkDictionary>>,
     ) -> Self {
         let kana_direct_handler = DirectModeCommandHandler::new();
         let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(dictionaries);
+        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::default_converter());
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
@@ -1150,6 +1170,7 @@ impl CskkContext {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::default_kanaform_changer(),
+            dictionaries,
         }
     }
 
@@ -1157,13 +1178,13 @@ impl CskkContext {
     pub fn new_from_shared_files(
         input_mode: InputMode,
         composition_mode: CompositionMode,
-        dictionaries: Vec<CskkDictionary>,
+        dictionaries: Vec<Arc<CskkDictionary>>,
         kana_converter_filepath: &str,
         kana_form_changer_filepath: &str,
     ) -> Self {
         let kana_direct_handler = DirectModeCommandHandler::new();
         let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(dictionaries);
+        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::converter_from_file(kana_converter_filepath));
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
@@ -1174,6 +1195,7 @@ impl CskkContext {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::from_file(kana_form_changer_filepath),
+            dictionaries,
         }
     }
 }
@@ -1248,10 +1270,11 @@ mod unit_tests {
     use crate::testhelper::init_test_logger;
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
-        let dict = skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp");
+        let dict = Arc::new(skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp"));
+        let dictionaries = vec![dict];
         let kana_direct_handler = DirectModeCommandHandler::new();
         let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(vec![dict]);
+        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::test_converter());
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
@@ -1262,6 +1285,7 @@ mod unit_tests {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::test_kana_form_changer(),
+            dictionaries,
         }
     }
 

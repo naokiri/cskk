@@ -65,6 +65,7 @@ To generate the C ABI library,
 
 ```shell
     cargo cbuild 
+    cp target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
     $(CC) tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o tests/lib_test
     LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
 ```

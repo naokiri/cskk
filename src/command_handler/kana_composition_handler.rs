@@ -4,12 +4,11 @@ use xkbcommon::xkb;
 
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::dictentry::DictEntry;
-use crate::dictionary::{CskkDictionary, Dictionary};
+use crate::dictionary::{CskkDictionary, CskkDictionaryType, Dictionary};
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 use crate::Instruction::ChangeCompositionMode;
 use crate::{CommandHandler, CskkState, Instruction};
-use std::slice::IterMut;
 use std::sync::Arc;
 
 ///
@@ -17,98 +16,45 @@ use std::sync::Arc;
 ///
 #[derive(Debug)]
 pub struct KanaCompositionHandler {
-    dictionaries: Vec<CskkDictionary>,
+    // mut ref to purge/confirm candidate in this handler. Might be strange to have in here since it's only about dictionary change and not about composition...
+    dictionaries: Vec<Arc<CskkDictionary>>,
 }
 
 impl KanaCompositionHandler {
-    pub fn new(dictionaries: Vec<CskkDictionary>) -> Self {
+    pub fn new(dictionaries: Vec<Arc<CskkDictionary>>) -> Self {
         KanaCompositionHandler { dictionaries }
     }
 
-    pub fn get_dictionaries(&mut self) -> IterMut<'_, CskkDictionary> {
-        self.dictionaries.iter_mut()
+    pub fn set_dictionaries(&mut self, dictionaries: Vec<Arc<CskkDictionary>>) {
+        self.dictionaries = dictionaries;
     }
 
     // dictionary list order search, dedupe by kouho and add to list and return all candidates
-    fn get_all_candidates(&self, a: &str) -> Option<&DictEntry> {
-        for dictionary in self.dictionaries.iter() {
-            if let Some(dict_entry) = match dictionary {
-                CskkDictionary::StaticFile(dict) => dict.lookup(a, false),
-                CskkDictionary::UserFile(dict) => dict.lookup(a, false),
-                CskkDictionary::EmptyDict(dict) => dict.lookup(a, false),
-            } {
-                return Some(dict_entry);
+    fn get_all_candidates(&self, a: &str) -> Option<DictEntry> {
+        for cskkdict in self.dictionaries.iter() {
+            if let Ok(lock) = cskkdict.lock() {
+                if let Some(dict_entry) = match &*lock {
+                    CskkDictionaryType::StaticFile(dict) => dict.lookup(a, false),
+                    CskkDictionaryType::UserFile(dict) => dict.lookup(a, false),
+                    CskkDictionaryType::EmptyDict(dict) => dict.lookup(a, false),
+                } {
+                    return Some((*dict_entry).clone());
+                }
             }
         }
         None
-    }
-
-    /// confirm the candidate.
-    /// This updates writable dictionaries candidate order or add new entry which confirmed.
-    /// Returns true if updated any dictionary.
-    pub fn confirm_candidate(&mut self, midashi: &str, okuri: bool, kouho_text: &str) -> bool {
-        let mut result = false;
-        let candidate = Candidate::new(
-            Arc::new(midashi.to_string()),
-            okuri,
-            Arc::new(kouho_text.to_string()),
-            None,
-            None,
-        );
-        for dictionary in self.dictionaries.iter_mut() {
-            if let Ok(res) = match dictionary {
-                CskkDictionary::StaticFile(ref mut dict) => dict.select_candidate(&candidate),
-                CskkDictionary::UserFile(ref mut dict) => dict.select_candidate(&candidate),
-                CskkDictionary::EmptyDict(ref mut dict) => dict.select_candidate(&candidate),
-            } {
-                if res {
-                    result = res;
-                }
-            }
-        }
-        result
-    }
-
-    /// purge the candidate.
-    /// This updates writable dictionaries candidate order or add new entry which confirmed.
-    /// Returns true if updated any dictionary.
-    pub fn purge_candidate(&mut self, midashi: &str, okuri: bool, kouho_text: &str) -> bool {
-        let mut result = false;
-        let candidate = Candidate::new(
-            Arc::new(midashi.to_string()),
-            okuri,
-            Arc::new(kouho_text.to_string()),
-            None,
-            None,
-        );
-        for dictionary in self.dictionaries.iter_mut() {
-            if let Ok(res) = match dictionary {
-                CskkDictionary::StaticFile(ref mut dict) => dict.purge_candidate(&candidate),
-                CskkDictionary::UserFile(ref mut dict) => dict.purge_candidate(&candidate),
-                CskkDictionary::EmptyDict(ref mut dict) => dict.purge_candidate(&candidate),
-            } {
-                if res {
-                    result = res;
-                }
-            }
-        }
-        result
     }
 
     ///
     /// Returns the nth candidate.
     /// first selection_pointer == 0
     ///
-    fn get_nth_candidate(
-        &self,
-        to_composite: &str,
-        selection_pointer: usize,
-    ) -> Option<&Candidate> {
+    fn get_nth_candidate(&self, to_composite: &str, selection_pointer: usize) -> Option<Candidate> {
         let dict_entry = self.get_all_candidates(to_composite);
 
         if let Some(entry) = dict_entry {
             let candidates = entry.get_candidates();
-            candidates.get(selection_pointer)
+            candidates.get(selection_pointer).cloned()
         } else {
             None
         }
@@ -212,7 +158,7 @@ impl CommandHandler for KanaCompositionHandler {
 
 #[cfg(test)]
 impl KanaCompositionHandler {
-    fn test_handler(dictionaries: Vec<CskkDictionary>) -> Self {
+    fn test_handler(dictionaries: Vec<Arc<CskkDictionary>>) -> Self {
         KanaCompositionHandler { dictionaries }
     }
 }
@@ -224,9 +170,11 @@ mod tests {
 
     #[test]
     fn can_process_single() {
-        let dict =
-            CskkDictionary::StaticFile(StaticFileDict::new("tests/data/SKK-JISYO.S", "euc-jp"));
-        let handler = KanaCompositionHandler::test_handler(vec![dict]);
+        let dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+            "tests/data/SKK-JISYO.S",
+            "euc-jp",
+        )));
+        let handler = KanaCompositionHandler::test_handler(vec![Arc::new(dict)]);
         let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
         assert!(result);
     }
