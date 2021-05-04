@@ -15,6 +15,7 @@ int main() {
     CskkContext *context;
 
     context = skk_context_new(dict, 1);
+    //context = skk_context_new(NULL, 0);
     // 0x0061 = latin small a
     CskkKeyEvent *key_event = skk_key_event_new_from_fcitx_keyevent(0x0061, 0, false);
     bool retval = skk_context_process_key_event(context, key_event);

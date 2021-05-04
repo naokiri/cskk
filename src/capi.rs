@@ -298,7 +298,7 @@ unsafe fn dictionaries_from_c_repr(
     dictionary_count: usize,
 ) -> Vec<Arc<CskkDictionary>> {
     let mut dict_array = vec![];
-    if dictionary_array.is_null() {
+    if dictionary_count < 1 || dictionary_array.is_null() {
         return dict_array;
     }
 
