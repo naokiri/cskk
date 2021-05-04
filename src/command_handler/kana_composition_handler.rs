@@ -16,7 +16,6 @@ use std::sync::Arc;
 ///
 #[derive(Debug)]
 pub struct KanaCompositionHandler {
-    // mut ref to purge/confirm candidate in this handler. Might be strange to have in here since it's only about dictionary change and not about composition...
     dictionaries: Vec<Arc<CskkDictionary>>,
 }
 
