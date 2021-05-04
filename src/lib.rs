@@ -1117,11 +1117,11 @@ impl CskkContext {
         handler.can_process(key_event)
     }
 
-    fn get_handler<'b>(
-        &'b self,
+    fn get_handler<'a>(
+        &'a self,
         _input_mode: &InputMode,
         composition_mode: &CompositionMode,
-    ) -> Box<dyn CommandHandler + 'b> {
+    ) -> Box<dyn CommandHandler + 'a> {
         // FIXME: this _ => default handler looks error prone
         match composition_mode {
             CompositionMode::Direct => Box::new(&self.direct_handler),

@@ -28,13 +28,6 @@ impl DictEntry {
         &self.candidates
     }
 
-    pub fn from_dictentry(entry: &DictEntry) -> Self {
-        Self {
-            midashi: entry.midashi.clone(),
-            candidates: entry.candidates.clone(),
-        }
-    }
-
     pub fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
         let mut result = Vec::new();
         let mut line = line.trim().split(' ');
