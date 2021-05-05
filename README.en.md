@@ -45,7 +45,7 @@ Run
 ```
 
 To install to non-standard directories, append following options like this. See
-cargo-c (https://github.com/lu-zero/cargo-c) for details.
+[cargo-c](https://github.com/lu-zero/cargo-c)  for details.
 
 ```shell
     cargo cinstall --release --prefix=/usr --includedir=/tmp/other/place

@@ -47,7 +47,7 @@ Ubuntu等では以下のコマンドでインストール
 ```
 
 標準的なパス以外にインストールする場合は、以下のような引数を与える。
-詳細はcargo-c (https://github.com/lu-zero/cargo-c)を参照のこと。
+詳細は [cargo-c](https://github.com/lu-zero/cargo-c) を参照のこと。
 
 ```shell
     cargo cinstall --release --prefix=/usr --includedir=/tmp/other/place
