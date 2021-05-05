@@ -2,9 +2,7 @@ use std::fmt::Debug;
 
 use xkbcommon::xkb;
 
-use crate::dictionary::candidate::Candidate;
-use crate::dictionary::dictentry::DictEntry;
-use crate::dictionary::{CskkDictionary, CskkDictionaryType, Dictionary};
+use crate::dictionary::CskkDictionary;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
 use crate::Instruction::ChangeCompositionMode;
@@ -26,53 +24,6 @@ impl KanaCompositionHandler {
 
     pub fn set_dictionaries(&mut self, dictionaries: Vec<Arc<CskkDictionary>>) {
         self.dictionaries = dictionaries;
-    }
-
-    // dictionary list order search, dedupe by kouho and add to list and return all candidates
-    fn get_all_candidates(&self, a: &str) -> Option<DictEntry> {
-        for cskkdict in self.dictionaries.iter() {
-            if let Ok(lock) = cskkdict.lock() {
-                if let Some(dict_entry) = match &*lock {
-                    CskkDictionaryType::StaticFile(dict) => dict.lookup(a, false),
-                    CskkDictionaryType::UserFile(dict) => dict.lookup(a, false),
-                    CskkDictionaryType::EmptyDict(dict) => dict.lookup(a, false),
-                } {
-                    return Some((*dict_entry).clone());
-                }
-            }
-        }
-        None
-    }
-
-    ///
-    /// Returns the nth candidate.
-    /// first selection_pointer == 0
-    ///
-    fn get_nth_candidate(&self, to_composite: &str, selection_pointer: usize) -> Option<Candidate> {
-        let dict_entry = self.get_all_candidates(to_composite);
-
-        if let Some(entry) = dict_entry {
-            let candidates = entry.get_candidates();
-            candidates.get(selection_pointer).cloned()
-        } else {
-            None
-        }
-    }
-
-    /// instruction to inidicate the candidate at the pointer.
-    fn indicate_candidate(&self, to_composite: &str, selection_pointer: usize) -> Vec<Instruction> {
-        let mut instructions = vec![];
-        if let Some(candidate) = self.get_nth_candidate(to_composite, selection_pointer) {
-            instructions.push(Instruction::SetComposition {
-                kanji: candidate.kouho_text.to_string(),
-            });
-        } else {
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Register,
-                delegate: false,
-            });
-        }
-        instructions
     }
 }
 
@@ -127,17 +78,30 @@ impl CommandHandler for KanaCompositionHandler {
             });
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if is_delegated {
-            let raw_to_composite = &*current_state.raw_to_composite;
-            let selection_pointer = current_state.selection_pointer;
-            instructions.append(&mut self.indicate_candidate(raw_to_composite, selection_pointer));
+            let current_composition = current_state.candidate_list.get_current_to_composite();
+            let raw_to_composite = &current_state.raw_to_composite;
+            if !current_composition.eq(raw_to_composite) {
+                instructions.push(Instruction::UpdateCandidateList)
+            }
+            // let selection_pointer = current_state.selection_pointer;
+            // instructions.append(&mut self.indicate_candidate(raw_to_composite, selection_pointer));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {
-            // 次の候補を返す
-            let raw_to_composite = &*current_state.raw_to_composite;
-            let selection_pointer = current_state.selection_pointer;
+            // 次の候補に進む
+            let raw_to_composite = &current_state.raw_to_composite;
+            let current_composition = current_state.candidate_list.get_current_to_composite();
+            //let selection_pointer = current_state.selection_pointer;
+            if !current_composition.eq(raw_to_composite) {
+                instructions.push(Instruction::UpdateCandidateList)
+            }
             instructions.push(Instruction::NextCandidatePointer);
-            instructions
-                .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
+            // instructions
+            //     .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
+            instructions.push(Instruction::FinishConsumingKeyEvent);
+        } else if symbol == xkb::keysyms::KEY_x {
+            instructions.push(Instruction::PreviousCandidatePointer);
+            // instructions
+            //     .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)
             || (xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z)
@@ -167,6 +131,7 @@ impl KanaCompositionHandler {
 mod tests {
     use super::*;
     use crate::dictionary::static_dict::StaticFileDict;
+    use crate::dictionary::CskkDictionaryType;
 
     #[test]
     fn can_process_single() {

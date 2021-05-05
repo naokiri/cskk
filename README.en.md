@@ -99,8 +99,8 @@ To generate the C ABI library,
 
 ### C FFI + IME plugin
 
-- [ ] C ABI library for fcitx5-skk
-  https://github.com/naokiri/fcitx5-skk 参照。
+- [x] C ABI library for fcitx5-skk
+  Reference https://github.com/naokiri/fcitx5-cskk
 
 ### Better development env, publish env
 

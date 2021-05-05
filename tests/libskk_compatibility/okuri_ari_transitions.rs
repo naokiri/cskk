@@ -2,12 +2,13 @@
 //! ueno/libskk_compatibility tests/basic.c okuri_ari_transitionsより
 //!
 
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
 fn basic() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,

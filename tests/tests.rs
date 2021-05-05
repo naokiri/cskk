@@ -297,7 +297,6 @@ fn capital_q_transition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset_rs(&mut context);
 }
 
 #[test]
@@ -340,6 +339,31 @@ fn backspace_precomposition() {
         InputMode::Hiragana,
         "A i BackSpace",
         "▽あ",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn previous_candidate() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space x",
+        "▼愛",
         "",
         InputMode::Hiragana,
     );
