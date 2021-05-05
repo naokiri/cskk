@@ -1,23 +1,22 @@
+
+
 # LibCSKK
 
-[![Build Status](https://travis-ci.com/naokiri/cskk.svg?branch=master)](https://travis-ci.com/naokiri/cskk)
-[![Build Status](https://github.com/naokiri/cskk/workflows/Test/badge.svg)](https://github.com/naokiri/cskk/actions)
-[English](https://github.com/naokiri/cskk/README.en.md)
+Cobalt SKK library.
 
-Cobalt SKK ライブラリ.
+CSKK is a library to implement Simple Kana-Kanji henkan.
 
-CSKK はSKK(Simple Kana Kanji 変換)用ライブラリです。
-CSKKはSKKと外延的に同値であるため、こう名付けられました。
+Of course, this library is named as 'CSKK' because it is extensionally equal to SKK.
 
-参考
+Reference
 - ddskk: http://openlab.ring.gr.jp/skk/ddskk.html
 - libskk: https://github.com/ueno/libskk
 
-## 必要ライブラリ類
+## Build requirement
 
 - libxkbcommon
 
-Ubuntu等では以下のコマンドでインストール
+In Ubuntu e.g.
 
 ```shell
     sudo apt install libxkbcommon-dev
@@ -35,9 +34,9 @@ Ubuntu等では以下のコマンドでインストール
     cargo install --force cargo-c
 ```
 
-## インストール方法
+## Install
 
-以下を実行する
+Run
 
 ```shell
     cargo cinstall --release
@@ -45,23 +44,23 @@ Ubuntu等では以下のコマンドでインストール
     cp -r ./shared/* ~/.local/share/libcskk
 ```
 
-標準的なパス以外にインストールする場合は、以下のような引数を与える。
-詳細はcargo-c (https://github.com/lu-zero/cargo-c)を参照のこと。
+To install to non-standard directories, append following options like this. See
+cargo-c (https://github.com/lu-zero/cargo-c) for details.
 
 ```shell
     cargo cinstall --release --prefix=/usr --includedir=/tmp/other/place
 ```
 
-- prefix: libdir, includedir, pkgconfigdir 共通接頭部分。デフォルトは '/usr/local'
-- libdir: ライブラリインストール先。デフォルトは '/lib'
-- includedir: ヘッダファイルイストール先。デフォルトは '/include'
-- pkgconfigdir: pkg-config用の.pcファイルインストール先。デフォルトは '/lib/pkgconfig'
+- prefix: Prefix appended to the default libdir, includedir, and pkgconfigdir. Default is '/usr/local'
+- libdir: Directory to install the library. Default is '/lib'
+- includedir: Directory to install the header file. Default is '/include'
+- pkgconfigdir: Direcotry to install the .pc file for pkg-config. Default is '/lib/pkgconfig'
 
-## 開発者向け
+## Develop
 
-開発中の確認は主に`cargo build` と `cargo test`でできるようにしています。 
+`cargo build` and `cargo test` shall be enough for most of the development.
 
-C ABI ライブラリを確認する場合、以下のような手作業です。
+To generate the C ABI library,
 
 ```shell
     cargo cbuild 
@@ -70,9 +69,9 @@ C ABI ライブラリを確認する場合、以下のような手作業です�
     LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
 ```
 
-## 開発状況
+## Development status
 
-### 基本機能・DDSKKの機能
+### Simulating DDSKK feature
 
 - [x] ひらがな入力
 - [x] カタカナ入力・カタカナモード
@@ -92,7 +91,7 @@ C ABI ライブラリを確認する場合、以下のような手作業です�
     - [ ] SKK辞書サーバー対応
     - [ ] 外部辞書
 
-## ueno/libskk の機能
+## Simulating ueno/libskk feature
 
 - [ ] 句読点設定
 - [ ] AZIK rule
@@ -100,15 +99,15 @@ C ABI ライブラリを確認する場合、以下のような手作業です�
 
 ### C FFI + IME plugin
 
-- [x] C ABI library for fcitx5-skk
-  最低限のみ。https://github.com/naokiri/fcitx5-skk 参照。
+- [ ] C ABI library for fcitx5-skk
+  https://github.com/naokiri/fcitx5-skk 参照。
 
-### 開発環境・デプロイ環境
+### Better development env, publish env
 
 - [ ] github projects board や issue にこれらのリストを移す
 - [ ] changelog
 
-## 著作権表示
+## Copyright
 
 Copyright (C) 2018 Naoaki Iwakiri
 
