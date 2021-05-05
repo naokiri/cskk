@@ -4,6 +4,7 @@ use crate::command_handler::CommandHandler;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::{CompositionMode, InputMode};
 use crate::{CskkState, Instruction};
+use log::error;
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
@@ -77,6 +78,29 @@ impl CommandHandler for KanaPrecompositionHandler {
         } else if symbol == xkb::keysyms::KEY_g && modifier.contains(SkkKeyModifier::CONTROL) {
             // C-g
             instructions.push(Instruction::FlushPreviousCarryOver);
+            instructions.push(Instruction::ChangeCompositionMode {
+                composition_mode: CompositionMode::Direct,
+                delegate: false,
+            });
+            instructions.push(Instruction::FinishConsumingKeyEvent);
+        } else if symbol == xkb::keysyms::KEY_j && modifier.contains(SkkKeyModifier::CONTROL) {
+            instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
+            instructions.push(Instruction::FlushPreviousCarryOver);
+            match current_input_mode {
+                InputMode::Hiragana => {
+                    instructions.push(Instruction::ConfirmAsHiragana);
+                }
+                InputMode::Katakana => {
+                    instructions.push(Instruction::ConfirmAsKatakana);
+                }
+                InputMode::HankakuKatakana => {
+                    instructions.push(Instruction::ConfirmAsJISX0201);
+                }
+                _ => {
+                    error!("Should never reach here. Ctrl+j in precomposition mode when inputmode should not have composition.");
+                }
+            }
+
             instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::Direct,
                 delegate: false,

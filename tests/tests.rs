@@ -378,3 +378,29 @@ fn previous_candidate() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn kakutei_with_ctrl_j() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i C-j",
+        "",
+        "あい",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    // ueno/libskkと動作が違う部分
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i n C-j",
+        "",
+        "あいん",
+        InputMode::Hiragana,
+    );
+}
