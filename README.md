@@ -102,7 +102,7 @@ C ABI ライブラリを確認する場合、以下のような手作業です�
 ### C FFI + IME plugin
 
 - [x] C ABI library for fcitx5-skk
-  最低限のみ。https://github.com/naokiri/fcitx5-skk 参照。
+  最低限のみ。https://github.com/naokiri/fcitx5-cskk 参照。
 
 ### 開発環境・デプロイ環境
 
