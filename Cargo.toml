@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 license = "GPL-3.0-or-later"
 edition = "2018"
+readme = "README.md"
+description = "C ABIから使う事を目的とした SKK(Simple Kana Kanji henkan)方式のかな漢字変換ライブラリ"
+repository = "https://github.com/naokiri/cskk"
+categories = ["internationalization", "text-processing"]
 
 [lib]
 crate-type = ["cdylib", "lib"]
