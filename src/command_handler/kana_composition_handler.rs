@@ -5,7 +5,6 @@ use xkbcommon::xkb;
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode;
-use crate::Instruction::ChangeCompositionMode;
 use crate::{CommandHandler, CskkState, Instruction};
 use std::sync::Arc;
 
@@ -65,7 +64,7 @@ impl CommandHandler for KanaCompositionHandler {
         {
             // Abort
             instructions.push(Instruction::Abort);
-            instructions.push(ChangeCompositionMode {
+            instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::PreComposition,
                 delegate: false,
             });
@@ -83,25 +82,38 @@ impl CommandHandler for KanaCompositionHandler {
             if !current_composition.eq(raw_to_composite) {
                 instructions.push(Instruction::UpdateCandidateList)
             }
-            // let selection_pointer = current_state.selection_pointer;
-            // instructions.append(&mut self.indicate_candidate(raw_to_composite, selection_pointer));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {
             // 次の候補に進む
             let raw_to_composite = &current_state.raw_to_composite;
+            let candidate_list = &current_state.candidate_list;
             let current_composition = current_state.candidate_list.get_current_to_composite();
-            //let selection_pointer = current_state.selection_pointer;
             if !current_composition.eq(raw_to_composite) {
-                instructions.push(Instruction::UpdateCandidateList)
+                instructions.push(Instruction::UpdateCandidateList);
+            } else if candidate_list.has_next() {
+                instructions.push(Instruction::NextCandidatePointer);
+            } else {
+                instructions.push(Instruction::ChangeCompositionMode {
+                    composition_mode: CompositionMode::Register,
+                    delegate: false,
+                })
             }
-            instructions.push(Instruction::NextCandidatePointer);
-            // instructions
-            //     .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_x {
-            instructions.push(Instruction::PreviousCandidatePointer);
-            // instructions
-            //     .append(&mut self.indicate_candidate(raw_to_composite, selection_pointer + 1));
+            let raw_to_composite = &current_state.raw_to_composite;
+            let candidate_list = &current_state.candidate_list;
+            let current_composition = current_state.candidate_list.get_current_to_composite();
+            if !current_composition.eq(raw_to_composite) {
+                instructions.push(Instruction::UpdateCandidateList);
+            } else if candidate_list.has_previous() {
+                instructions.push(Instruction::PreviousCandidatePointer);
+            } else {
+                instructions.push(Instruction::Abort);
+                instructions.push(Instruction::ChangeCompositionMode {
+                    composition_mode: CompositionMode::PreComposition,
+                    delegate: false,
+                });
+            }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if !is_delegated && (xkb::keysyms::KEY_a <= symbol && symbol <= xkb::keysyms::KEY_z)
             || (xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z)
@@ -110,7 +122,7 @@ impl CommandHandler for KanaCompositionHandler {
             // 現在の変換で確定させ、次のモードでキー入力を処理させる。 "I s i space k" の kのような時。
             // 後続で入力として処理させるので、Finishしない。
             instructions.push(Instruction::ConfirmComposition);
-            instructions.push(ChangeCompositionMode {
+            instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::Direct,
                 delegate: true,
             });

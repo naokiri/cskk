@@ -1,12 +1,13 @@
 //!
 //! ueno/libskk_compatibility tests/basic.c abort_transitionsより
 //!
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
 #[test]
 fn abort_transitions() {
+    init_test_logger();
     let mut context = default_test_context();
     // Back to selection
     transition_check(

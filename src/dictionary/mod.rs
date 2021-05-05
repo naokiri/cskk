@@ -64,7 +64,7 @@ pub(crate) fn purge_candidate(
 /// 現在ueno/libskk同様にDedupはkouho_textのみ、候補の順序はdictの順番通り。
 /// annotationについては特に決めていないが、現在のところsortの仕様により先の候補が優先される。
 pub(crate) fn get_all_candidates(
-    dictionaries: &Vec<Arc<CskkDictionary>>,
+    dictionaries: &[Arc<CskkDictionary>],
     raw_to_composite: &str,
 ) -> Vec<Candidate> {
     let mut deduped_candidates = vec![];
@@ -114,7 +114,7 @@ pub(crate) fn get_all_candidates(
 ///
 #[allow(dead_code)]
 pub(crate) fn get_nth_candidate(
-    dictionaries: &Vec<Arc<CskkDictionary>>,
+    dictionaries: &[Arc<CskkDictionary>],
     to_composite: &str,
     selection_pointer: usize,
 ) -> Option<Candidate> {

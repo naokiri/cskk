@@ -367,4 +367,14 @@ fn previous_candidate() {
         "",
         InputMode::Hiragana,
     );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space x x",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
 }

@@ -32,8 +32,8 @@ use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use log::debug;
 use log::warn;
 use std::fmt;
-use std::fmt::Display;
 use std::fmt::Formatter;
+use std::fmt::{Debug, Display};
 use std::iter::FromIterator;
 use std::sync::Arc;
 use xkbcommon::xkb;
@@ -458,13 +458,11 @@ impl CskkContext {
         current_state.pre_conversion = unconv.to_owned();
     }
 
-    #[allow(unused_must_use)]
     fn next_candidate(&mut self) {
         let current_state = self.current_state();
         current_state.candidate_list.forward_candidate();
     }
 
-    #[allow(unused_must_use)]
     fn previous_candidate(&mut self) {
         let current_state = self.current_state();
         current_state.candidate_list.backward_candidate();
@@ -473,7 +471,9 @@ impl CskkContext {
     fn set_new_candidate(&mut self, new_candidate_kanji: &str) {
         let current_state = self.current_state();
         let okuri = current_state.converted_kana_to_okuri.to_owned();
-        current_state.candidate_list.set_new_candidate(new_candidate_kanji, !okuri.is_empty());
+        current_state
+            .candidate_list
+            .set_new_candidate(new_candidate_kanji, !okuri.is_empty());
         current_state.composited_okuri = okuri;
     }
 
@@ -852,6 +852,11 @@ impl CskkContext {
                 }
                 Instruction::UpdateCandidateList => {
                     self.update_candidate_list();
+                    if self.current_state_ref().candidate_list.is_empty() {
+                        // Directly change to Register mode ignoring current composition mode.
+                        let previous_mode = self.current_state_ref().previous_composition_mode;
+                        self.enter_register_mode(previous_mode);
+                    }
                 }
                 Instruction::Abort => {
                     // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
@@ -1164,7 +1169,6 @@ impl CskkContext {
                 debug!("Key event not processed: {:?}", key_event);
             }
             debug!("{:?}", &self.state_stack);
-            //dbg!(self.current_state_ref());
         }
         true
     }
@@ -1221,9 +1225,6 @@ impl Display for Instruction {
     #[allow(unused_must_use)]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            //            Instruction::Abort => {
-            //                writeln!(f, "Abort")
-            //            }
             Instruction::ChangeCompositionMode {
                 composition_mode,
                 delegate,
@@ -1243,12 +1244,12 @@ impl Display for CskkState {
         writeln!(
             f,
             r#"{{
-            {:?}
-            {:?}
-            confirmed: {}"#,
+    inputmode: {:?}
+    compositionmode: {:?}
+    confirmed: {}"#,
             self.input_mode, self.composition_mode, self.confirmed
         );
-        write!(f, "            unconverted:");
+        write!(f, "    unconverted:");
         for c in self.pre_conversion.to_vec() {
             write!(f, "{}", c);
         }

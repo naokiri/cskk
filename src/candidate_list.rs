@@ -53,24 +53,41 @@ impl CandidateList {
         self.selection_pointer = self.composition_candidates.len() - 1;
     }
 
-    #[allow(clippy::unnecessary_wraps)]
-    pub(crate) fn forward_candidate(&mut self) -> Result<bool, CskkError> {
-        // TODO: more than 1 for paging
-        // TODO: boundary check
-        self.selection_pointer += 1;
-        Ok(true)
+    pub(crate) fn is_empty(&self) -> bool {
+        self.composition_candidates.is_empty()
     }
 
-    #[allow(clippy::unnecessary_wraps)]
-    pub(crate) fn backward_candidate(&mut self) -> Result<bool, CskkError> {
+    pub(crate) fn has_previous(&self) -> bool {
+        self.selection_pointer != 0
+    }
+
+    pub(crate) fn has_next(&self) -> bool {
+        self.selection_pointer != self.composition_candidates.len() - 1
+    }
+
+    pub(crate) fn forward_candidate(&mut self) -> bool {
         // TODO: more than 1 for paging
-        // TODO: boundary check
-        self.selection_pointer -= 1;
-        Ok(true)
+        if self.selection_pointer < self.composition_candidates.len() - 1 {
+            self.selection_pointer += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn backward_candidate(&mut self) -> bool {
+        // TODO: more than 1 for paging
+        if self.selection_pointer > 0 {
+            self.selection_pointer -= 1;
+            true
+        } else {
+            false
+        }
     }
 
     pub(crate) fn reset(&mut self) {
-        // Probably doesn't harm to store to_composite and list.
         self.selection_pointer = 0;
+        self.composition_candidates.clear();
+        self.to_composite.clear();
     }
 }
