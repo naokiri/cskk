@@ -9,12 +9,13 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
+#[cfg(test)]
 use crate::candidate_list::CandidateList;
 use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
 use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::command_handler::CommandHandler;
-use crate::dictionary::candidate::Candidate;
+use crate::cskkstate::CskkState;
 use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
 use crate::dictionary::user_dictionary::UserDictionary;
@@ -34,7 +35,6 @@ use log::warn;
 use std::fmt;
 use std::fmt::Formatter;
 use std::fmt::{Debug, Display};
-use std::iter::FromIterator;
 use std::sync::Arc;
 use xkbcommon::xkb;
 
@@ -42,6 +42,7 @@ mod candidate_list;
 #[cfg(feature = "capi")]
 pub mod capi;
 mod command_handler;
+mod cskkstate;
 pub mod dictionary;
 mod env;
 pub mod error;
@@ -110,89 +111,6 @@ pub struct CskkContext {
     kana_converter: Box<KanaBuilder>,
     kana_form_changer: KanaFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
-}
-
-/// Rough prototype yet.
-///
-#[derive(Debug)]
-struct CskkState {
-    input_mode: InputMode,
-    composition_mode: CompositionMode,
-    // 直前のCompositionMode。Abort時に元に戻すmode。
-    previous_composition_mode: CompositionMode,
-    // 入力文字で、かな確定済みでないものすべて
-    pre_conversion: Vec<char>,
-    // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。送りあり変換時には加えてconverted_kana_to_okuriの一文字目の子音や'>'付き。Abbrebiation変換の場合kana-convertされる前の入力など
-    raw_to_composite: String,
-    // 未確定入力をInputモードにあわせてかな変換したもののうち、漢字の読み部分。convertがあるInputMode時のみ使用
-    converted_kana_to_composite: String,
-    // 未確定入力をInputモードにあわせてかな変換したもののうち、おくり仮名部分。convertがあるInputMode時のみ使用
-    converted_kana_to_okuri: String,
-    // 現在の変換候補リスト
-    candidate_list: CandidateList,
-    // 入力を漢字変換した現在の選択肢の送り仮名部分。 TODO: 保持せずにconverted_kana_to_okuriで良い？
-    composited_okuri: String,
-    // 確定済み入力列。pollされた時に渡してflushされるもの。
-    confirmed: String,
-}
-
-impl CskkState {
-    pub fn new(input_mode: InputMode, composition_mode: CompositionMode) -> Self {
-        CskkState {
-            input_mode,
-            composition_mode,
-            previous_composition_mode: composition_mode,
-            pre_conversion: vec![],
-            raw_to_composite: "".to_string(),
-            converted_kana_to_composite: "".to_string(),
-            converted_kana_to_okuri: "".to_string(),
-            composited_okuri: "".to_string(),
-            confirmed: "".to_string(),
-            candidate_list: CandidateList::new(),
-        }
-    }
-
-    fn preedit_string(&self) -> String {
-        let converted = &self.confirmed;
-        let unconverted = &self.pre_conversion;
-        let kana_to_composite = &self.converted_kana_to_composite;
-        let kana_to_okuri = &self.converted_kana_to_okuri;
-        let current_candidate = self.candidate_list.get_current_candidate();
-        let fallback_candidate = Candidate::default();
-        let composited = &current_candidate.unwrap_or(&fallback_candidate).kouho_text;
-        let composited_okuri = &self.composited_okuri;
-
-        match self.composition_mode {
-            CompositionMode::Direct => {
-                converted.to_owned() + &String::from_iter(unconverted.iter())
-            }
-            CompositionMode::PreComposition => {
-                "▽".to_owned()
-                    + converted
-                    + kana_to_composite
-                    + &String::from_iter(unconverted.iter())
-            }
-            CompositionMode::PreCompositionOkurigana => {
-                "▽".to_owned()
-                    + converted
-                    + kana_to_composite
-                    + "*"
-                    + kana_to_okuri
-                    + &String::from_iter(unconverted.iter())
-            }
-            CompositionMode::CompositionSelection => "▼".to_owned() + composited + composited_okuri,
-            CompositionMode::Register => {
-                if kana_to_okuri.is_empty() {
-                    "▼".to_string() + kana_to_composite
-                } else {
-                    "▼".to_string() + kana_to_composite + "*" + kana_to_okuri
-                }
-            }
-            CompositionMode::Abbreviation => {
-                "Abbreviaton mode. detail not implemented.".to_string()
-            }
-        }
-    }
 }
 
 pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
