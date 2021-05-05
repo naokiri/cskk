@@ -2,7 +2,8 @@
 
 [![Build Status](https://travis-ci.com/naokiri/cskk.svg?branch=master)](https://travis-ci.com/naokiri/cskk)
 [![Build Status](https://github.com/naokiri/cskk/workflows/Test/badge.svg)](https://github.com/naokiri/cskk/actions)
-[English](https://github.com/naokiri/cskk/README.en.md)
+
+[English version](https://github.com/naokiri/cskk/blob/master/README.en.md)
 
 Cobalt SKK ライブラリ.
 
