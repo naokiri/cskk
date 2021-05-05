@@ -62,6 +62,7 @@ pub(crate) enum Instruction {
     #[allow(clippy::upper_case_acronyms)]
     OutputNNIfAny(InputMode),
     FlushPreviousCarryOver,
+    FlushConvertedKana,
     // Aborts if empty after flush. flush条件用に必要？
     // AbortIfEmptyKanaToConvert,
     ChangeCompositionMode {
@@ -775,6 +776,9 @@ impl CskkContext {
                         let previous_mode = self.current_state_ref().previous_composition_mode;
                         self.enter_register_mode(previous_mode);
                     }
+                }
+                Instruction::FlushConvertedKana => {
+                    self.reset_converted_kanas();
                 }
                 Instruction::Abort => {
                     // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？

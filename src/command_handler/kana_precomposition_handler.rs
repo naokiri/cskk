@@ -78,12 +78,14 @@ impl CommandHandler for KanaPrecompositionHandler {
         } else if symbol == xkb::keysyms::KEY_g && modifier.contains(SkkKeyModifier::CONTROL) {
             // C-g
             instructions.push(Instruction::FlushPreviousCarryOver);
+            instructions.push(Instruction::FlushConvertedKana);
             instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::Direct,
                 delegate: false,
             });
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_j && modifier.contains(SkkKeyModifier::CONTROL) {
+            // C-j
             instructions.push(Instruction::OutputNNIfAny(current_state.input_mode));
             instructions.push(Instruction::FlushPreviousCarryOver);
             match current_input_mode {

@@ -404,3 +404,18 @@ fn kakutei_with_ctrl_j() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn reset_precomposition_on_ctrl_g() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i C-g A i",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+}
