@@ -121,7 +121,9 @@ impl CommandHandler for DirectModeCommandHandler {
                             instructions.push(Instruction::ChangeInputMode(InputMode::Hiragana));
                             instructions.push(Instruction::FinishConsumingKeyEvent);
                         }
-                        _ => {}
+                        _ => {
+                            instructions.push(Instruction::FinishConsumingKeyEvent);
+                        }
                     }
                 }
             }
@@ -250,5 +252,14 @@ mod tests {
             },
             result[0]
         );
+    }
+
+    #[test]
+    fn consume_ctrl_j_on_non_modechange() {
+        init_test_logger();
+        let handler = DirectModeCommandHandler::test_handler();
+        let key_event = CskkKeyEvent::from_str("C-j").unwrap();
+        let result = handler.get_instruction(&key_event, &get_test_state(), false);
+        assert_eq!(Instruction::FinishConsumingKeyEvent, result[0]);
     }
 }
