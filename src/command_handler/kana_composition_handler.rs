@@ -77,10 +77,12 @@ impl CommandHandler for KanaCompositionHandler {
             });
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if is_delegated {
-            let current_composition = current_state.candidate_list.get_current_to_composite();
-            let raw_to_composite = &current_state.raw_to_composite;
-            if !current_composition.eq(raw_to_composite) {
-                instructions.push(Instruction::UpdateCandidateList)
+            let candidate_list = &current_state.candidate_list;
+            if candidate_list.is_empty() {
+                instructions.push(Instruction::ChangeCompositionMode {
+                    composition_mode: CompositionMode::Register,
+                    delegate: false,
+                })
             }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {

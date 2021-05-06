@@ -718,6 +718,7 @@ impl CskkContext {
                         self.set_carry_over(&carry_over);
                         // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
                         if carry_over.is_empty() {
+                            self.update_candidate_list();
                             self.set_composition_mode(CompositionMode::CompositionSelection);
                             return self.process_key_event_inner(key_event, true);
                         }
@@ -755,6 +756,10 @@ impl CskkContext {
                         }
                         self.enter_register_mode(previous_mode);
                         must_delegate = delegate;
+                    } else if composition_mode == CompositionMode::CompositionSelection {
+                        self.update_candidate_list();
+                        self.set_composition_mode(composition_mode);
+                        must_delegate = delegate;
                     } else {
                         self.set_composition_mode(composition_mode);
                         must_delegate = delegate;
@@ -770,6 +775,7 @@ impl CskkContext {
                     self.reset_unconverted();
                 }
                 Instruction::UpdateCandidateList => {
+                    // おそらく呼ばれないはずだが、なぜか変換候補と変換対象の同期が取れていない時のコマンド
                     self.update_candidate_list();
                     if self.current_state_ref().candidate_list.is_empty() {
                         // Directly change to Register mode ignoring current composition mode.
@@ -954,6 +960,7 @@ impl CskkContext {
                                                     // TODO: ,.以外を知らなかったので直書きしてしまったが、Auto-start-henkanは別でまとめて行うべきだった。
                                                     self.reset_unconverted();
                                                     self.append_converted_to_okuri(&converted);
+                                                    self.update_candidate_list();
                                                     self.set_composition_mode(
                                                         CompositionMode::CompositionSelection,
                                                     );
