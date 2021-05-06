@@ -419,3 +419,57 @@ fn reset_precomposition_on_ctrl_g() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn flush_kana_on_abort_no_candidate_registration() {
+    init_test_logger();
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/SKK-JISYO.S",
+        "euc-jp",
+    )));
+    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        "tests/data/empty.dat",
+        "utf-8",
+    )));
+    let mut context =
+        test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space",
+        "▼かぱ【】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space K a space H a space C-j Return",
+        "",
+        "下破",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space X",
+        "",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space",
+        "▼かぱ【】",
+        "",
+        InputMode::Hiragana,
+    );
+}
