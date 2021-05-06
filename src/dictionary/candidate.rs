@@ -1,4 +1,5 @@
 use crate::error::CskkError;
+use log::*;
 use std::sync::Arc;
 
 // Blind copy of libskk vala Candidate class
@@ -66,6 +67,7 @@ impl Candidate {
                 Some(kouho.to_string()),
             ))
         } else {
+            debug!("Failed to parse candidate from: {:?}", entry);
             Err(CskkError::Error("No candidate".to_string()))
         }
     }
