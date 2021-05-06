@@ -28,19 +28,18 @@ impl DictEntry {
         &self.candidates
     }
 
-    pub fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
+    pub(crate) fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
         let mut result = Vec::new();
-        let mut line = line.trim().split(' ');
+        let mut line = line.trim().split_ascii_whitespace();
         let midashi = if let Some(midashi) = line.next() {
             midashi
         } else {
             return Err(CskkError::Error("No midshi".to_string()));
         };
-        let entries = if let Some(entries) = line.next() {
-            entries
-        } else {
+        let entries = line.fold("".to_string(), |a, b| a + b);
+        if entries.is_empty() {
             return Err(CskkError::Error("No entries".to_string()));
-        };
+        }
         let entries = entries.split('/');
         for entry in entries {
             if !entry.is_empty() {
@@ -76,6 +75,7 @@ impl DictEntry {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::testhelper::init_test_logger;
     use std::sync::Arc;
 
     #[test]
@@ -135,6 +135,15 @@ mod test {
                 .expect("躍 in sense of jump doesn't have annotation.")
                 .as_ref()
         );
+    }
+
+    #[test]
+    fn split_candidate_with_space_in_annotation() {
+        init_test_logger();
+        let jisyo = "おくr /送;(send)/贈;(present) 賞を贈る/遅/後;気後れ/遲;「遅」の旧字/";
+        let result = DictEntry::from_skkjisyo_line(jisyo).unwrap();
+        assert_eq!("送", *result.candidates[0].kouho_text);
+        assert_eq!("遅", *result.candidates[2].kouho_text);
     }
 
     #[test]
