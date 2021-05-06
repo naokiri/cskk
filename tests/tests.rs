@@ -473,4 +473,3 @@ fn flush_kana_on_abort_no_candidate_registration() {
         InputMode::Hiragana,
     );
 }
-
