@@ -27,8 +27,27 @@ impl CandidateList {
         self.selection_pointer = 0;
     }
 
+    /// get selection pointer if possible
+    pub(crate) fn get_selection_pointer(&self) -> usize {
+        self.selection_pointer
+    }
+
+    /// set selection pointer if possible
+    pub(crate) fn set_selection_pointer(&mut self, i: usize) -> bool {
+        return if self.composition_candidates.get(i).is_some() {
+            self.selection_pointer = i;
+            true
+        } else {
+            false
+        };
+    }
+
     pub(crate) fn get_current_to_composite(&self) -> &str {
         &self.to_composite
+    }
+
+    pub(crate) fn get_all_candidates(&self) -> &Vec<Candidate> {
+        &self.composition_candidates
     }
 
     pub(crate) fn get_current_candidate(&self) -> Result<&Candidate, CskkError> {
@@ -85,7 +104,7 @@ impl CandidateList {
         }
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.selection_pointer = 0;
         self.composition_candidates.clear();
         self.to_composite.clear();

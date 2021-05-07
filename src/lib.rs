@@ -16,6 +16,7 @@ use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
 use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
 use crate::command_handler::CommandHandler;
 use crate::cskkstate::CskkState;
+use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
 use crate::dictionary::user_dictionary::UserDictionary;
@@ -23,6 +24,7 @@ use crate::dictionary::{
     confirm_candidate, get_all_candidates, purge_candidate, CskkDictionary, CskkDictionaryType,
     Dictionary,
 };
+use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
 use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
@@ -152,13 +154,12 @@ pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
 
-/// テスト用途？
-pub fn skk_context_get_compositon_mode(context: &CskkContext) -> CompositionMode {
-    context.current_state_ref().composition_mode
-}
-
 pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
+}
+
+pub fn skk_context_get_composition_mode_rs(context: &CskkContext) -> CompositionMode {
+    context.current_state_ref().composition_mode
 }
 
 pub fn skk_context_reset_rs(context: &mut CskkContext) {
@@ -200,11 +201,91 @@ pub fn skk_context_set_dictionaries_rs(
     context.set_dictionaries(dictionaries);
 }
 
+pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> &str {
+    &context.current_state_ref().raw_to_composite
+}
+
+///
+/// 現在の候補リストを返す。
+///
+pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Candidate> {
+    context
+        .current_state_ref()
+        .candidate_list
+        .get_all_candidates()
+}
+
+pub fn skk_context_get_current_candidate_selection_at_rs(
+    context: &mut CskkContext,
+) -> Result<usize, CskkError> {
+    if context.current_state_ref().candidate_list.is_empty() {
+        Err(CskkError::Error(
+            "Likely not in candidate selection".to_string(),
+        ))
+    } else {
+        Ok(context
+            .current_state_ref()
+            .candidate_list
+            .get_selection_pointer())
+    }
+}
+
+pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> bool {
+    let len = context
+        .current_state_ref()
+        .candidate_list
+        .get_all_candidates()
+        .len();
+    if len == 0 {
+        return false;
+    }
+
+    if i < 0 {
+        context.reset_composited();
+        context.consolidate_converted_to_to_composite();
+        context.set_composition_mode(CompositionMode::PreComposition);
+    } else if i >= len as i32 {
+        context.select_composition_candidate(len - 1);
+        context.enter_register_mode(CompositionMode::CompositionSelection);
+    } else {
+        context.select_composition_candidate(i as usize);
+    }
+    true
+}
+
+pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
+    if context.select_composition_candidate(i) {
+        context.confirm_current_composition_candidate();
+        context.set_composition_mode(CompositionMode::Direct);
+        return true;
+    }
+    false
+}
+
+// pub fn skk_context_enter_registeration_mode_rs(context: &mut CskkContext) -> bool {
+//     return if context.current_state_ref().composition_mode == CompositionMode::CompositionSelection
+//     {
+//         let len = context
+//             .current_state_ref()
+//             .candidate_list
+//             .get_all_candidates()
+//             .len();
+//         context
+//             .current_state()
+//             .candidate_list
+//             .set_selection_pointer(len - 1);
+//         context.enter_register_mode(CompositionMode::CompositionSelection);
+//         true
+//     } else {
+//         false
+//     };
+// }
+
 impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
-    pub fn poll_output(&mut self) -> Option<String> {
+    pub(crate) fn poll_output(&mut self) -> Option<String> {
         self.retrieve_output(true)
     }
 
@@ -444,6 +525,14 @@ impl CskkContext {
         current_state.raw_to_composite.clear();
         current_state.converted_kana_to_composite.clear();
         current_state.converted_kana_to_okuri.clear();
+        current_state.candidate_list.clear();
+    }
+
+    fn select_composition_candidate(&mut self, i: usize) -> bool {
+        if self.current_state_ref().candidate_list.is_empty() {
+            return false;
+        }
+        self.current_state().candidate_list.set_selection_pointer(i)
     }
 
     fn confirm_current_kana_to_composite(&mut self, temporary_input_mode: &InputMode) {
@@ -478,7 +567,7 @@ impl CskkContext {
     fn reset_composited(&mut self) {
         let current_state = self.current_state();
         current_state.composited_okuri.clear();
-        current_state.candidate_list.reset();
+        current_state.candidate_list.clear();
     }
 
     fn consolidate_converted_to_to_composite(&mut self) {

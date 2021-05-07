@@ -473,3 +473,18 @@ fn flush_kana_on_abort_no_candidate_registration() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn escape_from_candidate_selection() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space Escape",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+}
