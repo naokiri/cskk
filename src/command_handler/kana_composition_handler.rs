@@ -60,7 +60,8 @@ impl CommandHandler for KanaCompositionHandler {
             instructions.push(Instruction::FinishConsumingKeyEvent);
             return instructions;
         } else if !is_delegated
-            && (xkb::keysyms::KEY_g == symbol && modifier.contains(SkkKeyModifier::CONTROL))
+            && ((xkb::keysyms::KEY_g == symbol && modifier.contains(SkkKeyModifier::CONTROL))
+                || xkb::keysyms::KEY_Escape == symbol)
         {
             // Abort
             instructions.push(Instruction::Abort);

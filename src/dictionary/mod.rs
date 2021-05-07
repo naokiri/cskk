@@ -24,6 +24,7 @@ pub enum CskkDictionaryType {
     EmptyDict(EmptyDictionary),
 }
 
+// impl Dictionary for Arc<Mutex<CskkDictionaryType>>とかでもう少し透過的にできないか？
 pub type CskkDictionary = Mutex<CskkDictionaryType>;
 
 /// confirm the candidate.
