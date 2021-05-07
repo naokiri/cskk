@@ -27,7 +27,6 @@ impl CandidateList {
         self.selection_pointer = 0;
     }
 
-
     /// get selection pointer if possible
     pub(crate) fn get_selection_pointer(&self) -> usize {
         self.selection_pointer
@@ -35,7 +34,7 @@ impl CandidateList {
 
     /// set selection pointer if possible
     pub(crate) fn set_selection_pointer(&mut self, i: usize) -> bool {
-        return if let Some(_) = self.composition_candidates.get(i) {
+        return if self.composition_candidates.get(i).is_some() {
             self.selection_pointer = i;
             true
         } else {
