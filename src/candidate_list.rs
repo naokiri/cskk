@@ -72,6 +72,10 @@ impl CandidateList {
         self.selection_pointer = self.composition_candidates.len() - 1;
     }
 
+    pub(crate) fn len(&self) -> usize {
+        self.composition_candidates.len()
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.composition_candidates.is_empty()
     }
