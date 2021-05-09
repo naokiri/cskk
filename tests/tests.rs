@@ -503,4 +503,3 @@ fn escape_from_okuri_ari_candidate_selection() {
         InputMode::Katakana,
     );
 }
-

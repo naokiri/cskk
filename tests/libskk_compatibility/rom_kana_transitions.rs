@@ -2,7 +2,7 @@
 //! ueno/libskk_compatibility tests/basic.c rom_kana_transitionsより
 //!
 
-use crate::utils::{default_test_context, transition_check, init_test_logger};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 

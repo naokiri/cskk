@@ -490,7 +490,10 @@ impl CskkContext {
             confirm_candidate(cskkdict, &current_candidate);
         }
 
-        let composited_okuri = self.kana_form_changer.adjust_kana_string( self.current_state_ref().input_mode, &self.current_state_ref().converted_kana_to_okuri);
+        let composited_okuri = self.kana_form_changer.adjust_kana_string(
+            self.current_state_ref().input_mode,
+            &self.current_state_ref().converted_kana_to_okuri,
+        );
         let composited_kanji_and_okuri =
             current_candidate.kouho_text.to_string() + &composited_okuri;
         let current_state = self.current_state();

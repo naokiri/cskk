@@ -59,7 +59,8 @@ impl CskkState {
         let current_candidate = self.candidate_list.get_current_candidate();
         let fallback_candidate = Candidate::default();
         let composited = &current_candidate.unwrap_or(&fallback_candidate).kouho_text;
-        let composited_okuri =  kana_form_changer.adjust_kana_string(current_input_mode, &self.composited_okuri);
+        let composited_okuri =
+            kana_form_changer.adjust_kana_string(current_input_mode, &self.composited_okuri);
 
         match self.composition_mode {
             CompositionMode::Direct => {
@@ -79,7 +80,9 @@ impl CskkState {
                     + &kana_to_okuri
                     + &String::from_iter(unconverted.iter())
             }
-            CompositionMode::CompositionSelection => "▼".to_owned() + composited + &composited_okuri,
+            CompositionMode::CompositionSelection => {
+                "▼".to_owned() + composited + &composited_okuri
+            }
             CompositionMode::Register => {
                 if kana_to_okuri.is_empty() {
                     "▼".to_string() + &kana_to_composite
