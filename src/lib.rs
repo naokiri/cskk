@@ -205,7 +205,6 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> &str {
     &context.current_state_ref().raw_to_composite
 }
 
-
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
     context.current_state_ref().candidate_list.len()
 }
@@ -266,25 +265,6 @@ pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) 
     }
     false
 }
-
-// pub fn skk_context_enter_registeration_mode_rs(context: &mut CskkContext) -> bool {
-//     return if context.current_state_ref().composition_mode == CompositionMode::CompositionSelection
-//     {
-//         let len = context
-//             .current_state_ref()
-//             .candidate_list
-//             .get_all_candidates()
-//             .len();
-//         context
-//             .current_state()
-//             .candidate_list
-//             .set_selection_pointer(len - 1);
-//         context.enter_register_mode(CompositionMode::CompositionSelection);
-//         true
-//     } else {
-//         false
-//     };
-// }
 
 impl CskkContext {
     ///
