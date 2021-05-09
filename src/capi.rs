@@ -3,11 +3,11 @@ use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CompositionMode, InputMode, PeriodStyle};
 use crate::{
     skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
-    skk_context_get_current_candidate_selection_at_rs, skk_context_get_current_candidates_rs,
-    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
-    skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
-    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
-    skk_user_dict_new_rs, CskkContext,
+    skk_context_get_current_candidate_count_rs, skk_context_get_current_candidate_selection_at_rs,
+    skk_context_get_current_candidates_rs, skk_context_get_current_to_composite_rs,
+    skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
+    skk_context_reset_rs, skk_context_select_candidate_at_rs, skk_context_set_dictionaries_rs,
+    skk_context_set_input_mode_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -313,6 +313,11 @@ pub unsafe extern "C" fn skk_context_get_current_to_composite(
     CString::new(skk_context_get_current_to_composite_rs(context))
         .unwrap()
         .into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn skk_context_get_current_candidate_count(context: &CskkContext) -> c_uint {
+    skk_context_get_current_candidate_count_rs(context) as c_uint
 }
 
 ///

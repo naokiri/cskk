@@ -205,6 +205,11 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> &str {
     &context.current_state_ref().raw_to_composite
 }
 
+
+pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
+    context.current_state_ref().candidate_list.len()
+}
+
 ///
 /// 現在の候補リストを返す。
 ///
