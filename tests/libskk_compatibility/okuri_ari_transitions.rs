@@ -122,6 +122,7 @@ fn check_small_tsu_on_okuri() {
 
 #[test]
 fn katakana_okuri() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -130,6 +131,16 @@ fn katakana_okuri() {
         "q S i r o K u",
         "▼白ク",
         "",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "q S i r o K u Return",
+        "",
+        "白ク",
         InputMode::Katakana,
     );
 }
