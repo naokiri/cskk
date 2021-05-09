@@ -488,3 +488,19 @@ fn escape_from_candidate_selection() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn escape_from_okuri_ari_candidate_selection() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "A I C-g space",
+        "▼愛",
+        "",
+        InputMode::Katakana,
+    );
+}
+

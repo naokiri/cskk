@@ -1,5 +1,6 @@
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
+use crate::kana_form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
 use std::iter::FromIterator;
 
@@ -16,9 +17,9 @@ pub(crate) struct CskkState {
     pub(crate) pre_conversion: Vec<char>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。送りあり変換時には加えてconverted_kana_to_okuriの一文字目の子音や'>'付き。Abbrebiation変換の場合kana-convertされる前の入力など
     pub(crate) raw_to_composite: String,
-    // 未確定入力をInputモードにあわせてかな変換したもののうち、漢字の読み部分。convertがあるInputMode時のみ使用
+    // 未確定入力の漢字の読み部分。この時点ではひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_composite: String,
-    // 未確定入力をInputモードにあわせてかな変換したもののうち、おくり仮名部分。convertがあるInputMode時のみ使用
+    // 未確定入力のおくり仮名部分。常にひらがな。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_okuri: String,
     // 現在の変換候補リスト
     pub(crate) candidate_list: CandidateList,
@@ -44,15 +45,21 @@ impl CskkState {
         }
     }
 
-    pub(crate) fn preedit_string(&self) -> String {
+    pub(crate) fn preedit_string(
+        &self,
+        kana_form_changer: &KanaFormChanger,
+        current_input_mode: InputMode,
+    ) -> String {
         let converted = &self.confirmed;
         let unconverted = &self.pre_conversion;
-        let kana_to_composite = &self.converted_kana_to_composite;
-        let kana_to_okuri = &self.converted_kana_to_okuri;
+        let kana_to_composite = kana_form_changer
+            .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite);
+        let kana_to_okuri =
+            kana_form_changer.adjust_kana_string(current_input_mode, &self.converted_kana_to_okuri);
         let current_candidate = self.candidate_list.get_current_candidate();
         let fallback_candidate = Candidate::default();
         let composited = &current_candidate.unwrap_or(&fallback_candidate).kouho_text;
-        let composited_okuri = &self.composited_okuri;
+        let composited_okuri =  kana_form_changer.adjust_kana_string(current_input_mode, &self.composited_okuri);
 
         match self.composition_mode {
             CompositionMode::Direct => {
@@ -61,23 +68,23 @@ impl CskkState {
             CompositionMode::PreComposition => {
                 "▽".to_owned()
                     + converted
-                    + kana_to_composite
+                    + &kana_to_composite
                     + &String::from_iter(unconverted.iter())
             }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
                     + converted
-                    + kana_to_composite
+                    + &kana_to_composite
                     + "*"
-                    + kana_to_okuri
+                    + &kana_to_okuri
                     + &String::from_iter(unconverted.iter())
             }
-            CompositionMode::CompositionSelection => "▼".to_owned() + composited + composited_okuri,
+            CompositionMode::CompositionSelection => "▼".to_owned() + composited + &composited_okuri,
             CompositionMode::Register => {
                 if kana_to_okuri.is_empty() {
-                    "▼".to_string() + kana_to_composite
+                    "▼".to_string() + &kana_to_composite
                 } else {
-                    "▼".to_string() + kana_to_composite + "*" + kana_to_okuri
+                    "▼".to_string() + &kana_to_composite + "*" + &kana_to_okuri
                 }
             }
             CompositionMode::Abbreviation => {
