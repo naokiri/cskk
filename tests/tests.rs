@@ -297,7 +297,6 @@ fn capital_q_transition() {
         "",
         InputMode::Hiragana,
     );
-    skk_context_reset_rs(&mut context);
 }
 
 #[test]
@@ -342,5 +341,165 @@ fn backspace_precomposition() {
         "▽あ",
         "",
         InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn previous_candidate() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space x",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space x x",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn kakutei_with_ctrl_j() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i C-j",
+        "",
+        "あい",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    // ueno/libskkと動作が違う部分
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i n C-j",
+        "",
+        "あいん",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn reset_precomposition_on_ctrl_g() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i C-g A i",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn flush_kana_on_abort_no_candidate_registration() {
+    init_test_logger();
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/SKK-JISYO.S",
+        "euc-jp",
+    )));
+    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        "tests/data/empty.dat",
+        "utf-8",
+    )));
+    let mut context =
+        test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space",
+        "▼かぱ【】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space K a space H a space C-j Return",
+        "",
+        "下破",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space X",
+        "",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a p a space C-g space",
+        "▼かぱ【】",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn escape_from_candidate_selection() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space space Escape",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn escape_from_okuri_ari_candidate_selection() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "A I C-g space",
+        "▼愛",
+        "",
+        InputMode::Katakana,
     );
 }

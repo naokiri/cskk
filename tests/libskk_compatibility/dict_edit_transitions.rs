@@ -2,7 +2,9 @@
 //! ueno/libskk_compatibility tests/basic.c dict_edit_transitionsより
 //!
 
-use crate::utils::{default_test_context, test_context_with_dictionaries, transition_check};
+use crate::utils::{
+    default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
+};
 use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
@@ -12,6 +14,7 @@ use std::sync::Arc;
 
 #[test]
 fn register_mode_transitions_hiragana() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -57,6 +60,7 @@ fn register_mode_transitions_hiragana() {
 
 #[test]
 fn register_mode_transition_abort() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -203,6 +207,7 @@ fn register_mode_purge_candidate() {
 
 #[test]
 fn register_mode_okuri_ari() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,

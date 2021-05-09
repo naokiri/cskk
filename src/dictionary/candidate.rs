@@ -1,4 +1,5 @@
 use crate::error::CskkError;
+use log::*;
 use std::sync::Arc;
 
 // Blind copy of libskk vala Candidate class
@@ -13,6 +14,27 @@ pub struct Candidate {
     // Output to show candidate? Mutable?
     #[allow(dead_code)]
     output: Option<String>,
+}
+
+impl Default for Candidate {
+    fn default() -> Self {
+        Candidate {
+            midashi: Arc::new("エラー".to_owned()),
+            okuri: false,
+            kouho_text: Arc::new("エラー".to_owned()),
+            annotation: None,
+            output: None,
+        }
+    }
+}
+
+impl PartialEq for Candidate {
+    fn eq(&self, other: &Self) -> bool {
+        if self.midashi.eq(&other.midashi) && self.kouho_text.eq(&other.kouho_text) {
+            return true;
+        }
+        false
+    }
 }
 
 impl Candidate {
@@ -45,6 +67,7 @@ impl Candidate {
                 Some(kouho.to_string()),
             ))
         } else {
+            debug!("Failed to parse candidate from: {:?}", entry);
             Err(CskkError::Error("No candidate".to_string()))
         }
     }

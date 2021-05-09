@@ -85,14 +85,14 @@ impl KanaFormChanger {
     ///  kanaに対してinput modeに合わせた置換をする。
     ///  'う゛' -> 'ヴ', 'ぽ' -> 'ﾎﾟ' 等文字数も変わる可能性がある。
     ///
-    pub fn adjust_kana_string(&self, input_mode: &InputMode, kana: &str) -> String {
-        if *input_mode == InputMode::Katakana || *input_mode == InputMode::HankakuKatakana {
-            let replace_map = if *input_mode == InputMode::Katakana {
+    pub fn adjust_kana_string(&self, input_mode: InputMode, kana: &str) -> String {
+        if input_mode == InputMode::Katakana || input_mode == InputMode::HankakuKatakana {
+            let replace_map = if input_mode == InputMode::Katakana {
                 &self.maps.katakana
             } else {
                 &self.maps.jisx0201
             };
-            let maxlen = if *input_mode == InputMode::Katakana {
+            let maxlen = if input_mode == InputMode::Katakana {
                 self.katakana_key_maxlen
             } else {
                 self.jisx0201_key_maxlen
@@ -172,14 +172,14 @@ mod tests {
     #[test]
     fn adjust_kana_string() {
         let changer = KanaFormChanger::test_kana_form_changer();
-        let actual = changer.adjust_kana_string(&InputMode::Katakana, "う゛ぁいきんぐ");
+        let actual = changer.adjust_kana_string(InputMode::Katakana, "う゛ぁいきんぐ");
         assert_eq!("ヴァイキング", actual);
     }
 
     #[test]
     fn adjust_kana_string_small_tu() {
         let changer = KanaFormChanger::test_kana_form_changer();
-        let actual = changer.adjust_kana_string(&InputMode::Hiragana, "っ");
+        let actual = changer.adjust_kana_string(InputMode::Hiragana, "っ");
         assert_eq!("っ", actual);
     }
 }

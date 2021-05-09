@@ -1,14 +1,18 @@
 use crate::dictionary::{CskkDictionary, CskkDictionaryType};
 use crate::keyevent::CskkKeyEvent;
-use crate::skk_modes::{InputMode, PeriodStyle};
+use crate::skk_modes::{CompositionMode, InputMode, PeriodStyle};
 use crate::{
-    skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
-    skk_context_reset_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
-    skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
+    skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
+    skk_context_get_current_candidate_count_rs,
+    skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
+    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
+    skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
+    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
+    skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_int};
+use std::os::raw::{c_char, c_int, c_uint};
 use std::slice;
 use std::sync::{Arc, Mutex};
 
@@ -96,6 +100,14 @@ pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mo
 #[no_mangle]
 pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> InputMode {
     skk_context_get_input_mode_rs(context)
+}
+
+///
+/// Get the composition mode of current state.
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_composition_mode(context: &mut CskkContext) -> CompositionMode {
+    skk_context_get_composition_mode_rs(context)
 }
 
 /// Only for library test purpose. Do not use.
@@ -217,14 +229,14 @@ pub unsafe extern "C" fn skk_free_context(context_ptr: *mut CskkContext) {
 ///
 /// # Safety
 ///
-/// context_ptr は必ずCskkDictionaryのポインタでなければならない。
+/// dictionary_ptr は必ずCskkDictionaryのポインタでなければならない。
 ///
 #[no_mangle]
-pub unsafe extern "C" fn skk_free_dictionary(context_ptr: *mut CskkDictionaryFfi) {
-    if context_ptr.is_null() {
+pub unsafe extern "C" fn skk_free_dictionary(dictionary_ptr: *mut CskkDictionaryFfi) {
+    if dictionary_ptr.is_null() {
         return;
     }
-    Box::from_raw(context_ptr);
+    Box::from_raw(dictionary_ptr);
 }
 
 ///
@@ -287,6 +299,121 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
 #[no_mangle]
 pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
     skk_context_reset_rs(context);
+}
+
+///
+/// 現在の漢字変換対象文字列をUTF-8のC文字列で返す。
+///
+/// # Safety
+/// 返り値はCallerがskk_free_stringしなければならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_current_to_composite(
+    context: &CskkContext,
+) -> *mut c_char {
+    CString::new(skk_context_get_current_to_composite_rs(context))
+        .unwrap()
+        .into_raw()
+}
+
+///
+/// 現在のcandidate listの長さを返す。
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_current_candidate_count(context: &CskkContext) -> c_uint {
+    skk_context_get_current_candidate_count_rs(context) as c_uint
+}
+
+///
+/// context内の現在のcandidate listとして候補のリストをUTF-8のC形式のNULL終端文字列で返す。
+///
+/// 現在のリストのoffsetから最大でbuf_sizeまでをcandidate_buf内に入れる。
+/// 実際に返した個数は返り値として返す。
+///
+/// # Safety
+///
+/// candidate_bufに*c_charがbuf_size分の容量があることはCaller側が保証しなければならない。
+/// candidate_bufに入れられた文字列はCallerがskk_free_candidate_listで解放しなければならない。
+/// candidate_bufに入れられた文字列の長さは変更してはならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_current_candidates(
+    context: &CskkContext,
+    candidate_buf: *mut *mut c_char,
+    buf_size: c_uint,
+    offset: c_uint,
+) -> c_uint {
+    let candidates = skk_context_get_current_candidates_rs(context);
+    let buffer = slice::from_raw_parts_mut(candidate_buf, buf_size as usize);
+
+    let offset = offset as usize;
+    let buf_size = buf_size as usize;
+    let returning_list = candidates.iter().skip(offset).take(buf_size).enumerate();
+    let count = returning_list.len();
+    for (i, candidate) in returning_list {
+        let c_string = CString::new(candidate.kouho_text.to_string()).unwrap();
+        buffer[i] = c_string.into_raw();
+    }
+
+    count as c_uint
+}
+
+///
+/// candidate_listの各々の候補を解放する。
+///
+/// # Safety
+///
+/// candidate_list_ptr は必ずskk_context_get_current_candidatesで候補を取得した配列のポインタでなければならない。
+/// sizeは取得した候補の全数と一致している必要がある。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_candidate_list(
+    candidate_list_ptr: *mut *mut c_char,
+    size: c_uint,
+) {
+    if candidate_list_ptr.is_null() {
+        return;
+    }
+    let list = slice::from_raw_parts_mut(candidate_list_ptr, size as usize);
+    for candidate in list.iter() {
+        CString::from_raw(*candidate);
+    }
+}
+
+/// 何番目の候補を指しているかを返す
+/// 現在候補が存在しない場合や、返せない場合、適当に負数を返す
+#[no_mangle]
+pub extern "C" fn skk_context_get_current_candidate_cursor_position(
+    context: &mut CskkContext,
+) -> c_int {
+    if let Ok(selection) = skk_context_get_current_candidate_cursor_position_rs(context) {
+        if selection > c_int::MAX as usize {
+            -2
+        } else {
+            selection as c_int
+        }
+    } else {
+        -1
+    }
+}
+
+/// i番目の候補を指す。確定はしない。
+/// 候補が負の方向に範囲外の場合、▼モードから▽モードに戻る。
+/// 候補が正の方向に範囲外の場合、最後の候補を指し辞書登録モードに移る。
+///
+/// 現在のコンテキストが▼モード(CompositionSelection)でない場合、無視してfalseを返す。
+#[no_mangle]
+pub extern "C" fn skk_context_select_candidate_at(context: &mut CskkContext, i: c_int) -> bool {
+    skk_context_select_candidate_at_rs(context, i)
+}
+
+///
+/// i番目の候補として確定し、Directモードに移行する。
+/// 現在のコンテキストが▼モード(CompositionSelection)でない場合や、iがリスト範囲外になる場合は、無視してfalseを返す。
+///
+#[no_mangle]
+pub extern "C" fn skk_context_confirm_candidate_at(context: &mut CskkContext, i: c_uint) -> bool {
+    skk_context_confirm_candidate_at_rs(context, i as usize)
 }
 
 ///
