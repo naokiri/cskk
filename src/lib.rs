@@ -219,7 +219,7 @@ pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Cand
         .get_all_candidates()
 }
 
-pub fn skk_context_get_current_candidate_selection_at_rs(
+pub fn skk_context_get_current_candidate_cursor_position_rs(
     context: &mut CskkContext,
 ) -> Result<usize, CskkError> {
     if context.current_state_ref().candidate_list.is_empty() {

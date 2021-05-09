@@ -3,11 +3,12 @@ use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CompositionMode, InputMode, PeriodStyle};
 use crate::{
     skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
-    skk_context_get_current_candidate_count_rs, skk_context_get_current_candidate_selection_at_rs,
-    skk_context_get_current_candidates_rs, skk_context_get_current_to_composite_rs,
-    skk_context_get_input_mode_rs, skk_context_new_rs, skk_context_poll_output_rs,
-    skk_context_reset_rs, skk_context_select_candidate_at_rs, skk_context_set_dictionaries_rs,
-    skk_context_set_input_mode_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
+    skk_context_get_current_candidate_count_rs,
+    skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
+    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
+    skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
+    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
+    skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -315,6 +316,9 @@ pub unsafe extern "C" fn skk_context_get_current_to_composite(
         .into_raw()
 }
 
+///
+/// 現在のcandidate listの長さを返す。
+///
 #[no_mangle]
 pub extern "C" fn skk_context_get_current_candidate_count(context: &CskkContext) -> c_uint {
     skk_context_get_current_candidate_count_rs(context) as c_uint
@@ -379,10 +383,10 @@ pub unsafe extern "C" fn skk_free_candidate_list(
 /// 何番目の候補を指しているかを返す
 /// 現在候補が存在しない場合や、返せない場合、適当に負数を返す
 #[no_mangle]
-pub extern "C" fn skk_context_get_current_canddiate_selection_at(
+pub extern "C" fn skk_context_get_current_candidate_cursor_position(
     context: &mut CskkContext,
 ) -> c_int {
-    if let Ok(selection) = skk_context_get_current_candidate_selection_at_rs(context) {
+    if let Ok(selection) = skk_context_get_current_candidate_cursor_position_rs(context) {
         if selection > c_int::MAX as usize {
             -2
         } else {

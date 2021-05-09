@@ -6,8 +6,8 @@ use std::sync::Arc;
 pub(crate) struct CandidateList {
     // 現在保持している選択肢の元
     to_composite: String,
-    // 現在のポインタ。
-    selection_pointer: usize,
+    // 現在のカーソル位置
+    selection_cursor_position: usize,
     // 変換中の選択肢
     composition_candidates: Vec<Candidate>,
 }
@@ -16,7 +16,7 @@ impl CandidateList {
     pub(crate) fn new() -> Self {
         CandidateList {
             to_composite: "".to_string(),
-            selection_pointer: 0,
+            selection_cursor_position: 0,
             composition_candidates: vec![],
         }
     }
@@ -24,18 +24,18 @@ impl CandidateList {
     pub(crate) fn set(&mut self, raw_to_composite: String, candidates: Vec<Candidate>) {
         self.to_composite = raw_to_composite;
         self.composition_candidates = candidates;
-        self.selection_pointer = 0;
+        self.selection_cursor_position = 0;
     }
 
     /// get selection pointer if possible
     pub(crate) fn get_selection_pointer(&self) -> usize {
-        self.selection_pointer
+        self.selection_cursor_position
     }
 
     /// set selection pointer if possible
     pub(crate) fn set_selection_pointer(&mut self, i: usize) -> bool {
         return if self.composition_candidates.get(i).is_some() {
-            self.selection_pointer = i;
+            self.selection_cursor_position = i;
             true
         } else {
             false
@@ -51,7 +51,9 @@ impl CandidateList {
     }
 
     pub(crate) fn get_current_candidate(&self) -> Result<&Candidate, CskkError> {
-        let candidate = self.composition_candidates.get(self.selection_pointer);
+        let candidate = self
+            .composition_candidates
+            .get(self.selection_cursor_position);
         if let Some(candidate) = candidate {
             return Ok(candidate);
         }
@@ -69,7 +71,7 @@ impl CandidateList {
             None,
         );
         self.composition_candidates.push(candidate);
-        self.selection_pointer = self.composition_candidates.len() - 1;
+        self.selection_cursor_position = self.composition_candidates.len() - 1;
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -81,17 +83,17 @@ impl CandidateList {
     }
 
     pub(crate) fn has_previous(&self) -> bool {
-        self.selection_pointer != 0
+        self.selection_cursor_position != 0
     }
 
     pub(crate) fn has_next(&self) -> bool {
-        self.selection_pointer != self.composition_candidates.len() - 1
+        self.selection_cursor_position != self.composition_candidates.len() - 1
     }
 
     pub(crate) fn forward_candidate(&mut self) -> bool {
         // TODO: more than 1 for paging
-        if self.selection_pointer < self.composition_candidates.len() - 1 {
-            self.selection_pointer += 1;
+        if self.selection_cursor_position < self.composition_candidates.len() - 1 {
+            self.selection_cursor_position += 1;
             true
         } else {
             false
@@ -100,8 +102,8 @@ impl CandidateList {
 
     pub(crate) fn backward_candidate(&mut self) -> bool {
         // TODO: more than 1 for paging
-        if self.selection_pointer > 0 {
-            self.selection_pointer -= 1;
+        if self.selection_cursor_position > 0 {
+            self.selection_cursor_position -= 1;
             true
         } else {
             false
@@ -109,7 +111,7 @@ impl CandidateList {
     }
 
     pub(crate) fn clear(&mut self) {
-        self.selection_pointer = 0;
+        self.selection_cursor_position = 0;
         self.composition_candidates.clear();
         self.to_composite.clear();
     }
