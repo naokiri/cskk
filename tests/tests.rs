@@ -9,7 +9,10 @@ use cskk::dictionary::static_dict::StaticFileDict;
 use cskk::dictionary::user_dictionary::UserDictionary;
 use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs};
+use cskk::{
+    skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
+    skk_context_set_auto_start_henkan_keywords_rs,
+};
 use std::sync::Arc;
 
 #[test]
@@ -516,5 +519,69 @@ fn confirm_composition_on_non_kana() {
         "",
         "愛1",
         InputMode::Katakana,
+    );
+}
+
+#[test]
+fn auto_start_henkan() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i period",
+        "▼愛。",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i comma",
+        "▼愛、",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i bracketright",
+        "▼愛」",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn set_auto_start_henkan() {
+    init_test_logger();
+    let mut context = default_test_context();
+
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i w o",
+        "▽あいを",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+
+    skk_context_set_auto_start_henkan_keywords_rs(&mut context, vec!["を".to_string()]);
+
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i w o",
+        "▼愛を",
+        "",
+        InputMode::Hiragana,
     );
 }
