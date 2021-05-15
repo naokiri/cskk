@@ -927,8 +927,11 @@ impl CskkContext {
         if (modifier - SkkKeyModifier::SHIFT).is_empty() {
             match &self.current_state_ref().composition_mode {
                 CompositionMode::CompositionSelection => {
-                    debug!("Reached to process as input in composition selection mode. Something is wrong. Ignoring the input.");
-                    // Do nothing.
+                    if key_event.is_ascii_inputtable() {
+                        self.confirm_current_composition_candidate();
+                        self.set_composition_mode(CompositionMode::Direct);
+                        return self.process_key_event_inner(key_event, true);
+                    }
                 }
                 CompositionMode::Direct
                 | CompositionMode::PreComposition

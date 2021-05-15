@@ -503,3 +503,18 @@ fn escape_from_okuri_ari_candidate_selection() {
         InputMode::Katakana,
     );
 }
+
+#[test]
+fn confirm_composition_on_non_kana() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Katakana,
+        "A i space 1",
+        "",
+        "愛1",
+        InputMode::Katakana,
+    );
+}
