@@ -53,12 +53,19 @@ pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &Compos
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(C)]
 pub enum PeriodStyle {
-    /// Use "。" and "、" for "." and ",".
-    JaJa,
-    /// Use "．" and "，" for "." and ",".
-    EnEn,
-    /// Use "。" and "，" for "." and ",".
-    JaEn,
-    /// Use "．" and "、" for "." and ",".
-    EnJa,
+    // Dumb naming for C FFI as C-style enum
+    /// Use "。"  for "."
+    PeriodJa,
+    /// Use "．"  for "."
+    PeriodEn,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(C)]
+pub enum CommaStyle {
+    // Dumb naming for C FFI as C-style enum
+    /// Use "、" for ","
+    CommaJa,
+    /// Use "，" for ","
+    CommaEn,
 }
