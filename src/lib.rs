@@ -267,6 +267,10 @@ pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) 
     false
 }
 
+pub fn skk_context_set_auto_start_henkan_keywords_rs(context: &mut CskkContext, keywords: Vec<String>) {
+    context.config.set_auto_start_henkan_keywords(keywords);
+}
+
 impl CskkContext {
     ///
     /// Retrieve and remove the current output string
@@ -1103,7 +1107,7 @@ impl CskkContext {
         );
         let mut done = false;
         // clone to edit other fields inside. Maybe no need of clone in future rust.
-        for suffix in &self.config.auto_start_henkan_strings.clone() {
+        for suffix in &self.config.auto_start_henkan_keywords.clone() {
             if !done && self.current_state_ref().raw_to_composite.ends_with(suffix) {
                 let newlen = self.current_state_ref().raw_to_composite.len() - suffix.len();
                 self.current_state().raw_to_composite.truncate(newlen);
