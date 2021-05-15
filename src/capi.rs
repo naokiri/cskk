@@ -1,4 +1,3 @@
-use crate::config::CskkConfig;
 use crate::dictionary::{CskkDictionary, CskkDictionaryType};
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
