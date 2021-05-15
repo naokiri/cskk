@@ -80,7 +80,7 @@ jobs:
             ~/.cargo/.crates*
             ~/.cargo/bin
             target
-          key: ${{ runner.os }}-cargo-libtest-v4-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-libtest-v5-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.8.1+cargo-0.53
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-c
+          args: cargo-c --version 0.8.1
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
