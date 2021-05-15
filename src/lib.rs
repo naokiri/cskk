@@ -267,7 +267,10 @@ pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) 
     false
 }
 
-pub fn skk_context_set_auto_start_henkan_keywords_rs(context: &mut CskkContext, keywords: Vec<String>) {
+pub fn skk_context_set_auto_start_henkan_keywords_rs(
+    context: &mut CskkContext,
+    keywords: Vec<String>,
+) {
     context.config.set_auto_start_henkan_keywords(keywords);
 }
 

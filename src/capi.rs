@@ -421,7 +421,7 @@ pub extern "C" fn skk_context_confirm_candidate_at(context: &mut CskkContext, i:
 ///
 /// # Safety
 /// keywords_array must be an pointer of C-style array that contains at least keywords_count number of C string.
-/// 
+///
 #[no_mangle]
 pub unsafe extern "C" fn skk_context_set_auto_start_henkan_keywords(
     context: &mut CskkContext,
