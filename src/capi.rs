@@ -1,14 +1,15 @@
 use crate::dictionary::{CskkDictionary, CskkDictionaryType};
 use crate::keyevent::CskkKeyEvent;
-use crate::skk_modes::{CompositionMode, InputMode, PeriodStyle};
+use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::{
     skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
     skk_context_get_current_candidate_count_rs,
     skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
     skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
     skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
-    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_file_dict_new_rs,
-    skk_user_dict_new_rs, CskkContext,
+    skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
+    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
+    skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -156,17 +157,6 @@ pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_c
     CString::new(skk_context_poll_output_rs(context))
         .unwrap()
         .into_raw()
-}
-
-///
-/// Period style を設定する
-///
-#[no_mangle]
-pub extern "C" fn skk_context_set_period_style(
-    context: &mut CskkContext,
-    period_style: PeriodStyle,
-) {
-    context.kana_converter.set_period_style(period_style)
 }
 
 ///
@@ -414,6 +404,51 @@ pub extern "C" fn skk_context_select_candidate_at(context: &mut CskkContext, i: 
 #[no_mangle]
 pub extern "C" fn skk_context_confirm_candidate_at(context: &mut CskkContext, i: c_uint) -> bool {
     skk_context_confirm_candidate_at_rs(context, i as usize)
+}
+
+/// Set auto start henkan keywords
+///
+/// # Safety
+/// keywords_array must be an pointer of C-style array that contains at least keywords_count number of C string.
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_set_auto_start_henkan_keywords(
+    context: &mut CskkContext,
+    keywords_array: &*const c_char,
+    keywords_count: usize,
+) {
+    let mut keywords = vec![];
+    if keywords_count < 1 || keywords_array.is_null() {
+        skk_context_set_auto_start_henkan_keywords_rs(context, keywords);
+        return;
+    }
+    let tmp_array = slice::from_raw_parts(keywords_array, keywords_count);
+    for raw_c_keyword in tmp_array {
+        let ckeyword = CStr::from_ptr(*raw_c_keyword);
+        if let Ok(keyword_str) = ckeyword.to_str() {
+            keywords.push(keyword_str.to_string())
+        }
+    }
+    skk_context_set_auto_start_henkan_keywords_rs(context, keywords);
+}
+
+///
+/// Period style を設定する
+///
+#[no_mangle]
+pub extern "C" fn skk_context_set_period_style(
+    context: &mut CskkContext,
+    period_style: PeriodStyle,
+) {
+    skk_context_set_period_style_rs(context, period_style)
+}
+
+///
+/// Comma style を設定する
+///
+#[no_mangle]
+pub extern "C" fn skk_context_set_comma_style(context: &mut CskkContext, comma_style: CommaStyle) {
+    skk_context_set_comma_style_rs(context, comma_style)
 }
 
 ///

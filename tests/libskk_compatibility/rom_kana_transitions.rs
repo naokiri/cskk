@@ -220,6 +220,7 @@ fn rom_kana_conversion_longer_conversion() {
 
 #[test]
 fn rom_kana_transitions_with_inputs() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -250,6 +251,90 @@ fn rom_kana_transitions_with_inputs() {
         "ﾉﾊﾞｰｽ",
         InputMode::Hiragana,
     );
+}
 
-    // TODO: Add other additional test cases from issues
+#[test]
+fn n_to_nn() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "n space",
+        "",
+        "ん ",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn w_as_kana() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "W o",
+        "▽を",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn pass_through_tabs() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Tab K a",
+        "▽か",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Ascii,
+        "a Tab",
+        "",
+        "a",
+        InputMode::Ascii,
+    );
+}
+#[test]
+fn n_followed_by_capital() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "q s a n S y a",
+        "▽シャ",
+        "サン",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+}
+
+#[test]
+fn pass_through_ctrl_only() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o h Control_L a a a a a",
+        "▽ほはああああ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
 }

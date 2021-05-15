@@ -6,7 +6,7 @@ use sequence_trie::SequenceTrie;
 
 use crate::env::filepath_from_xdg_data_dir;
 use crate::keyevent::CskkKeyEvent;
-use crate::skk_modes::PeriodStyle;
+use crate::skk_modes::{CommaStyle, PeriodStyle};
 
 pub(crate) type Converted = String;
 pub(crate) type CarryOver = Vec<char>;
@@ -14,7 +14,6 @@ pub(crate) type CarryOver = Vec<char>;
 #[derive(Clone, Debug)]
 pub(crate) struct KanaBuilder {
     process_map: SequenceTrie<char, (Converted, CarryOver)>,
-    period_style: PeriodStyle,
 }
 
 impl KanaBuilder {
@@ -36,21 +35,6 @@ impl KanaBuilder {
         }
     }
 
-    /// TODO: Ignored yet.
-    #[cfg(feature = "capi")]
-    pub fn set_period_style(&mut self, period_style: PeriodStyle) {
-        self.period_style = period_style;
-        unimplemented!();
-    }
-
-    fn get_period(&self) -> Converted {
-        "。".to_string()
-    }
-
-    fn get_comma(&self) -> Converted {
-        "、".to_string()
-    }
-
     /// convert the unprocessed vector into kana and the remaining carryover if matching kana exists
     pub fn convert(&self, kana: &[char]) -> Option<&(Converted, CarryOver)> {
         self.process_map.get(kana)
@@ -59,11 +43,22 @@ impl KanaBuilder {
     ///
     /// Not in the normal convert function because caller should know ",." to treat this specially for composition mode changes.
     ///
-    pub fn convert_periods(&self, kana: &char) -> Option<Converted> {
+    pub fn convert_periods(
+        &self,
+        kana: &char,
+        period_style: PeriodStyle,
+        comma_style: CommaStyle,
+    ) -> Option<Converted> {
         if *kana == '.' {
-            Some(self.get_period())
+            match period_style {
+                PeriodStyle::PeriodJa => Some("。".to_string()),
+                PeriodStyle::PeriodEn => Some("．".to_string()),
+            }
         } else if *kana == ',' {
-            Some(self.get_comma())
+            match comma_style {
+                CommaStyle::CommaJa => Some("、".to_string()),
+                CommaStyle::CommaEn => Some("，".to_string()),
+            }
         } else {
             None
         }
@@ -106,10 +101,7 @@ impl KanaBuilder {
             process_map.insert(&key, (converted, carry_over));
         }
 
-        Self {
-            process_map,
-            period_style: PeriodStyle::JaJa,
-        }
+        Self { process_map }
     }
 
     /// For e2e test purpose. Use default_converter instead.
@@ -150,7 +142,6 @@ impl KanaBuilder {
 
         KanaBuilder {
             process_map: process_list,
-            period_style: PeriodStyle::JaJa,
         }
     }
 
@@ -167,7 +158,6 @@ impl KanaBuilder {
 
         KanaBuilder {
             process_map: process_list,
-            period_style: PeriodStyle::JaJa,
         }
     }
 }

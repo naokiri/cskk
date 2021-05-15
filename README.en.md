@@ -82,8 +82,7 @@ To generate the C ABI library,
     - not ddskk compatible
 - [ ] 接頭辞・接尾辞変換
 - [ ] 数値変換
-- [ ] auto-start-henkan
-    - ミスにより現在,.のみ
+- [x] auto-start-henkan   
 - 実装見込が現在ないもの
     - [ ] Kuten 変換
     - [ ] 今日の日付入力
