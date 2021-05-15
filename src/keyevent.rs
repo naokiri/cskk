@@ -276,8 +276,6 @@ impl<'de> Deserialize<'de> for CskkKeyEvent {
 mod tests {
     use super::*;
 
-    extern crate env_logger;
-
     #[test]
     fn keyevent_from_str() {
         let a = CskkKeyEvent::from_str("a").unwrap();

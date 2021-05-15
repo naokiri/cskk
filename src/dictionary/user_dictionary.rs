@@ -6,6 +6,7 @@ use crate::dictionary::{DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
+use log::*;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 
@@ -19,6 +20,8 @@ pub struct UserDictionary {
     encode: String,
     // Midashi -> DictEntry map
     dictionary: BTreeMap<String, DictEntry>,
+    // Just bool, because we know this is under mutex.
+    has_change: bool,
 }
 
 const BUF_SIZE: usize = 1024;
@@ -30,6 +33,7 @@ impl UserDictionary {
                 file_path: String::from(file_path),
                 encode: encode.to_string(),
                 dictionary,
+                has_change: false,
             }
         } else {
             panic!("Failed to load dictionary {}", file_path)
@@ -48,26 +52,33 @@ impl Dictionary for UserDictionary {
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
     /// TODO: 現在は他の辞書と互換性がないただのエントリの羅列なので、okuri-ari entriesとokuri-nasi entriesに分けてddskkのようにファイル上で走査する辞書互換にする。
-    fn save_dictionary(&self) -> Result<bool, CskkError> {
-        rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
-        let dict_file = File::create(&self.file_path)?;
+    fn save_dictionary(&mut self) -> Result<bool, CskkError> {
+        if self.has_change {
+            rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
+            let dict_file = File::create(&self.file_path)?;
 
-        let mut stream = BufWriter::new(dict_file);
-        let mut enc = Encoding::for_label(&self.encode.as_bytes())
-            .expect("It should be same as encoding name succeeded when loading file.")
-            .new_encoder();
-        for dictentry in self.dictionary.values() {
-            let mut source = dictentry.to_skk_jisyo_string();
-            if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
-                stream.write_all(encoded.as_slice())?;
+            let mut stream = BufWriter::new(dict_file);
+            let mut enc = Encoding::for_label(&self.encode.as_bytes())
+                .expect("It should be same as encoding name succeeded when loading file.")
+                .new_encoder();
+            for dictentry in self.dictionary.values() {
+                let mut source = dictentry.to_skk_jisyo_string();
+                source += "\n";
+                if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
+                    stream.write_all(encoded.as_slice())?;
+                }
             }
+            stream.flush()?;
+            self.has_change = false;
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        stream.flush()?;
-        Ok(true)
     }
 
     fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
+        debug!("Select midashi: {:?}", midashi);
         let entry = self.dictionary.get_mut(midashi.as_str());
         match entry {
             Some(dict_entry) => {
@@ -84,6 +95,7 @@ impl Dictionary for UserDictionary {
                 );
             }
         }
+        self.has_change = true;
         Ok(true)
     }
 
@@ -93,6 +105,7 @@ impl Dictionary for UserDictionary {
         if let Some(dict_entry) = entry {
             dict_entry.remove_matching_candidate(candidate);
         }
+        self.has_change = true;
         Ok(true)
     }
 }

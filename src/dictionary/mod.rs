@@ -138,7 +138,7 @@ pub trait Dictionary {
     // fn complete(&self, _midashi: &str) /* -> Option<&Vec<&str>>?*/
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
-    fn save_dictionary(&self) -> Result<bool, CskkError> {
+    fn save_dictionary(&mut self) -> Result<bool, CskkError> {
         Ok(false)
     }
 
