@@ -80,7 +80,7 @@ jobs:
             ~/.cargo/.crates*
             ~/.cargo/bin
             target
-          key: ${{ runner.os }}-cargo-libtest-v4-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-libtest-v5-${{ hashFiles('**/Cargo.lock') }}-${{ hasFiles('~/.cargo/.crates.toml') }}
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
