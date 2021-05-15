@@ -28,7 +28,6 @@ use crate::kana_builder::KanaBuilder;
 use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
-use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use log::debug;
@@ -1149,7 +1148,7 @@ impl CskkContext {
                 self.append_unconverted(key_char.to_ascii_lowercase())
             }
             CompositionMode::PreCompositionOkurigana => {
-                if initial_composition_mode != PreCompositionOkurigana {
+                if initial_composition_mode != CompositionMode::PreCompositionOkurigana {
                     self.append_to_composite_iff_no_preconversion(key_char.to_ascii_lowercase());
                 }
                 self.append_unconverted(key_char.to_ascii_lowercase());
