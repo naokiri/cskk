@@ -53,12 +53,17 @@ pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &Compos
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(C)]
 pub enum PeriodStyle {
-    /// Use "。" and "、" for "." and ",".
-    JaJa,
-    /// Use "．" and "，" for "." and ",".
-    EnEn,
-    /// Use "。" and "，" for "." and ",".
-    JaEn,
-    /// Use "．" and "、" for "." and ",".
-    EnJa,
+    /// Use "。"  for "."
+    Ja,
+    /// Use "．"  for "."
+    En,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(C)]
+pub enum CommaStyle {
+    /// Use "、" for ","
+    Ja,
+    /// Use "，" for ","
+    En,
 }

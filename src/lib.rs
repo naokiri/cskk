@@ -29,8 +29,8 @@ use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::CompositionMode::PreCompositionOkurigana;
-use crate::skk_modes::InputMode;
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
+use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use log::debug;
 use log::warn;
 use std::fmt;
@@ -272,6 +272,14 @@ pub fn skk_context_set_auto_start_henkan_keywords_rs(
     keywords: Vec<String>,
 ) {
     context.config.set_auto_start_henkan_keywords(keywords);
+}
+
+pub fn skk_context_set_period_style_rs(context: &mut CskkContext, period_style: PeriodStyle) {
+    context.config.set_period_style(period_style);
+}
+
+pub fn skk_context_set_comma_style_rs(context: &mut CskkContext, comma_style: CommaStyle) {
+    context.config.set_comma_style(comma_style);
 }
 
 impl CskkContext {
@@ -1011,7 +1019,11 @@ impl CskkContext {
                                     if let Some(key_char) = key_event.get_symbol_char() {
                                         // カンマピリオドは特殊な設定と処理がある。
                                         if let Some(converted) =
-                                            self.kana_converter.convert_periods(&key_char)
+                                            self.kana_converter.convert_periods(
+                                                &key_char,
+                                                self.config.period_style,
+                                                self.config.comma_style,
+                                            )
                                         {
                                             match &self.current_state_ref().composition_mode {
                                                 CompositionMode::Direct => {
