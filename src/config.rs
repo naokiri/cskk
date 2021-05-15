@@ -15,8 +15,8 @@ impl Default for CskkConfig {
                 "」".to_string(),
                 "』".to_string(),
             ],
-            period_style: PeriodStyle::Ja,
-            comma_style: CommaStyle::Ja,
+            period_style: PeriodStyle::PeriodJa,
+            comma_style: CommaStyle::CommaJa,
         }
     }
 }

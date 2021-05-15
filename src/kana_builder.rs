@@ -51,13 +51,13 @@ impl KanaBuilder {
     ) -> Option<Converted> {
         if *kana == '.' {
             match period_style {
-                PeriodStyle::Ja => Some("。".to_string()),
-                PeriodStyle::En => Some("．".to_string()),
+                PeriodStyle::PeriodJa => Some("。".to_string()),
+                PeriodStyle::PeriodEn => Some("．".to_string()),
             }
         } else if *kana == ',' {
             match comma_style {
-                CommaStyle::Ja => Some("、".to_string()),
-                CommaStyle::En => Some("，".to_string()),
+                CommaStyle::CommaJa => Some("、".to_string()),
+                CommaStyle::CommaEn => Some("，".to_string()),
             }
         } else {
             None
