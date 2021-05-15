@@ -518,3 +518,48 @@ fn confirm_composition_on_non_kana() {
         InputMode::Katakana,
     );
 }
+
+#[test]
+fn auto_start_henkan() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i period",
+        "▼愛。",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i comma",
+        "▼愛、",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i bracketright",
+        "▼愛」",
+        "",
+        InputMode::Hiragana,
+    );
+    // skk_context_reset_rs(&mut context);
+    // transition_check(
+    //     &mut context,
+    //     CompositionMode::Direct,
+    //     InputMode::Hiragana,
+    //     "A i w o",
+    //     "▼愛を",
+    //     "",
+    //     InputMode::Hiragana,
+    // );
+}
