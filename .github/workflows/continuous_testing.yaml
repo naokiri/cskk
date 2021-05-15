@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-c --version 0.81
+          args: cargo-c --version 0.8.1
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
