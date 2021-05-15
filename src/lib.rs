@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate bitflags;
-#[cfg(test)]
-extern crate env_logger;
 extern crate sequence_trie;
 extern crate serde;
 #[macro_use]
@@ -678,11 +676,17 @@ impl CskkContext {
 
     pub fn save_dictionary(&mut self) {
         for cskkdict in &self.dictionaries {
-            if let Ok(lock) = cskkdict.lock() {
-                let result = match &*lock {
-                    CskkDictionaryType::StaticFile(dictionary) => dictionary.save_dictionary(),
-                    CskkDictionaryType::UserFile(dictionary) => dictionary.save_dictionary(),
-                    CskkDictionaryType::EmptyDict(dictionary) => dictionary.save_dictionary(),
+            if let Ok(mut lock) = cskkdict.lock() {
+                let result = match *lock {
+                    CskkDictionaryType::StaticFile(ref mut dictionary) => {
+                        dictionary.save_dictionary()
+                    }
+                    CskkDictionaryType::UserFile(ref mut dictionary) => {
+                        dictionary.save_dictionary()
+                    }
+                    CskkDictionaryType::EmptyDict(ref mut dictionary) => {
+                        dictionary.save_dictionary()
+                    }
                 };
                 match result {
                     Ok(_) => {}
@@ -927,11 +931,7 @@ impl CskkContext {
         if (modifier - SkkKeyModifier::SHIFT).is_empty() {
             match &self.current_state_ref().composition_mode {
                 CompositionMode::CompositionSelection => {
-                    if key_event.is_ascii_inputtable() {
-                        self.confirm_current_composition_candidate();
-                        self.set_composition_mode(CompositionMode::Direct);
-                        return self.process_key_event_inner(key_event, true);
-                    }
+                    debug!("Some key in composition selection. Ignoring.")
                 }
                 CompositionMode::Direct
                 | CompositionMode::PreComposition
