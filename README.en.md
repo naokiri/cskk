@@ -8,6 +8,8 @@ CSKK is a library to implement Simple Kana-Kanji henkan.
 
 Of course, this library is named as 'CSKK' because it is extensionally equal to SKK.
 
+For Fcitx5: [fcitx5-cskk](https://github.com/naokiri/fcitx5-cskk )
+
 Reference
 - ddskk: http://openlab.ring.gr.jp/skk/ddskk.html
 - libskk: https://github.com/ueno/libskk
