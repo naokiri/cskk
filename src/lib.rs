@@ -603,7 +603,7 @@ impl CskkContext {
             if self.current_state_ref().previous_composition_mode
                 == CompositionMode::PreCompositionOkurigana
             {
-                // おくり文字を繋げてPreCompositionにする
+                self.consolidate_converted_to_to_composite();
                 self.current_state().composition_mode = CompositionMode::PreComposition;
             } else {
                 self.current_state().composition_mode =
