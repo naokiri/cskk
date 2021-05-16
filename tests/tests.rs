@@ -600,4 +600,3 @@ fn escape_from_okuri_ari_register() {
         InputMode::Hiragana,
     );
 }
-
