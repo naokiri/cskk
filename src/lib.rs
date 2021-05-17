@@ -975,7 +975,7 @@ impl CskkContext {
                         }
                         InputMode::Zenkaku => {
                             if key_event.is_ascii_inputtable()
-                                && key_event.get_modifier().is_empty()
+                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
                             {
                                 if let Some(key_char) = key_event.get_symbol_char() {
                                     let zenkaku =

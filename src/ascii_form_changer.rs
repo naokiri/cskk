@@ -80,5 +80,6 @@ mod test {
         let changer = AsciiFormChanger::test_ascii_form_changer();
         assert_eq!(changer.adjust_ascii_char('a'), "ａ");
         assert_eq!(changer.adjust_ascii_char('1'), "１");
+        assert_eq!(changer.adjust_ascii_char('!'), "！");
     }
 }

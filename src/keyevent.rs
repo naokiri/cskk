@@ -61,7 +61,7 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 /// In-lib structure of key event
 ///
 /// String representation of key event is paren enclosed LongModifiers and single KeyName, or just one ShortModifier and one KeyName joined, or single KeyName.
-/// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift"
+/// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift" | "shift"
 /// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 respectively
 /// KeyName := ↓
 /// https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h
@@ -138,9 +138,14 @@ impl CskkKeyEvent {
                     }
                     "lshift" => {
                         modifier.set(SkkKeyModifier::L_SHIFT, true);
+                        modifier.set(SkkKeyModifier::SHIFT, true);
                     }
                     "rshift" => {
                         modifier.set(SkkKeyModifier::R_SHIFT, true);
+                        modifier.set(SkkKeyModifier::SHIFT, true);
+                    }
+                    "shift" => {
+                        modifier.set(SkkKeyModifier::SHIFT, true);
                     }
                     _ => {
                         keysym = CskkKeyEvent::keysym_from_name(word);
