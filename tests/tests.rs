@@ -609,9 +609,9 @@ fn wide_latin() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "L a b",
+        "L a b (shift exclam)",
         "",
-        "ａｂ",
+        "ａｂ！",
         InputMode::Zenkaku,
     );
 }
