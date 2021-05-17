@@ -1,15 +1,17 @@
 use crate::env::filepath_from_xdg_data_dir;
+use log::*;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 
 pub(crate) struct AsciiFormChanger {
-    map: AsciiFormMap,
+    zenkaku_map: BTreeMap<String, String>,
 }
 
 #[derive(Deserialize)]
 struct AsciiFormMap {
-    zenkaku: BTreeMap<String, String>,
+    hankaku: Vec<String>,
+    zenkaku: Vec<String>,
 }
 
 impl AsciiFormChanger {
@@ -32,15 +34,24 @@ impl AsciiFormChanger {
 
     fn from_string(contents: &str) -> Self {
         let ascii_form_map: AsciiFormMap =
-            toml::from_str(&contents).expect("source data file for kana form is broken");
+            toml::from_str(&contents).expect("source data file for ascii form is broken");
 
-        Self {
-            map: ascii_form_map,
+        if ascii_form_map.zenkaku.len() != ascii_form_map.hankaku.len() {
+            warn!("source data file for ascii form doesn't match in length");
+            return Self {
+                zenkaku_map: BTreeMap::new(),
+            };
         }
+        let mut zenkaku_map = BTreeMap::new();
+        let mut zenkaku_iter = ascii_form_map.zenkaku.iter();
+        for ascii_char in ascii_form_map.hankaku {
+            zenkaku_map.insert(ascii_char, zenkaku_iter.next().unwrap().to_owned());
+        }
+        Self { zenkaku_map }
     }
 
     pub fn adjust_ascii_char(&self, ascii_char: char) -> String {
-        if let Some(zenkaku_ascii) = self.map.zenkaku.get(&ascii_char.to_string()) {
+        if let Some(zenkaku_ascii) = self.zenkaku_map.get(&ascii_char.to_string()) {
             zenkaku_ascii.to_owned()
         } else {
             ascii_char.to_string()
@@ -53,10 +64,8 @@ impl AsciiFormChanger {
     pub fn test_ascii_form_changer() -> Self {
         AsciiFormChanger::from_string(
             &"\
-[zenkaku]
-\"a\" = \"ａ\"
-\"b\" = \"ｂ\"
-\"1\" = \"１\"
+hankaku = [\" \", \"!\", \"\\\"\", \"a\", \"b\", \"1\", \"\\\\\"]
+zenkaku = [\"　\", \"！\", \"”\", \"ａ\", \"ｂ\", \"１\", \"＼\"]
 ",
         )
     }
