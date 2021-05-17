@@ -7,6 +7,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
+use crate::ascii_form_changer::AsciiFormChanger;
 #[cfg(test)]
 use crate::candidate_list::CandidateList;
 use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
@@ -38,6 +39,7 @@ use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use xkbcommon::xkb;
 
+mod ascii_form_changer;
 mod candidate_list;
 #[cfg(feature = "capi")]
 pub mod capi;
@@ -112,6 +114,7 @@ pub struct CskkContext {
     kana_composition_handler: KanaCompositionHandler,
     kana_converter: Box<KanaBuilder>,
     kana_form_changer: KanaFormChanger,
+    ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
 }
@@ -971,14 +974,15 @@ impl CskkContext {
                             }
                         }
                         InputMode::Zenkaku => {
-                            // TODO: Change input to wide latin
                             if key_event.is_ascii_inputtable()
                                 && key_event.get_modifier().is_empty()
                             {
                                 if let Some(key_char) = key_event.get_symbol_char() {
+                                    let zenkaku =
+                                        self.ascii_form_changer.adjust_ascii_char(key_char);
                                     match &self.current_state_ref().composition_mode {
                                         CompositionMode::Direct => {
-                                            self.append_confirmed_raw_char(key_char);
+                                            self.append_converted(&zenkaku);
                                             did_input = true;
                                         }
                                         _ => {
@@ -1233,6 +1237,7 @@ impl CskkContext {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::default_kanaform_changer(),
+            ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
         }
@@ -1245,6 +1250,7 @@ impl CskkContext {
         dictionaries: Vec<Arc<CskkDictionary>>,
         kana_converter_filepath: &str,
         kana_form_changer_filepath: &str,
+        ascii_from_changer_filepath: &str,
     ) -> Self {
         let kana_direct_handler = DirectModeCommandHandler::new();
         let kana_precomposition_handler = KanaPrecompositionHandler::new();
@@ -1259,6 +1265,7 @@ impl CskkContext {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::from_file(kana_form_changer_filepath),
+            ascii_form_changer: AsciiFormChanger::from_file(ascii_from_changer_filepath),
             dictionaries,
             config: CskkConfig::default(),
         }
@@ -1346,6 +1353,7 @@ mod unit_tests {
             kana_composition_handler,
             kana_converter,
             kana_form_changer: KanaFormChanger::test_kana_form_changer(),
+            ascii_form_changer: AsciiFormChanger::test_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
         }

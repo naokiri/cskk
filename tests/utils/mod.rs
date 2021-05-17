@@ -55,6 +55,7 @@ pub fn test_context_with_dictionaries(dictionaries: Vec<Arc<CskkDictionary>>) ->
         dictionaries,
         "shared/rule/hiragana.json",
         "shared/rule/kana_form.toml",
+        "shared/rule/ascii_form.toml",
     )
 }
 
