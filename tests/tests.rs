@@ -585,3 +585,18 @@ fn set_auto_start_henkan() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn escape_from_okuri_ari_register() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "M a g u R o C-g space",
+        "▼鮪",
+        "",
+        InputMode::Hiragana,
+    );
+}
