@@ -50,12 +50,25 @@ impl AsciiFormChanger {
         Self { zenkaku_map }
     }
 
-    pub fn adjust_ascii_char(&self, ascii_char: char) -> String {
+    pub(crate) fn adjust_ascii_char(&self, ascii_char: char) -> String {
         if let Some(zenkaku_ascii) = self.zenkaku_map.get(&ascii_char.to_string()) {
             zenkaku_ascii.to_owned()
         } else {
             ascii_char.to_string()
         }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn adjust_ascii_string(&self, ascii_string: &str) -> String {
+        let mut result = String::new();
+        for c in ascii_string.chars() {
+            if let Some(zenkaku_ascii) = self.zenkaku_map.get(&c.to_string()) {
+                result.push_str(zenkaku_ascii)
+            } else {
+                result.push(c);
+            };
+        }
+        result
     }
 }
 

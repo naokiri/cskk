@@ -14,7 +14,12 @@ pub(crate) mod file_dictionary;
 pub mod static_dict;
 pub mod user_dictionary;
 
-use log::warn;
+use crate::form_changer::numeric_form_changer::{
+    numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
+    numeric_to_zenkaku,
+};
+use log::*;
+use regex::Regex;
 
 // C側に出す関係でSizedである必要があり、dyn Traitではなくenumでラップする。
 #[derive(Debug)]
@@ -34,6 +39,7 @@ pub(crate) fn confirm_candidate(
     dictionary: &mut Arc<CskkDictionary>,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
+    debug!("confirm: {:?}", candidate);
     if let Ok(mut mut_dictionary) = dictionary.lock() {
         return match *mut_dictionary {
             CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
@@ -68,15 +74,41 @@ pub(crate) fn get_all_candidates(
     dictionaries: &[Arc<CskkDictionary>],
     raw_to_composite: &str,
 ) -> Vec<Candidate> {
+    get_all_candidates_inner(dictionaries, raw_to_composite, false)
+}
+
+lazy_static! {
+    static ref NUM_REGEX: Regex = Regex::new(r"\d+").unwrap();
+}
+
+///
+/// Usually, replace numerics to # and search the dict for numeric composition.
+/// If numeric-re-lookup, don't replace numerics for the "#4" type entries.
+///
+fn get_all_candidates_inner(
+    dictionaries: &[Arc<CskkDictionary>],
+    raw_to_composite: &str,
+    is_numeric_re_lookup: bool,
+) -> Vec<Candidate> {
     let mut deduped_candidates = vec![];
     let mut ordered_candidates = vec![];
+
+    let mut dict_key = raw_to_composite.to_string();
+    let mut matched_numbers = vec![];
+
+    if !is_numeric_re_lookup {
+        // FIXME: destructuring-bind is unstable yet in current Rust. Fix in future Rust.
+        let pair = to_composite_to_numeric_dict_key(raw_to_composite);
+        dict_key = pair.0;
+        matched_numbers = pair.1;
+    }
 
     for cskkdict in dictionaries.iter() {
         if let Ok(lock) = cskkdict.lock() {
             if let Some(dict_entry) = match &*lock {
-                CskkDictionaryType::StaticFile(dict) => dict.lookup(raw_to_composite, false),
-                CskkDictionaryType::UserFile(dict) => dict.lookup(raw_to_composite, false),
-                CskkDictionaryType::EmptyDict(dict) => dict.lookup(raw_to_composite, false),
+                CskkDictionaryType::StaticFile(dict) => dict.lookup(&dict_key, false),
+                CskkDictionaryType::UserFile(dict) => dict.lookup(&dict_key, false),
+                CskkDictionaryType::EmptyDict(dict) => dict.lookup(&dict_key, false),
             } {
                 ordered_candidates.extend(dict_entry.get_candidates().to_owned());
                 deduped_candidates.extend(dict_entry.get_candidates().to_owned());
@@ -97,7 +129,15 @@ pub(crate) fn get_all_candidates(
         let mut matched_index = usize::MAX;
         for (pos, deduped) in deduped_candidates.iter().enumerate() {
             if (*deduped).eq(&candidate) {
-                result.push((*deduped).clone());
+                if is_numeric_re_lookup {
+                    result.push((*deduped).clone());
+                } else {
+                    result.append(&mut replace_numeric_match(
+                        deduped,
+                        &matched_numbers,
+                        dictionaries,
+                    ));
+                }
                 matched_index = pos;
             }
         }
@@ -107,6 +147,140 @@ pub(crate) fn get_all_candidates(
     }
 
     result
+}
+
+///
+/// 数字が含まれていた場合#に置きかえて数字と共にかえす。
+/// 12がつ6にち -> (#がつ#にち, [12,6])
+///
+pub(crate) fn to_composite_to_numeric_dict_key(to_composite: &str) -> (String, Vec<String>) {
+    let mut dict_key = to_composite.to_string();
+    let mut matched_numbers = vec![];
+    for numeric_match in NUM_REGEX.find_iter(to_composite) {
+        let new_dict_key = dict_key.replacen(numeric_match.as_str(), "#", 1);
+        dict_key = new_dict_key;
+        matched_numbers.push(numeric_match.as_str().to_owned());
+    }
+    (dict_key, matched_numbers)
+}
+
+/// Return how many numeric string is in string to composite
+pub(crate) fn numeric_string_count(to_composite: &str) -> usize {
+    NUM_REGEX.find_iter(to_composite).count()
+}
+
+/// Return how many numeric special string is in kouho string
+pub(crate) fn numeric_entry_count(entry: &str) -> usize {
+    lazy_static! {
+        static ref NUM_ENTRY_REGEX: Regex = Regex::new(r"#[012345]").unwrap();
+    }
+    NUM_ENTRY_REGEX.find_iter(entry).count()
+}
+
+fn replace_numeric_match(
+    candidate: &Candidate,
+    matched_numbers: &[String],
+    dictionaries: &[Arc<CskkDictionary>],
+) -> Vec<Candidate> {
+    let output_text_list =
+        replace_numeric_string(&candidate.kouho_text, matched_numbers, dictionaries);
+
+    let mut result = vec![];
+    for output_text in output_text_list {
+        let mut new_candidate = candidate.clone();
+        new_candidate.output = output_text;
+        result.push(new_candidate)
+    }
+    result
+}
+
+/// given kouho_text that includes #[012345], return the replaced text to be used for outputs.
+pub(crate) fn replace_numeric_string(
+    kouho_text: &str,
+    numbers: &[String],
+    dictionaries: &[Arc<CskkDictionary>],
+) -> Vec<String> {
+    lazy_static! {
+        static ref NUMERIC_ENTRY_REGEX: Regex = Regex::new(r"#[012345]").unwrap();
+    }
+    let mut current_output_texts = vec![kouho_text.to_string()];
+    for (n, entry_match) in NUMERIC_ENTRY_REGEX.find_iter(kouho_text).enumerate() {
+        match entry_match.as_str() {
+            "#0" => {
+                let mut replaced_output_texts = vec![];
+                for output_text in &current_output_texts {
+                    replaced_output_texts.push(output_text.replacen("#0", &numbers[n], 1));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#1" => {
+                let mut replaced_output_texts = vec![];
+                for kouho_text in &current_output_texts {
+                    replaced_output_texts.push(kouho_text.replacen(
+                        "#1",
+                        &numeric_to_zenkaku(&numbers[n]),
+                        1,
+                    ));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#2" => {
+                let mut replaced_output_texts = vec![];
+                for kouho_text in &current_output_texts {
+                    replaced_output_texts.push(kouho_text.replacen(
+                        "#2",
+                        &numeric_to_kanji_each(&numbers[n]),
+                        1,
+                    ));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#3" => {
+                let mut replaced_output_texts = vec![];
+                for output_text in &current_output_texts {
+                    replaced_output_texts.push(output_text.replacen(
+                        "#3",
+                        &numeric_to_simple_kanji_as_number(&numbers[n]),
+                        1,
+                    ));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#4" => {
+                let mut replaced_output_texts = vec![];
+                let numeric_lookup_results =
+                    get_all_candidates_inner(dictionaries, &numbers[n], true);
+                for kouho_text in &current_output_texts {
+                    for numeric_lookup in &numeric_lookup_results {
+                        replaced_output_texts.push(kouho_text.replacen(
+                            "#4",
+                            &numeric_lookup.kouho_text,
+                            1,
+                        ));
+                    }
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#5" => {
+                let mut replaced_output_texts = vec![];
+                for kouho_text in &current_output_texts {
+                    replaced_output_texts.push(kouho_text.replacen(
+                        "#5",
+                        &numeric_to_daiji_as_number(&numbers[n], false),
+                        1,
+                    ));
+                    replaced_output_texts.push(kouho_text.replacen(
+                        "#5",
+                        &numeric_to_daiji_as_number(&numbers[n], true),
+                        1,
+                    ));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            _ => {}
+        }
+    }
+    current_output_texts
 }
 
 ///
