@@ -83,7 +83,7 @@ To generate the C ABI library,
 - [x] user dictionary
     - not ddskk compatible
 - [ ] 接頭辞・接尾辞変換
-- [ ] 数値変換
+- [x] 数値変換
 - [x] auto-start-henkan   
 - 実装見込が現在ないもの
     - [ ] Kuten 変換
@@ -94,7 +94,7 @@ To generate the C ABI library,
 
 ## Simulating ueno/libskk feature
 
-- [ ] 句読点設定
+- [x] 句読点設定
 - [ ] AZIK rule
 - [ ] Nicola rule
 
