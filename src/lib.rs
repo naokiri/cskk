@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate lazy_static;
 extern crate sequence_trie;
 extern crate serde;
 #[macro_use]
@@ -7,7 +9,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
-use crate::ascii_form_changer::AsciiFormChanger;
 #[cfg(test)]
 use crate::candidate_list::CandidateList;
 use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
@@ -21,16 +22,18 @@ use crate::dictionary::file_dictionary::FileDictionary;
 use crate::dictionary::static_dict::StaticFileDict;
 use crate::dictionary::user_dictionary::UserDictionary;
 use crate::dictionary::{
-    confirm_candidate, get_all_candidates, purge_candidate, CskkDictionary, CskkDictionaryType,
-    Dictionary,
+    confirm_candidate, get_all_candidates, numeric_entry_count, numeric_string_count,
+    purge_candidate, replace_numeric_string, to_composite_to_numeric_dict_key, CskkDictionary,
+    CskkDictionaryType, Dictionary,
 };
 use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
-use crate::kana_form_changer::KanaFormChanger;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
+use form_changer::ascii_form_changer::AsciiFormChanger;
+use form_changer::kana_form_changer::KanaFormChanger;
 use log::debug;
 use log::warn;
 use std::fmt;
@@ -39,7 +42,6 @@ use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use xkbcommon::xkb;
 
-mod ascii_form_changer;
 mod candidate_list;
 #[cfg(feature = "capi")]
 pub mod capi;
@@ -49,8 +51,8 @@ mod cskkstate;
 pub mod dictionary;
 mod env;
 pub mod error;
+mod form_changer;
 mod kana_builder;
-mod kana_form_changer;
 mod keyevent;
 pub mod skk_modes;
 #[cfg(test)]
@@ -388,16 +390,6 @@ impl CskkContext {
         }
     }
 
-    /// Append a char to raw_to_composite without checking.
-    /// Usually use append_to_composite_iff_no_preconversion.
-    #[allow(dead_code)]
-    fn append_raw_to_composite(&mut self, to_composite_last: char) {
-        let current_state = self.current_state();
-        current_state
-            .raw_to_composite
-            .push_str(&to_composite_last.to_string())
-    }
-
     fn delete_precomposition(&mut self) {
         let mut current_state = self.current_state();
         if !current_state.pre_conversion.is_empty() {
@@ -456,12 +448,10 @@ impl CskkContext {
         current_state.candidate_list.backward_candidate();
     }
 
-    fn set_new_candidate(&mut self, new_candidate_kanji: &str) {
+    fn set_new_candidates(&mut self, candidates: Vec<Candidate>) {
         let current_state = self.current_state();
         let okuri = current_state.converted_kana_to_okuri.to_owned();
-        current_state
-            .candidate_list
-            .set_new_candidate(new_candidate_kanji, !okuri.is_empty());
+        current_state.candidate_list.set_new_candidates(candidates);
         current_state.composited_okuri = okuri;
     }
 
@@ -506,8 +496,8 @@ impl CskkContext {
             self.current_state_ref().input_mode,
             &self.current_state_ref().converted_kana_to_okuri,
         );
-        let composited_kanji_and_okuri =
-            current_candidate.kouho_text.to_string() + &composited_okuri;
+        let composited_kanji_and_okuri = current_candidate.output + &composited_okuri;
+
         let current_state = self.current_state();
         current_state
             .confirmed
@@ -627,9 +617,51 @@ impl CskkContext {
                 self.current_state().composition_mode =
                     self.current_state_ref().previous_composition_mode;
             } else {
+                // FIXME: refactoring. Candidate::new here looks too much...?
                 let current_state = self.current_state();
                 current_state.composition_mode = CompositionMode::Direct;
-                self.set_new_candidate(confirmed);
+
+                let numeric_count = numeric_entry_count(confirmed);
+                if numeric_count != 0
+                    && numeric_count
+                        == numeric_string_count(
+                            current_state.candidate_list.get_current_to_composite(),
+                        )
+                {
+                    // FIXME: destructuring-bind is unstable yet in current Rust. Fix in future Rust.
+                    let pair = to_composite_to_numeric_dict_key(
+                        current_state.candidate_list.get_current_to_composite(),
+                    );
+                    let dict_key = pair.0;
+                    let numbers = pair.1;
+                    let outputs = replace_numeric_string(confirmed, &numbers, &self.dictionaries);
+                    let mut candidates = vec![];
+                    for output in outputs {
+                        candidates.push(Candidate::new(
+                            Arc::new(dict_key.clone()),
+                            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+                            Arc::new(confirmed.to_owned()),
+                            None,
+                            output,
+                        ));
+                    }
+                    self.set_new_candidates(candidates);
+                } else {
+                    let candidates = vec![Candidate::new(
+                        Arc::new(
+                            current_state
+                                .candidate_list
+                                .get_current_to_composite()
+                                .to_string(),
+                        ),
+                        !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+                        Arc::new(confirmed.to_owned()),
+                        None,
+                        confirmed.to_string(),
+                    )];
+                    self.set_new_candidates(candidates);
+                }
+
                 self.confirm_current_composition_candidate();
             }
         }

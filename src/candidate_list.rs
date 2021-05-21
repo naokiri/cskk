@@ -1,6 +1,5 @@
 use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub(crate) struct CandidateList {
@@ -62,16 +61,12 @@ impl CandidateList {
         ))
     }
 
-    pub(crate) fn set_new_candidate(&mut self, kouho_text: &str, okuri: bool) {
-        let candidate = Candidate::new(
-            Arc::new(self.to_composite.to_owned()),
-            okuri,
-            Arc::new(kouho_text.to_string()),
-            None,
-            None,
-        );
-        self.composition_candidates.push(candidate);
-        self.selection_cursor_position = self.composition_candidates.len() - 1;
+    pub(crate) fn set_new_candidates(&mut self, candidates: Vec<Candidate>) {
+        let added_candidate_count = candidates.len();
+        for candidate in candidates {
+            self.composition_candidates.push(candidate);
+        }
+        self.selection_cursor_position = self.composition_candidates.len() - added_candidate_count;
     }
 
     pub(crate) fn len(&self) -> usize {

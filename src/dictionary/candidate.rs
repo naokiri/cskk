@@ -11,9 +11,8 @@ pub struct Candidate {
     // Raw kouho_text that might include "#0回" etc
     pub(crate) kouho_text: Arc<String>,
     pub(crate) annotation: Option<Arc<String>>,
-    // Output to show candidate? Mutable?
-    #[allow(dead_code)]
-    output: Option<String>,
+    // Output to show the candidate.
+    pub(crate) output: String,
 }
 
 impl Default for Candidate {
@@ -23,7 +22,7 @@ impl Default for Candidate {
             okuri: false,
             kouho_text: Arc::new("エラー".to_owned()),
             annotation: None,
-            output: None,
+            output: "エラー".to_string(),
         }
     }
 }
@@ -43,7 +42,7 @@ impl Candidate {
         okuri: bool,
         kouho_text: Arc<String>,
         annotation: Option<Arc<String>>,
-        output: Option<String>,
+        output: String,
     ) -> Self {
         Candidate {
             midashi,
@@ -64,7 +63,7 @@ impl Candidate {
                 false,
                 Arc::new(kouho.to_string()),
                 annotation,
-                Some(kouho.to_string()),
+                kouho.to_string(),
             ))
         } else {
             debug!("Failed to parse candidate from: {:?}", entry);
@@ -97,7 +96,7 @@ mod test {
             false,
             Arc::new("候補".to_string()),
             None,
-            Some("候補".to_string()),
+            "候補".to_string(),
         );
         assert_eq!("候補", candidate.to_skk_jisyo_string())
     }

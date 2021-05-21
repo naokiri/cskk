@@ -15,6 +15,8 @@ use cskk::{
 };
 use std::sync::Arc;
 
+// TODO: Split into several files.
+
 #[test]
 fn basic_hiragana_input() {
     let mut context = default_test_context();
@@ -613,5 +615,122 @@ fn wide_latin() {
         "",
         "ａｂ！",
         InputMode::Zenkaku,
+    );
+}
+
+#[test]
+fn number_composition() {
+    init_test_logger();
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/number_jisyo.dat",
+        "UTF-8",
+    )));
+    let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 3 k a i space",
+        "▼3回",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 3 k a i space space",
+        "▼３回",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 3 4 k a i space space space",
+        "▼三四回",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 3 4 k a i space space space space",
+        "▼三十四回",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 k a i space space space space space",
+        "▼初回",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 0 0 0 0 k a i space space space space space space",
+        "▼壱万回",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn multiple_number_composition() {
+    init_test_logger();
+    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        "tests/data/number_jisyo.dat",
+        "UTF-8",
+    )));
+    let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 2 slash 4 space",
+        "▼12月4日",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn register_number() {
+    init_test_logger();
+    let dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
+        "tests/data/empty.dat",
+        "utf-8",
+    )));
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 k a i space numbersign 1 k a i Return",
+        "",
+        "１かい",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 k a i space",
+        "▼１かい",
+        "",
+        InputMode::Hiragana,
     );
 }

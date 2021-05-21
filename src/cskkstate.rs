@@ -1,6 +1,6 @@
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
-use crate::kana_form_changer::KanaFormChanger;
+use crate::form_changer::kana_form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
 use std::iter::FromIterator;
 
@@ -58,7 +58,7 @@ impl CskkState {
             kana_form_changer.adjust_kana_string(current_input_mode, &self.converted_kana_to_okuri);
         let current_candidate = self.candidate_list.get_current_candidate();
         let fallback_candidate = Candidate::default();
-        let composited = &current_candidate.unwrap_or(&fallback_candidate).kouho_text;
+        let composited = &current_candidate.unwrap_or(&fallback_candidate).output;
         let composited_okuri =
             kana_form_changer.adjust_kana_string(current_input_mode, &self.composited_okuri);
 
