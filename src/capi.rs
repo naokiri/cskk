@@ -341,7 +341,7 @@ pub unsafe extern "C" fn skk_context_get_current_candidates(
     let returning_list = candidates.iter().skip(offset).take(buf_size).enumerate();
     let count = returning_list.len();
     for (i, candidate) in returning_list {
-        let c_string = CString::new(candidate.kouho_text.to_string()).unwrap();
+        let c_string = CString::new(candidate.output.to_string()).unwrap();
         buffer[i] = c_string.into_raw();
     }
 
