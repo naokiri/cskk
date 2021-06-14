@@ -16,7 +16,7 @@ pub mod user_dictionary;
 
 use crate::form_changer::numeric_form_changer::{
     numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
-    numeric_to_zenkaku,
+    numeric_to_thousand_separator, numeric_to_zenkaku,
 };
 use log::*;
 use regex::Regex;
@@ -194,14 +194,14 @@ fn replace_numeric_match(
     result
 }
 
-/// given kouho_text that includes #[012345], return the replaced text to be used for outputs.
+/// given kouho_text that includes #[0123458], return the replaced text to be used for outputs.
 pub(crate) fn replace_numeric_string(
     kouho_text: &str,
     numbers: &[String],
     dictionaries: &[Arc<CskkDictionary>],
 ) -> Vec<String> {
     lazy_static! {
-        static ref NUMERIC_ENTRY_REGEX: Regex = Regex::new(r"#[012345]").unwrap();
+        static ref NUMERIC_ENTRY_REGEX: Regex = Regex::new(r"#[0123458]").unwrap();
     }
     let mut current_output_texts = vec![kouho_text.to_string()];
     for (n, entry_match) in NUMERIC_ENTRY_REGEX.find_iter(kouho_text).enumerate() {
@@ -272,6 +272,17 @@ pub(crate) fn replace_numeric_string(
                     replaced_output_texts.push(kouho_text.replacen(
                         "#5",
                         &numeric_to_daiji_as_number(&numbers[n], true),
+                        1,
+                    ));
+                }
+                current_output_texts = replaced_output_texts;
+            }
+            "#8" => {
+                let mut replaced_output_texts = vec![];
+                for kouho_text in &current_output_texts {
+                    replaced_output_texts.push(kouho_text.replacen(
+                        "#8",
+                        &numeric_to_thousand_separator(&numbers[n]),
                         1,
                     ));
                 }
