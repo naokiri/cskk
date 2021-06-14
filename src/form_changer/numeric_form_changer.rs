@@ -147,6 +147,30 @@ pub(crate) fn numeric_to_zenkaku(original: &str) -> String {
     result
 }
 
+///
+/// numeric string to thousand separator as defined in the 文化庁 公用文作成の要領 3.3 (or I-4 イ. in the new version suggested in 2021)
+///
+pub(crate) fn numeric_to_thousand_separator(original: &str) -> String {
+    let mut result = String::new();
+    if let Some(numeric_match) = NUMERIC_REGEX.find(original) {
+        let num_char = numeric_match.as_str();
+        let num_len = num_char.len();
+        if num_len < 4 {
+            return num_char.to_string();
+        }
+        let mut cnt = 3 - (num_len % 3);
+
+        for c in num_char.chars() {
+            result.push(c);
+            if cnt % 3 == 2 && cnt < num_len {
+                result.push(',');
+            }
+            cnt += 1;
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -175,5 +199,21 @@ mod test {
             format_number_kuraidori_nashi_kanji(123456789987654321, false),
             "十二京三千四百五十六兆七千八百九十九億八千七百六十五万四千三百二十一"
         )
+    }
+
+    #[test]
+    fn thousand_separator() {
+        assert_eq!(
+            numeric_to_thousand_separator(&"123"),
+            "123"
+        );
+        assert_eq!(
+        numeric_to_thousand_separator(&"12345"),
+            "12,345"
+        );
+        assert_eq!(
+            numeric_to_thousand_separator(&"123456"),
+            "123,456"
+        );
     }
 }
