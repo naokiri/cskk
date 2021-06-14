@@ -14,7 +14,10 @@ pub(crate) mod file_dictionary;
 pub mod static_dict;
 pub mod user_dictionary;
 
-use crate::form_changer::numeric_form_changer::{numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number, numeric_to_zenkaku, numeric_to_thousand_separator};
+use crate::form_changer::numeric_form_changer::{
+    numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
+    numeric_to_thousand_separator, numeric_to_zenkaku,
+};
 use log::*;
 use regex::Regex;
 

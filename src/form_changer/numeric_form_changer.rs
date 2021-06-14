@@ -203,17 +203,8 @@ mod test {
 
     #[test]
     fn thousand_separator() {
-        assert_eq!(
-            numeric_to_thousand_separator(&"123"),
-            "123"
-        );
-        assert_eq!(
-        numeric_to_thousand_separator(&"12345"),
-            "12,345"
-        );
-        assert_eq!(
-            numeric_to_thousand_separator(&"123456"),
-            "123,456"
-        );
+        assert_eq!(numeric_to_thousand_separator(&"123"), "123");
+        assert_eq!(numeric_to_thousand_separator(&"12345"), "12,345");
+        assert_eq!(numeric_to_thousand_separator(&"123456"), "123,456");
     }
 }
