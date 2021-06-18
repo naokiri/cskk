@@ -2,7 +2,6 @@ use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
 use crate::form_changer::kana_form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
-use std::iter::FromIterator;
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
 /// Rough prototype yet.
@@ -64,13 +63,13 @@ impl CskkState {
 
         match self.composition_mode {
             CompositionMode::Direct => {
-                converted.to_owned() + &String::from_iter(unconverted.iter())
+                converted.to_owned() + &unconverted.iter().collect::<String>()
             }
             CompositionMode::PreComposition => {
                 "▽".to_owned()
                     + converted
                     + &kana_to_composite
-                    + &String::from_iter(unconverted.iter())
+                    + &unconverted.iter().collect::<String>()
             }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
@@ -78,7 +77,7 @@ impl CskkState {
                     + &kana_to_composite
                     + "*"
                     + &kana_to_okuri
-                    + &String::from_iter(unconverted.iter())
+                    + &unconverted.iter().collect::<String>()
             }
             CompositionMode::CompositionSelection => {
                 "▼".to_owned() + composited + &composited_okuri
