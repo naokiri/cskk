@@ -878,15 +878,13 @@ impl CskkContext {
                             previous_mode = self.current_state_ref().composition_mode;
                         }
                         self.enter_register_mode(previous_mode);
-                        must_delegate = delegate;
                     } else if composition_mode == CompositionMode::CompositionSelection {
                         self.update_candidate_list();
                         self.set_composition_mode(composition_mode);
-                        must_delegate = delegate;
                     } else {
                         self.set_composition_mode(composition_mode);
-                        must_delegate = delegate;
                     }
+                    must_delegate = delegate;
                 }
                 Instruction::ChangeInputMode(input_mode) => {
                     self.set_input_mode(input_mode);
