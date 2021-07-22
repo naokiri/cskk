@@ -812,15 +812,15 @@ fn delete_pre_conversion() {
 }
 
 #[test]
-fn delete_okuri() {
+fn delete_on_beginning_of_register_mode() {
     init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "A i S u C-h S u",
-        "▼あい*す【】",
+        "P e R e C-h S u",
+        "▼ぺ*れ【▽す】",
         "",
         InputMode::Hiragana,
     );
