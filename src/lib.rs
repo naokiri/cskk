@@ -394,7 +394,6 @@ impl CskkContext {
         let mut current_state = self.current_state();
         if !current_state.pre_conversion.is_empty() {
             current_state.pre_conversion.pop();
-            current_state.raw_to_composite.pop();
             if current_state.pre_conversion.is_empty()
                 && current_state.composition_mode == CompositionMode::PreCompositionOkurigana
             {

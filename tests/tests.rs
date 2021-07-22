@@ -794,3 +794,35 @@ fn register_number() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn delete_pre_conversion() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K o k o r C-h r o space",
+        "▼心",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
+
+#[test]
+fn delete_on_beginning_of_register_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "P e R e C-h S u",
+        "▼ぺ*れ【▽す】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
