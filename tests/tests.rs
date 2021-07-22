@@ -811,7 +811,6 @@ fn delete_pre_conversion() {
     skk_context_reset_rs(&mut context);
 }
 
-
 #[test]
 fn delete_okuri() {
     init_test_logger();
