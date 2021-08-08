@@ -359,7 +359,7 @@ impl CskkContext {
 
     fn append_converted_in_input_mode(&mut self, result: &str, input_mode: InputMode) {
         let kana_form_changer = &self.kana_form_changer;
-        let adjusted = kana_form_changer.adjust_kana_string(input_mode, &result);
+        let adjusted = kana_form_changer.adjust_kana_string(input_mode, result);
         let current_state = self.current_state();
         current_state.confirmed.push_str(&adjusted);
     }
@@ -371,7 +371,7 @@ impl CskkContext {
 
     fn append_converted_to_composite(&mut self, result: &str) {
         let current_state = self.current_state();
-        current_state.converted_kana_to_composite.push_str(&result);
+        current_state.converted_kana_to_composite.push_str(result);
         current_state.raw_to_composite.push_str(result);
     }
 
@@ -858,7 +858,7 @@ impl CskkContext {
         // if !handler.can_process(key_event) {
         //     return false;
         // }
-        let instructions = handler.get_instruction(key_event, &current_state, is_delegated);
+        let instructions = handler.get_instruction(key_event, current_state, is_delegated);
         drop(handler);
 
         let mut must_delegate = false;
@@ -1030,7 +1030,7 @@ impl CskkContext {
                             {
                                 if self
                                     .kana_converter
-                                    .can_continue(key_event, &initial_unprocessed_vector)
+                                    .can_continue(key_event, initial_unprocessed_vector)
                                 {
                                     // かな変換できる可能性が残るのでFlushはされない
                                     if let Some(key_char) = key_event.get_symbol_char() {

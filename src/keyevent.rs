@@ -101,8 +101,8 @@ impl CskkKeyEvent {
     /// wrapper of keysym_from_name to pretend some words as a known key name.
     fn keysym_from_name(word: &str) -> xkb::Keysym {
         match word {
-            "." => xkb::keysym_from_name(&"period", xkb::KEYSYM_NO_FLAGS),
-            "-" => xkb::keysym_from_name(&"minus", xkb::KEYSYM_NO_FLAGS),
+            "." => xkb::keysym_from_name("period", xkb::KEYSYM_NO_FLAGS),
+            "-" => xkb::keysym_from_name("minus", xkb::KEYSYM_NO_FLAGS),
             _ => xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS),
         }
     }

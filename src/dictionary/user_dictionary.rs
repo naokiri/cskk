@@ -58,7 +58,7 @@ impl Dictionary for UserDictionary {
             let dict_file = File::create(&self.file_path)?;
 
             let mut stream = BufWriter::new(dict_file);
-            let mut enc = Encoding::for_label(&self.encode.as_bytes())
+            let mut enc = Encoding::for_label(self.encode.as_bytes())
                 .expect("It should be same as encoding name succeeded when loading file.")
                 .new_encoder();
             for dictentry in self.dictionary.values() {
@@ -130,7 +130,7 @@ fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>, Cskk
     let mut tmp_buf = Vec::with_capacity(BUF_SIZE);
     loop {
         let (result, read) =
-            encoder.encode_from_utf8_to_vec_without_replacement(&source, &mut tmp_buf, true);
+            encoder.encode_from_utf8_to_vec_without_replacement(source, &mut tmp_buf, true);
         if read == 0 {
             return Err(Error(
                 "Cannot read on encoding. Give up whole string.".to_string(),
