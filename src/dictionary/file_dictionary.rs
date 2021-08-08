@@ -16,7 +16,7 @@ pub trait FileDictionary: Dictionary {
     fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>);
 
     fn reload(&mut self) -> Result<(), CskkError> {
-        let dictionary = load_dictionary(&self.file_path(), self.encode().as_bytes())?;
+        let dictionary = load_dictionary(self.file_path(), self.encode().as_bytes())?;
         self.set_dictionary(dictionary);
         Ok(())
     }

@@ -84,7 +84,7 @@ impl KanaBuilder {
     fn converter_from_string(contents: &str) -> Self {
         let mut process_map = SequenceTrie::new();
         let map: HashMap<String, (String, String)> =
-            serde_json::from_str(&contents).expect("content error");
+            serde_json::from_str(contents).expect("content error");
         for (k, (carry, conv)) in &map {
             let mut key = vec![];
             for c in k.chars() {
@@ -168,19 +168,19 @@ mod tests {
 
     #[test]
     fn combine_with_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("a").unwrap(), &vec!['b']);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("a").unwrap(), &['b']);
         assert_eq!(vec!['b', 'a'], next_key);
     }
 
     #[test]
     fn combine_no_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("k").unwrap(), &vec![]);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("k").unwrap(), &[]);
         assert_eq!(vec!['k'], next_key);
     }
 
     #[test]
     fn combine_capital() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("B").unwrap(), &vec![]);
+        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("B").unwrap(), &[]);
         assert_eq!(vec!['b'], next_key);
     }
 

@@ -21,7 +21,7 @@ impl AsciiFormChanger {
         if let Ok(filepath) = filepath {
             AsciiFormChanger::from_file(&filepath)
         } else {
-            AsciiFormChanger::from_string(&"")
+            AsciiFormChanger::from_string("")
         }
     }
 
@@ -34,7 +34,7 @@ impl AsciiFormChanger {
 
     fn from_string(contents: &str) -> Self {
         let ascii_form_map: AsciiFormMap =
-            toml::from_str(&contents).expect("source data file for ascii form is broken");
+            toml::from_str(contents).expect("source data file for ascii form is broken");
 
         if ascii_form_map.zenkaku.len() != ascii_form_map.hankaku.len() {
             warn!("source data file for ascii form doesn't match in length");
@@ -76,7 +76,7 @@ impl AsciiFormChanger {
 impl AsciiFormChanger {
     pub fn test_ascii_form_changer() -> Self {
         AsciiFormChanger::from_string(
-            &"\
+            "\
 hankaku = [\" \", \"!\", \"\\\"\", \"a\", \"b\", \"1\", \"\\\\\"]
 zenkaku = [\"　\", \"！\", \"”\", \"ａ\", \"ｂ\", \"１\", \"＼\"]
 ",

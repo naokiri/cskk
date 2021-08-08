@@ -23,7 +23,7 @@ impl KanaFormChanger {
         if let Ok(filepath) = filepath {
             KanaFormChanger::from_file(&filepath)
         } else {
-            KanaFormChanger::from_string(&"")
+            KanaFormChanger::from_string("")
         }
     }
 
@@ -37,7 +37,7 @@ impl KanaFormChanger {
 
     fn from_string(contents: &str) -> Self {
         let kana_form_map: KanaFormMap =
-            toml::from_str(&contents).expect("source data file for kana form is broken");
+            toml::from_str(contents).expect("source data file for kana form is broken");
         let katakana_key_maxlen = kana_form_map
             .katakana
             .keys()
@@ -141,7 +141,7 @@ impl KanaFormChanger {
 impl KanaFormChanger {
     pub fn test_kana_form_changer() -> Self {
         KanaFormChanger::from_string(
-            &"\
+            "\
 [katakana]
 \"あ\" = \"ア\"
 \"ぁ\" = \"ァ\"
