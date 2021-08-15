@@ -19,7 +19,7 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
-          components: clippy
+          components: rustfmt, clippy
           override: true
       - name: Format check
         uses: actions-rs/cargo@v1
