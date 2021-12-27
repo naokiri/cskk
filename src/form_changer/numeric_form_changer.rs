@@ -55,12 +55,11 @@ pub(crate) fn numeric_to_simple_kanji_as_number(original: &str) -> String {
 /// 数字入りの文字列の数字部分を大字にして返す。legal_daijiがtrueの時は現代の日本の法令で定められた大字のみ使用する。
 ///
 pub(crate) fn numeric_to_daiji_as_number(original: &str, legal_daiji: bool) -> String {
-    let replacement_strings;
-    if legal_daiji {
-        replacement_strings = NUMERIC_LEGAL_DAIJI_STRINGS;
+    let replacement_strings = if legal_daiji {
+        NUMERIC_LEGAL_DAIJI_STRINGS
     } else {
-        replacement_strings = NUMERIC_DAIJI_STRINGS;
-    }
+        NUMERIC_DAIJI_STRINGS
+    };
     let mut result = original.to_owned();
     if let Some(numeric_match) = NUMERIC_REGEX.find(original) {
         let num_str = numeric_match.as_str().to_string();
@@ -177,18 +176,18 @@ mod test {
 
     #[test]
     fn to_zenkaku() {
-        assert_eq!(numeric_to_zenkaku(&"foobar123"), "foobar１２３");
+        assert_eq!(numeric_to_zenkaku("foobar123"), "foobar１２３");
     }
 
     #[test]
     fn to_each_kanji() {
-        assert_eq!(numeric_to_kanji_each(&"foobar123"), "foobar一二三");
+        assert_eq!(numeric_to_kanji_each("foobar123"), "foobar一二三");
     }
 
     #[test]
     fn to_kanji_as_num() {
         assert_eq!(
-            numeric_to_simple_kanji_as_number(&"foobar1234"),
+            numeric_to_simple_kanji_as_number("foobar1234"),
             "foobar千二百三十四"
         );
     }
@@ -203,8 +202,8 @@ mod test {
 
     #[test]
     fn thousand_separator() {
-        assert_eq!(numeric_to_thousand_separator(&"123"), "123");
-        assert_eq!(numeric_to_thousand_separator(&"12345"), "12,345");
-        assert_eq!(numeric_to_thousand_separator(&"123456"), "123,456");
+        assert_eq!(numeric_to_thousand_separator("123"), "123");
+        assert_eq!(numeric_to_thousand_separator("12345"), "12,345");
+        assert_eq!(numeric_to_thousand_separator("123456"), "123,456");
     }
 }

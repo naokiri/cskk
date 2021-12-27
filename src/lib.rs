@@ -870,12 +870,11 @@ impl CskkContext {
                     delegate,
                 } => {
                     if composition_mode == CompositionMode::Register {
-                        let previous_mode;
-                        if is_delegated {
-                            previous_mode = self.current_state_ref().previous_composition_mode;
+                        let previous_mode = if is_delegated {
+                            self.current_state_ref().previous_composition_mode
                         } else {
-                            previous_mode = self.current_state_ref().composition_mode;
-                        }
+                            self.current_state_ref().composition_mode
+                        };
                         self.enter_register_mode(previous_mode);
                     } else if composition_mode == CompositionMode::CompositionSelection {
                         self.update_candidate_list();
@@ -1330,7 +1329,7 @@ impl Display for CskkState {
             self.input_mode, self.composition_mode, self.confirmed
         );
         write!(f, "    unconverted:");
-        for c in self.pre_conversion.to_vec() {
+        for c in &self.pre_conversion {
             write!(f, "{}", c);
         }
         writeln!(f);

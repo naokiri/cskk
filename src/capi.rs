@@ -183,6 +183,7 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
 /// 他で管理されるべきメモリを過剰に解放してしまう。
 ///
 #[no_mangle]
+#[allow(unused_must_use)]
 pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
@@ -357,6 +358,7 @@ pub unsafe extern "C" fn skk_context_get_current_candidates(
 /// sizeは取得した候補の全数と一致している必要がある。
 ///
 #[no_mangle]
+#[allow(unused_must_use)]
 pub unsafe extern "C" fn skk_free_candidate_list(
     candidate_list_ptr: *mut *mut c_char,
     size: c_uint,
