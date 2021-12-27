@@ -45,4 +45,5 @@ generation = true
 name = "libcskk"
 description = "SKK (Simple Kana Kanji) henkan library"
 
-
+[package.metadata.capi.install]
+name = "libcskk"

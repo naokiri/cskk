@@ -51,9 +51,9 @@ Ubuntu等では以下のコマンドでインストール
 以下を実行する
 
 ```shell
-    cargo cinstall --release
+    cargo cinstall --release --datarootdir=libcskk
     mkdir -p ~/.local/share/libcskk
-    cp -r ./shared/* ~/.local/share/libcskk
+    cp -r ./share/* ~/.local/share/libcskk
 ```
 
 標準的なパス以外にインストールする場合は、以下のような引数を与える。
