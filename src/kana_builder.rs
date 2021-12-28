@@ -226,6 +226,6 @@ mod tests {
         let converter = KanaBuilder::test_converter();
         let unprocessed = vec![];
         let actual = converter.can_continue(&CskkKeyEvent::from_str("Q").unwrap(), &unprocessed);
-        assert_eq!(actual, false);
+        assert!(!actual);
     }
 }
