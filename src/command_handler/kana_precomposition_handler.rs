@@ -19,7 +19,7 @@ impl KanaPrecompositionHandler {
 impl CommandHandler for KanaPrecompositionHandler {
     fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         let symbol = key_event.get_symbol();
-        xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
+        (xkb::keysyms::KEY_space..=xkb::keysyms::KEY_asciitilde).contains(&symbol)
     }
 
     fn get_instruction(
@@ -40,7 +40,7 @@ impl CommandHandler for KanaPrecompositionHandler {
         let symbol = key_event.get_symbol();
         let modifier = key_event.get_modifier();
         // Does not check if key_event's modifier contains SHIFT because keysym is different for 'a' and 'A'.
-        let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
+        let is_capital = (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&symbol);
         if symbol == xkb::keysyms::KEY_space {
             // space
             instructions.push(Instruction::OutputNNIfAny(current_input_mode));

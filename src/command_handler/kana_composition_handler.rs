@@ -29,7 +29,7 @@ impl KanaCompositionHandler {
 impl CommandHandler for KanaCompositionHandler {
     fn can_process(&self, key_event: &CskkKeyEvent) -> bool {
         let symbol = key_event.get_symbol();
-        (xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde)
+        (xkb::keysyms::KEY_space..=xkb::keysyms::KEY_asciitilde).contains(&symbol)
             || symbol == xkb::keysyms::KEY_Return
     }
 

@@ -35,7 +35,7 @@ impl CommandHandler for DirectModeCommandHandler {
             );
         }
 
-        xkb::keysyms::KEY_space <= symbol && symbol <= xkb::keysyms::KEY_asciitilde
+        (xkb::keysyms::KEY_space..=xkb::keysyms::KEY_asciitilde).contains(&symbol)
     }
 
     fn get_instruction(
