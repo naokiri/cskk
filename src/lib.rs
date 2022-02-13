@@ -796,7 +796,7 @@ impl CskkContext {
                 let symbol = key_event.get_symbol();
 
                 let initial_composition_mode = current_state.composition_mode;
-                let is_capital = xkb::keysyms::KEY_A <= symbol && symbol <= xkb::keysyms::KEY_Z;
+                let is_capital = (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&symbol);
                 if is_capital && initial_composition_mode == CompositionMode::Direct {
                     self.set_composition_mode(CompositionMode::PreComposition);
                 } else if is_capital
