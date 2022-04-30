@@ -63,18 +63,6 @@ Ubuntu等では以下のコマンドでインストール
 - includedir: ヘッダファイルイストール先。デフォルトは '/include'
 - pkgconfigdir: pkg-config用の.pcファイルインストール先。デフォルトは '/lib/pkgconfig'
 
-## 開発者向け
-
-開発中の確認は主に`cargo build` と `cargo test`でできるようにしています。 
-
-C ABI ライブラリを確認する場合、以下のような手作業です。
-
-```shell
-    cargo cbuild 
-    cp target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
-    $(CC) tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o tests/lib_test
-    LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
-```
 
 ## 開発状況
 

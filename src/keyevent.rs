@@ -204,10 +204,7 @@ impl CskkKeyEvent {
     }
 
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, CskkError> {
-        match CskkKeyEvent::deserialize_seq_inner(from, Vec::new()) {
-            Ok(result) => Ok(result),
-            Err(e) => Err(e),
-        }
+        CskkKeyEvent::deserialize_seq_inner(from, Vec::new())
     }
 
     fn deserialize_seq_inner(

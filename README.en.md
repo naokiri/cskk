@@ -58,18 +58,6 @@ To install to non-standard directories, append following options like this. See
 - includedir: Directory to install the header file. Default is '/include'
 - pkgconfigdir: Direcotry to install the .pc file for pkg-config. Default is '/lib/pkgconfig'
 
-## Develop
-
-`cargo build` and `cargo test` shall be enough for most of the development.
-
-To generate the C ABI library,
-
-```shell
-    cargo cbuild 
-    cp target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
-    $(CC) tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o tests/lib_test
-    LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
-```
 
 ## Development status
 
