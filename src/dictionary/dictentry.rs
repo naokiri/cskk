@@ -64,9 +64,11 @@ impl DictEntry {
         }
 
         let mut result = String::new();
-        write!(result, "{} ", self.midashi).expect("Failed to allocate jisyo string for dict midashi");
+        write!(result, "{} ", self.midashi)
+            .expect("Failed to allocate jisyo string for dict midashi");
         for candidate in &self.candidates {
-            write!(result, "/{}", &candidate.to_skk_jisyo_string()).expect("Failed to allocate jisyo string for dict entry");
+            write!(result, "/{}", &candidate.to_skk_jisyo_string())
+                .expect("Failed to allocate jisyo string for dict entry");
         }
         result.push('/');
         result

@@ -1,7 +1,7 @@
 use crate::error::CskkError;
 use log::*;
-use std::sync::Arc;
 use std::fmt::Write;
+use std::sync::Arc;
 
 // Blind copy of libskk vala Candidate class
 #[derive(Debug, Clone)]
@@ -80,7 +80,8 @@ impl Candidate {
         let mut result = String::new();
         result.push_str(self.kouho_text.as_str());
         if let Some(annotation) = &self.annotation {
-            write!(result, ";{}", annotation.as_str()).expect("Failed to allocate jisyo string for candidate.");
+            write!(result, ";{}", annotation.as_str())
+                .expect("Failed to allocate jisyo string for candidate.");
         }
         result
     }
