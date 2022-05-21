@@ -1,6 +1,7 @@
 use crate::error::CskkError;
 use log::*;
 use std::sync::Arc;
+use std::fmt::Write;
 
 // Blind copy of libskk vala Candidate class
 #[derive(Debug, Clone)]
@@ -76,10 +77,10 @@ impl Candidate {
     // {候補};*アノテーション
     // TODO: 将来的には [{優先送り仮名}/{候補}] のような優先送り仮名エントリも扱えると嬉しい
     pub fn to_skk_jisyo_string(&self) -> String {
-        let mut result = "".to_string();
+        let mut result = String::new();
         result.push_str(self.kouho_text.as_str());
         if let Some(annotation) = &self.annotation {
-            result.push_str(&format!(";{}", annotation.as_str()));
+            write!(result, ";{}", annotation.as_str()).expect("Failed to allocate jisyo string for candidate.");
         }
         result
     }
