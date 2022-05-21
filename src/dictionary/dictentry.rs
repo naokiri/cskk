@@ -1,5 +1,6 @@
 use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
+use std::fmt::Write;
 
 #[derive(Debug, Clone)]
 pub struct DictEntry {
@@ -62,10 +63,12 @@ impl DictEntry {
             return "".to_string();
         }
 
-        let mut result = "".to_string();
-        result.push_str(&format!("{} ", self.midashi));
+        let mut result = String::new();
+        write!(result, "{} ", self.midashi)
+            .expect("Failed to allocate jisyo string for dict midashi");
         for candidate in &self.candidates {
-            result.push_str(&format!("/{}", &candidate.to_skk_jisyo_string()));
+            write!(result, "/{}", &candidate.to_skk_jisyo_string())
+                .expect("Failed to allocate jisyo string for dict entry");
         }
         result.push('/');
         result
