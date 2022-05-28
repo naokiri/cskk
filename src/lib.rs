@@ -58,7 +58,7 @@ pub mod skk_modes;
 #[cfg(test)]
 mod testhelper;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Instruction {
     // Abort current composition selection, registration
     Abort,
