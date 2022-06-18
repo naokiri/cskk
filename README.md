@@ -1,3 +1,6 @@
+![cskk logo](https://raw.githubusercontent.com/naokiri/cskk-icons/master/256x256/apps/cskk.png) 
+
+
 # LibCSKK
 
 Stable Rust version build status: 
@@ -13,7 +16,9 @@ Cobalt SKK ライブラリ.
 CSKK はSKK(Simple Kana Kanji 変換)用ライブラリです。
 CSKKはSKKと外延的に同値であるため、こう名付けられました。
 
-Fcitx5用: [fcitx5-cskk](https://github.com/naokiri/fcitx5-cskk )
+Fcitx5用: [fcitx5-cskk](https://github.com/naokiri/fcitx5-cskk)
+
+ロゴ・アイコン類: [cskk-icons](https://github.com/naokiri/cskk-icons)
 
 参考
 - ddskk: http://openlab.ring.gr.jp/skk/ddskk.html
