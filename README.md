@@ -7,7 +7,7 @@ Stable Rust version build status:
 [![Build Status](https://github.com/naokiri/cskk/workflows/Test/badge.svg)](https://github.com/naokiri/cskk/actions)
 
 Beta and Nightly Rust version build status:
-[![Build Status (Beta or Nightly)](https://github.com/naokiri/cskk/workflows/Beta_Nightly/badge.svg)](https://github.com/naokiri/cskk/actions)
+[![Build Status (Beta or Nightly)](https://github.com/naokiri/cskk/workflows/Beta/badge.svg)](https://github.com/naokiri/cskk/actions)
 
 [English version](https://github.com/naokiri/cskk/blob/master/README.en.md)
 
