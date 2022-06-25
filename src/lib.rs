@@ -721,23 +721,17 @@ impl CskkContext {
 
     pub fn save_dictionary(&mut self) {
         for cskkdict in &self.dictionaries {
-            if let Ok(mut lock) = cskkdict.lock() {
-                let result = match *lock {
-                    CskkDictionaryType::StaticFile(ref mut dictionary) => {
-                        dictionary.save_dictionary()
-                    }
-                    CskkDictionaryType::UserFile(ref mut dictionary) => {
-                        dictionary.save_dictionary()
-                    }
-                    CskkDictionaryType::EmptyDict(ref mut dictionary) => {
-                        dictionary.save_dictionary()
-                    }
-                };
-                match result {
-                    Ok(_) => {}
-                    Err(error) => {
-                        warn!("{}", &error.to_string());
-                    }
+            // Using mutex in match on purpose, never acquiring lock again.
+            #[allow(clippy::significant_drop_in_scrutinee)]
+            let result = match *cskkdict.lock().unwrap() {
+                CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.save_dictionary(),
+                CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.save_dictionary(),
+                CskkDictionaryType::EmptyDict(ref mut dictionary) => dictionary.save_dictionary(),
+            };
+            match result {
+                Ok(_) => {}
+                Err(error) => {
+                    warn!("{}", &error.to_string());
                 }
             }
         }
@@ -745,17 +739,17 @@ impl CskkContext {
 
     pub fn reload_dictionary(&mut self) {
         for cskkdict in &self.dictionaries {
-            if let Ok(mut lock) = cskkdict.lock() {
-                let result = match *lock {
-                    CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.reload(),
-                    CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.reload(),
-                    CskkDictionaryType::EmptyDict(_) => Ok(()),
-                };
-                match result {
-                    Ok(_) => {}
-                    Err(error) => {
-                        warn!("{}", &error.to_string());
-                    }
+            // Using mutex in match on purpose, never acquiring lock again.
+            #[allow(clippy::significant_drop_in_scrutinee)]
+            let result = match *cskkdict.lock().unwrap() {
+                CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.reload(),
+                CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.reload(),
+                CskkDictionaryType::EmptyDict(_) => Ok(()),
+            };
+            match result {
+                Ok(_) => {}
+                Err(error) => {
+                    warn!("{}", &error.to_string());
                 }
             }
         }

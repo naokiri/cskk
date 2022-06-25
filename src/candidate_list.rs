@@ -33,12 +33,12 @@ impl CandidateList {
 
     /// set selection pointer if possible
     pub(crate) fn set_selection_pointer(&mut self, i: usize) -> bool {
-        return if self.composition_candidates.get(i).is_some() {
+        if self.composition_candidates.get(i).is_some() {
             self.selection_cursor_position = i;
             true
         } else {
             false
-        };
+        }
     }
 
     pub(crate) fn get_current_to_composite(&self) -> &str {
