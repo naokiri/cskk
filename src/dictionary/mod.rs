@@ -40,14 +40,13 @@ pub(crate) fn confirm_candidate(
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
-    if let Ok(mut mut_dictionary) = dictionary.lock() {
-        return match *mut_dictionary {
-            CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
-            CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
-            CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
-        };
+    // Using mutex in match on purpose, never acquiring lock again.
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    match *dictionary.lock().unwrap() {
+        CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
     }
-    Ok(false)
 }
 
 /// purge the candidate.
@@ -57,15 +56,13 @@ pub(crate) fn purge_candidate(
     dictionary: &mut Arc<CskkDictionary>,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
-    if let Ok(mut mut_dictionary) = dictionary.lock() {
-        return match *mut_dictionary {
-            CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(candidate),
-            CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(candidate),
-            CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(candidate),
-        };
+    // Using mutex in match on purpose, never acquiring lock again.
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    match *dictionary.lock().unwrap() {
+        CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(candidate),
+        CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(candidate),
+        CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(candidate),
     }
-
-    Ok(false)
 }
 
 /// 現在ueno/libskk同様にDedupはkouho_textのみ、候補の順序はdictの順番通り。
@@ -104,17 +101,14 @@ fn get_all_candidates_inner(
     }
 
     for cskkdict in dictionaries.iter() {
-        if let Ok(lock) = cskkdict.lock() {
-            if let Some(dict_entry) = match &*lock {
-                CskkDictionaryType::StaticFile(dict) => dict.lookup(&dict_key, false),
-                CskkDictionaryType::UserFile(dict) => dict.lookup(&dict_key, false),
-                CskkDictionaryType::EmptyDict(dict) => dict.lookup(&dict_key, false),
-            } {
-                ordered_candidates.extend(dict_entry.get_candidates().to_owned());
-                deduped_candidates.extend(dict_entry.get_candidates().to_owned());
-            }
-        } else {
-            warn!("Dictionary read lock failed during getting candidates. Ignoring the dictionary.")
+        let lock = cskkdict.lock().unwrap();
+        if let Some(dict_entry) = match &*lock {
+            CskkDictionaryType::StaticFile(dict) => dict.lookup(&dict_key, false),
+            CskkDictionaryType::UserFile(dict) => dict.lookup(&dict_key, false),
+            CskkDictionaryType::EmptyDict(dict) => dict.lookup(&dict_key, false),
+        } {
+            ordered_candidates.extend(dict_entry.get_candidates().to_owned());
+            deduped_candidates.extend(dict_entry.get_candidates().to_owned());
         }
     }
 

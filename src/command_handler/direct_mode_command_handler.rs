@@ -160,8 +160,7 @@ impl CommandHandler for DirectModeCommandHandler {
 
         if instructions.is_empty()
             && has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode)
-            && xkb::keysyms::KEY_A <= symbol
-            && symbol <= xkb::keysyms::KEY_Z
+            && (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&symbol)
         {
             instructions.push(Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::PreComposition,
