@@ -7,10 +7,10 @@ use crate::skk_modes::{has_rom2kana_conversion, CompositionMode, InputMode};
 use crate::{CskkState, Instruction};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DirectModeCommandHandler {}
+pub(crate) struct DirectModeCommandHandler {}
 
 impl DirectModeCommandHandler {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         DirectModeCommandHandler {}
     }
 }
@@ -210,7 +210,7 @@ mod tests {
     fn handler_works() {
         let handler = DirectModeCommandHandler::test_handler();
 
-        let result = handler.can_process(&CskkKeyEvent::from_keysym(
+        let result = handler.can_process(&CskkKeyEvent::from_keysym_strict(
             keysyms::KEY_apostrophe,
             SkkKeyModifier::NONE,
         ));

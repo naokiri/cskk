@@ -38,7 +38,7 @@ impl PartialEq for Candidate {
 }
 
 impl Candidate {
-    pub fn new(
+    pub(crate) fn new(
         midashi: Arc<String>,
         okuri: bool,
         kouho_text: Arc<String>,
@@ -54,7 +54,7 @@ impl Candidate {
         }
     }
 
-    pub fn from_skk_jisyo_string(midashi: &str, entry: &str) -> Result<Self, CskkError> {
+    pub(crate) fn from_skk_jisyo_string(midashi: &str, entry: &str) -> Result<Self, CskkError> {
         let mut chunk = entry.split(';');
         if let Some(text) = chunk.next() {
             let kouho = text;
@@ -76,7 +76,7 @@ impl Candidate {
     // {候補};アノテーション
     // {候補};*アノテーション
     // TODO: 将来的には [{優先送り仮名}/{候補}] のような優先送り仮名エントリも扱えると嬉しい
-    pub fn to_skk_jisyo_string(&self) -> String {
+    pub(crate) fn to_skk_jisyo_string(&self) -> String {
         let mut result = String::new();
         result.push_str(self.kouho_text.as_str());
         if let Some(annotation) = &self.annotation {

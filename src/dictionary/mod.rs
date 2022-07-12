@@ -23,14 +23,53 @@ use regex::Regex;
 
 // C側に出す関係でSizedである必要があり、dyn Traitではなくenumでラップする。
 #[derive(Debug)]
-pub enum CskkDictionaryType {
+pub(crate) enum CskkDictionaryType {
     StaticFile(StaticFileDict),
     UserFile(UserDictionary),
     EmptyDict(EmptyDictionary),
 }
 
-// impl Dictionary for Arc<Mutex<CskkDictionaryType>>とかでもう少し透過的にできないか？
-pub type CskkDictionary = Mutex<CskkDictionaryType>;
+// FIXME: Not sure if this is the correct inner type. Maybe we can remove Arc on other places?
+#[derive(Debug)]
+pub struct CskkDictionary {
+    pub(crate) mutex: Mutex<CskkDictionaryType>,
+}
+
+impl CskkDictionary {
+    fn new(dictionary: CskkDictionaryType) -> Self {
+        Self {
+            mutex: Mutex::new(dictionary),
+        }
+    }
+
+    /// Library user interface for creating new static read-only dictionary.
+    /// file_path: path string
+    /// encode: label of encoding that encoding_rs can recognize. "utf-8", "euc-jp", "cp866" etc.
+    pub fn new_static_dict(file_path: &str, encode: &str) -> Result<CskkDictionary, CskkError> {
+        let dictionary = StaticFileDict::new(file_path, encode)?;
+        Ok(CskkDictionary::new(CskkDictionaryType::StaticFile(
+            dictionary,
+        )))
+    }
+
+    /// Library user interface for creating new user readable and writable dictionary
+    /// file_path: path string
+    /// encode: label of encoding that encoding_rs can recognize. "utf-8", "euc-jp", "cp866" etc.
+    pub fn new_user_dict(file_path: &str, encode: &str) -> Result<CskkDictionary, CskkError> {
+        let dictionary = UserDictionary::new(file_path, encode)?;
+        Ok(CskkDictionary::new(CskkDictionaryType::UserFile(
+            dictionary,
+        )))
+    }
+
+    /// Library user interface for creating fallback dictionary.
+    /// Dictionary is required to create the context, so this dictionary is useful when no dictionary file is available.
+    pub fn new_empty_dict() -> Result<CskkDictionary, CskkError> {
+        Ok(CskkDictionary::new(CskkDictionaryType::EmptyDict(
+            EmptyDictionary::default(),
+        )))
+    }
+}
 
 /// confirm the candidate.
 /// This updates writable dictionaries candidate order or add new entry which confirmed.
@@ -42,7 +81,7 @@ pub(crate) fn confirm_candidate(
     debug!("confirm: {:?}", candidate);
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
-    match *dictionary.lock().unwrap() {
+    match *dictionary.mutex.lock().unwrap() {
         CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
         CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
         CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
@@ -58,7 +97,7 @@ pub(crate) fn purge_candidate(
 ) -> Result<bool, CskkError> {
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
-    match *dictionary.lock().unwrap() {
+    match *dictionary.mutex.lock().unwrap() {
         CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(candidate),
         CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(candidate),
         CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(candidate),
@@ -101,7 +140,7 @@ fn get_all_candidates_inner(
     }
 
     for cskkdict in dictionaries.iter() {
-        let lock = cskkdict.lock().unwrap();
+        let lock = cskkdict.mutex.lock().unwrap();
         if let Some(dict_entry) = match &*lock {
             CskkDictionaryType::StaticFile(dict) => dict.lookup(&dict_key, false),
             CskkDictionaryType::UserFile(dict) => dict.lookup(&dict_key, false),
@@ -302,7 +341,7 @@ pub(crate) fn get_nth_candidate(
     candidates.get(selection_pointer).cloned()
 }
 
-pub trait Dictionary {
+pub(crate) trait Dictionary {
     /// 今のところ数値変換等がないので、raw_to_compositeではなくmidashiとして完全一致を探す。
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry>;
 

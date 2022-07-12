@@ -1,5 +1,4 @@
-use cskk::dictionary::static_dict::StaticFileDict;
-use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
+use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
     skk_context_get_input_mode_rs, skk_context_get_preedit_rs, skk_context_poll_output_rs,
@@ -41,10 +40,7 @@ pub fn transition_check(
 }
 
 pub fn default_test_context() -> CskkContext {
-    let dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        "tests/data/SKK-JISYO.S",
-        "euc-jp",
-    )));
+    let dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
     test_context_with_dictionaries(vec![Arc::new(dict)])
 }
 

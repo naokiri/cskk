@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-pub trait FileDictionary: Dictionary {
+pub(crate) trait FileDictionary: Dictionary {
     fn file_path(&self) -> &str;
 
     fn encode(&self) -> &str;
@@ -27,7 +27,7 @@ pub(crate) fn load_dictionary(
     encode: &[u8],
 ) -> Result<BTreeMap<String, DictEntry>, CskkError> {
     let dict_file = File::open(file_path)?;
-    let enc = Encoding::for_label(encode);
+    let enc = Encoding::for_label_no_replacement(encode);
     let decoder = DecodeReaderBytesBuilder::new()
         .encoding(enc)
         .build(dict_file);

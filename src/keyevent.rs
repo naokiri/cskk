@@ -5,7 +5,7 @@ use std::fmt::Formatter;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::keysyms;
+use xkbcommon::xkb::{Keysym, keysyms};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
@@ -14,6 +14,9 @@ use std::ops::BitAndAssign;
 bitflags! {
     ///
     /// modifier mask ported from fcitx and libskk.
+    ///
+    /// Most of modifieres are just reserved yet and cannot set properly.
+    ///
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
     pub(crate) struct SkkKeyModifier: u32 {
@@ -60,6 +63,8 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 ///
 /// In-lib structure of key event
 ///
+///
+///
 /// String representation of key event is paren enclosed LongModifiers and single KeyName, or just one ShortModifier and one KeyName joined, or single KeyName.
 /// LongModifier := "control" | "meta" | "alt" | "lshift" | "rshift" | "shift"
 /// ShortModifier := "C-" | "A-" | "M-" | "G-" for ctrl, mod1, meta, mod5 respectively
@@ -78,7 +83,7 @@ pub struct CskkKeyEvent {
 
 impl CskkKeyEvent {
     #[cfg(test)]
-    pub(crate) fn from_keysym(keysym: xkb::Keysym, modifier: SkkKeyModifier) -> Self {
+    pub(crate) fn from_keysym_strict(keysym: xkb::Keysym, modifier: SkkKeyModifier) -> Self {
         Self {
             symbol: keysym,
             modifiers: modifier,
@@ -95,6 +100,23 @@ impl CskkKeyEvent {
         Self {
             symbol: keysym,
             modifiers,
+        }
+    }
+
+    ///
+    /// Get a keyevent used in cskk.
+    ///
+    /// TODO: Switch to another interface that accepts ModMap of xkb instead of each bool when xkbcommon lib can handle them better.
+    ///
+    pub fn from_keysym_with_flags(keysym: Keysym, ctrl_mod: bool, shift_mod: bool, alt_mod: bool) -> Self {
+        let mut modifiers = SkkKeyModifier::NONE;
+        modifiers.set(SkkKeyModifier::CONTROL, ctrl_mod);
+        modifiers.set(SkkKeyModifier::SHIFT, shift_mod);
+        modifiers.set(SkkKeyModifier::ALT, alt_mod);
+
+        Self {
+            symbol: keysym,
+            modifiers
         }
     }
 
@@ -351,27 +373,28 @@ mod tests {
     #[test]
     fn from_keysym() {
         let modifier = SkkKeyModifier::L_SHIFT;
-        let result = CskkKeyEvent::from_keysym(keysyms::KEY_s, modifier);
+        let result = CskkKeyEvent::from_keysym_strict(keysyms::KEY_s, modifier);
         assert_eq!(result.symbol, keysyms::KEY_s);
         assert_eq!(result.modifiers, modifier);
     }
 
     #[test]
     fn get_symbol_char() {
-        let key_event = CskkKeyEvent::from_keysym(keysyms::KEY_0, SkkKeyModifier::NONE);
+        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_0, SkkKeyModifier::NONE);
         assert_eq!('0', key_event.get_symbol_char().unwrap());
 
-        let key_event = CskkKeyEvent::from_keysym(keysyms::KEY_C, SkkKeyModifier::NONE);
+        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_C, SkkKeyModifier::NONE);
         assert_eq!('C', key_event.get_symbol_char().unwrap());
 
         // エラーにならず、1byte目を返してしまう。
-        let key_event = CskkKeyEvent::from_keysym(keysyms::KEY_BackSpace, SkkKeyModifier::NONE);
+        let key_event =
+            CskkKeyEvent::from_keysym_strict(keysyms::KEY_BackSpace, SkkKeyModifier::NONE);
         assert_eq!('\u{8}', key_event.get_symbol_char().unwrap());
     }
 
     #[test]
     fn get_symbol_char_no_display() {
-        let key_event = CskkKeyEvent::from_keysym(keysyms::KEY_Home, SkkKeyModifier::NONE);
+        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_Home, SkkKeyModifier::NONE);
         assert_eq!(None, key_event.get_symbol_char());
     }
 }

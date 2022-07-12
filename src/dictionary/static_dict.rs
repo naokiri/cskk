@@ -1,10 +1,11 @@
+use crate::CskkError;
 use std::collections::BTreeMap;
 
 use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
 use crate::dictionary::{DictEntry, Dictionary};
 
 #[derive(Debug)]
-pub struct StaticFileDict {
+pub(crate) struct StaticFileDict {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
@@ -12,16 +13,15 @@ pub struct StaticFileDict {
 }
 
 impl StaticFileDict {
-    pub fn new(file_path: &str, encode: &str) -> Self {
-        if let Ok(dictionary) = load_dictionary(file_path, encode.as_bytes()) {
-            StaticFileDict {
-                file_path: String::from(file_path),
-                encode: encode.to_string(),
-                dictionary,
-            }
-        } else {
-            panic!("Failed to load dictionary {}", file_path)
-        }
+    /// file_path: string
+    /// encode: label of encoding that encoding_rs can recognize. "utf-8", "euc-jp", "cp866" etc.
+    pub(crate) fn new(file_path: &str, encode: &str) -> Result<Self, CskkError> {
+        let dictionary = load_dictionary(file_path, encode.as_bytes())?;
+        Ok(StaticFileDict {
+            file_path: String::from(file_path),
+            encode: encode.to_string(),
+            dictionary,
+        })
     }
 }
 

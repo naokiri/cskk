@@ -3,13 +3,13 @@ use crate::error::CskkError;
 use std::fmt::Write;
 
 #[derive(Debug, Clone)]
-pub struct DictEntry {
-    pub midashi: String,
-    pub candidates: Vec<Candidate>,
+pub(crate) struct DictEntry {
+    pub(crate) midashi: String,
+    pub(crate) candidates: Vec<Candidate>,
 }
 
 impl DictEntry {
-    pub fn remove_matching_candidate(&mut self, candidate: &Candidate) {
+    pub(crate) fn remove_matching_candidate(&mut self, candidate: &Candidate) {
         let index = self
             .candidates
             .iter()
@@ -19,13 +19,13 @@ impl DictEntry {
         }
     }
 
-    pub fn insert_as_first_candidate(&mut self, candidate: Candidate) {
+    pub(crate) fn insert_as_first_candidate(&mut self, candidate: Candidate) {
         if *candidate.midashi == self.midashi {
             self.candidates.insert(0, candidate);
         }
     }
 
-    pub fn get_candidates(&self) -> &Vec<Candidate> {
+    pub(crate) fn get_candidates(&self) -> &Vec<Candidate> {
         &self.candidates
     }
 

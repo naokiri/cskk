@@ -8,10 +8,10 @@ use log::error;
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
-pub struct KanaPrecompositionHandler {}
+pub(crate) struct KanaPrecompositionHandler {}
 
 impl KanaPrecompositionHandler {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         KanaPrecompositionHandler {}
     }
 }

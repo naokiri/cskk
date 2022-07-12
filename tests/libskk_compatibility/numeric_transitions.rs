@@ -3,8 +3,7 @@
 //!
 
 use crate::utils::{init_test_logger, test_context_with_dictionaries, transition_check};
-use cskk::dictionary::user_dictionary::UserDictionary;
-use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
+use cskk::dictionary::CskkDictionary;
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use std::sync::Arc;
@@ -12,10 +11,7 @@ use std::sync::Arc;
 #[test]
 fn numeric_transitions() {
     init_test_logger();
-    let static_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        "tests/data/number_jisyo.dat",
-        "UTF-8",
-    )));
+    let static_dict = CskkDictionary::new_user_dict("tests/data/number_jisyo.dat", "UTF-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
         &mut context,

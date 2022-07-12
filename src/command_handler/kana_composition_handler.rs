@@ -12,16 +12,16 @@ use std::sync::Arc;
 /// かな -> 漢字 ハンドラ。
 ///
 #[derive(Debug)]
-pub struct KanaCompositionHandler {
+pub(crate) struct KanaCompositionHandler {
     dictionaries: Vec<Arc<CskkDictionary>>,
 }
 
 impl KanaCompositionHandler {
-    pub fn new(dictionaries: Vec<Arc<CskkDictionary>>) -> Self {
+    pub(crate) fn new(dictionaries: Vec<Arc<CskkDictionary>>) -> Self {
         KanaCompositionHandler { dictionaries }
     }
 
-    pub fn set_dictionaries(&mut self, dictionaries: Vec<Arc<CskkDictionary>>) {
+    pub(crate) fn set_dictionaries(&mut self, dictionaries: Vec<Arc<CskkDictionary>>) {
         self.dictionaries = dictionaries;
     }
 }
@@ -149,10 +149,10 @@ mod tests {
 
     #[test]
     fn can_process_single() {
-        let dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
+        let dict = CskkDictionary::new_static_dict(
             "tests/data/SKK-JISYO.S",
             "euc-jp",
-        )));
+        ).expect("New static dict");
         let handler = KanaCompositionHandler::test_handler(vec![Arc::new(dict)]);
         let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
         assert!(result);
