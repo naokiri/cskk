@@ -1,4 +1,4 @@
-use crate::dictionary::{CskkDictionary, CskkDictionaryType};
+use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::{
@@ -15,7 +15,7 @@ use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_uint};
 use std::slice;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn skk_user_dict_new(
 #[no_mangle]
 pub unsafe extern "C" fn skk_empty_dict_new() -> *mut CskkDictionaryFfi {
     Box::into_raw(Box::new(CskkDictionaryFfi {
-        dictionary: Arc::new(CskkDictionary::new_empty_dict()),
+        dictionary: Arc::new(CskkDictionary::new_empty_dict().unwrap()),
     }))
 }
 
