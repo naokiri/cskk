@@ -149,10 +149,8 @@ mod tests {
 
     #[test]
     fn can_process_single() {
-        let dict = CskkDictionary::new_static_dict(
-            "tests/data/SKK-JISYO.S",
-            "euc-jp",
-        ).expect("New static dict");
+        let dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp")
+            .expect("New static dict");
         let handler = KanaCompositionHandler::test_handler(vec![Arc::new(dict)]);
         let result = handler.can_process(&CskkKeyEvent::from_string_representation("a").unwrap());
         assert!(result);

@@ -187,8 +187,11 @@ mod tests {
         let mut test_state = get_test_state();
         test_state.raw_to_composite = "あ".to_string();
         let handler = KanaPrecompositionHandler::test_handler();
-        let result =
-            handler.get_instruction(&CskkKeyEvent::from_string_representation("K").unwrap(), &test_state, false);
+        let result = handler.get_instruction(
+            &CskkKeyEvent::from_string_representation("K").unwrap(),
+            &test_state,
+            false,
+        );
         assert_eq!(
             Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::PreCompositionOkurigana,

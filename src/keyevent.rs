@@ -5,7 +5,7 @@ use std::fmt::Formatter;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{Keysym, keysyms};
+use xkbcommon::xkb::{keysyms, Keysym};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
@@ -108,7 +108,12 @@ impl CskkKeyEvent {
     ///
     /// TODO: Switch to another interface that accepts ModMap of xkb instead of each bool when xkbcommon lib can handle them better.
     ///
-    pub fn from_keysym_with_flags(keysym: Keysym, ctrl_mod: bool, shift_mod: bool, alt_mod: bool) -> Self {
+    pub fn from_keysym_with_flags(
+        keysym: Keysym,
+        ctrl_mod: bool,
+        shift_mod: bool,
+        alt_mod: bool,
+    ) -> Self {
         let mut modifiers = SkkKeyModifier::NONE;
         modifiers.set(SkkKeyModifier::CONTROL, ctrl_mod);
         modifiers.set(SkkKeyModifier::SHIFT, shift_mod);
@@ -116,7 +121,7 @@ impl CskkKeyEvent {
 
         Self {
             symbol: keysym,
-            modifiers
+            modifiers,
         }
     }
 

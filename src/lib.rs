@@ -1453,7 +1453,8 @@ mod unit_tests {
     fn process_backspace() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
         cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
         assert!(actual);
     }
 
@@ -1462,7 +1463,8 @@ mod unit_tests {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
         cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("period").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("period").unwrap());
         assert!(actual);
     }
 
@@ -1470,7 +1472,8 @@ mod unit_tests {
     fn dont_process_return_in_direct() {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("Return").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("Return").unwrap());
         assert!(!actual);
     }
 }
