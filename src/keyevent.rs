@@ -141,7 +141,10 @@ impl CskkKeyEvent {
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
-    pub fn from_str(key: &str) -> Result<CskkKeyEvent, CskkError> {
+    /// Probably testing purpose and not intended to be used from library users. May delete this interface at any update.
+    /// Use `from_keysym_with_flags` for now instead.
+    ///
+    pub fn from_string_representation(key: &str) -> Result<CskkKeyEvent, CskkError> {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
         let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
         let key = key.trim();
@@ -225,6 +228,10 @@ impl CskkKeyEvent {
         self.symbol
     }
 
+    ///
+    /// Mostly testing purpose. May delete this interface at any update.
+    /// Use `from_keysym_with_flags` for now instead.
+    ///
     pub fn deserialize_seq(from: &str) -> Result<KeyEventSeq, CskkError> {
         CskkKeyEvent::deserialize_seq_inner(from, Vec::new())
     }
@@ -240,7 +247,7 @@ impl CskkKeyEvent {
         match CskkKeyEvent::next_tok(keys) {
             Some(tok) => {
                 let left = &keys[tok.len()..];
-                match CskkKeyEvent::from_str(tok) {
+                match CskkKeyEvent::from_string_representation(tok) {
                     Ok(keyevent) => {
                         current.push(keyevent);
                         CskkKeyEvent::deserialize_seq_inner(left, current)
@@ -292,7 +299,7 @@ impl<'de> Deserialize<'de> for CskkKeyEvent {
         D: Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
-        CskkKeyEvent::from_str(s).map_err(D::Error::custom)
+        CskkKeyEvent::from_string_representation(s).map_err(D::Error::custom)
     }
 }
 
@@ -302,19 +309,19 @@ mod tests {
 
     #[test]
     fn keyevent_from_str() {
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         assert_eq!(a.symbol, keysyms::KEY_a, "equals small a");
         assert_eq!(a.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
-        let spacea = CskkKeyEvent::from_str(" a").unwrap();
+        let spacea = CskkKeyEvent::from_string_representation(" a").unwrap();
         assert_eq!(spacea.symbol, keysyms::KEY_a, "equals small a");
         assert_eq!(spacea.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
-        let b = CskkKeyEvent::from_str("B").unwrap();
+        let b = CskkKeyEvent::from_string_representation("B").unwrap();
         assert_eq!(b.symbol, keysyms::KEY_B, "equals large B");
         assert_eq!(b.modifiers, SkkKeyModifier::NONE, "No modifier for B");
 
-        let control_b = CskkKeyEvent::from_str("(control b)").unwrap();
+        let control_b = CskkKeyEvent::from_string_representation("(control b)").unwrap();
         let control_modifier: SkkKeyModifier = SkkKeyModifier::CONTROL;
         assert_eq!(control_b.symbol, keysyms::KEY_b, "equals small b");
         assert_eq!(
@@ -322,34 +329,34 @@ mod tests {
             "long modifier control"
         );
 
-        let not_u = CskkKeyEvent::from_str("LATIN SMALL LETTER U WITH ACUTE");
+        let not_u = CskkKeyEvent::from_string_representation("LATIN SMALL LETTER U WITH ACUTE");
         assert!(not_u.is_err());
 
-        let u = CskkKeyEvent::from_str("uacute").unwrap();
+        let u = CskkKeyEvent::from_string_representation("uacute").unwrap();
         assert_eq!(u.symbol, keysyms::KEY_uacute, "latin small u acute");
 
-        let short_ctrl_a = CskkKeyEvent::from_str("C-a").unwrap();
+        let short_ctrl_a = CskkKeyEvent::from_string_representation("C-a").unwrap();
         assert_eq!(short_ctrl_a.symbol, keysyms::KEY_a, "C-a works");
         assert_eq!(short_ctrl_a.modifiers, control_modifier, "C-a works");
 
-        let meta_left = CskkKeyEvent::from_str("M-Left").unwrap();
+        let meta_left = CskkKeyEvent::from_string_representation("M-Left").unwrap();
         let meta_modifier: SkkKeyModifier = SkkKeyModifier::META;
         assert_eq!(meta_left.symbol, keysyms::KEY_Left);
         assert_eq!(meta_left.modifiers, meta_modifier);
 
-        let space = CskkKeyEvent::from_str("space").unwrap();
+        let space = CskkKeyEvent::from_string_representation("space").unwrap();
         assert_eq!(space.symbol, keysyms::KEY_space);
 
-        let enter = CskkKeyEvent::from_str("Return").unwrap();
+        let enter = CskkKeyEvent::from_string_representation("Return").unwrap();
         assert_eq!(enter.symbol, keysyms::KEY_Return);
 
-        let period = CskkKeyEvent::from_str(".").unwrap();
+        let period = CskkKeyEvent::from_string_representation(".").unwrap();
         assert_eq!(period.symbol, keysyms::KEY_period);
     }
 
     #[test]
     fn keyevent_to_string() {
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         assert_eq!("a", a.to_string());
     }
 
@@ -358,15 +365,15 @@ mod tests {
         let result = CskkKeyEvent::deserialize_seq("a b c").unwrap();
         assert_eq!(
             result.get(0).unwrap(),
-            &CskkKeyEvent::from_str("a").unwrap()
+            &CskkKeyEvent::from_string_representation("a").unwrap()
         );
         assert_eq!(
             result.get(1).unwrap(),
-            &CskkKeyEvent::from_str("b").unwrap()
+            &CskkKeyEvent::from_string_representation("b").unwrap()
         );
         assert_eq!(
             result.get(2).unwrap(),
-            &CskkKeyEvent::from_str("c").unwrap()
+            &CskkKeyEvent::from_string_representation("c").unwrap()
         );
     }
 

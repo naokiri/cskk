@@ -154,7 +154,7 @@ mod tests {
             "euc-jp",
         ).expect("New static dict");
         let handler = KanaCompositionHandler::test_handler(vec![Arc::new(dict)]);
-        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("a").unwrap());
         assert!(result);
     }
 }

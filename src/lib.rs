@@ -1386,9 +1386,9 @@ mod unit_tests {
     #[test]
     fn will_process() {
         let cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         assert!(cskkcontext.will_process(&a));
-        let copy = CskkKeyEvent::from_str("C-c").unwrap();
+        let copy = CskkKeyEvent::from_string_representation("C-c").unwrap();
         assert!(!cskkcontext.will_process(&copy));
     }
 
@@ -1396,7 +1396,7 @@ mod unit_tests {
     fn process_key_event() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
 
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         let result = cskkcontext.process_key_event(&a);
         assert!(result);
     }
@@ -1404,7 +1404,7 @@ mod unit_tests {
     #[test]
     fn retrieve_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.retrieve_output(false).unwrap();
         assert_eq!("a", actual);
@@ -1417,7 +1417,7 @@ mod unit_tests {
     #[test]
     fn poll_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.poll_output().unwrap();
         assert_eq!("a", actual);
@@ -1428,7 +1428,7 @@ mod unit_tests {
     #[test]
     fn get_preedit() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let capital_a = CskkKeyEvent::from_str("A").unwrap();
+        let capital_a = CskkKeyEvent::from_string_representation("A").unwrap();
         cskkcontext.process_key_event(&capital_a);
         let actual = cskkcontext.get_preedit().unwrap_or_else(|| {
             panic!("No preedit. context: {:?}", cskkcontext.current_state_ref())
@@ -1452,8 +1452,8 @@ mod unit_tests {
     #[test]
     fn process_backspace() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("BackSpace").unwrap());
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
         assert!(actual);
     }
 
@@ -1461,8 +1461,8 @@ mod unit_tests {
     fn process_period() {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("period").unwrap());
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("period").unwrap());
         assert!(actual);
     }
 
@@ -1470,7 +1470,7 @@ mod unit_tests {
     fn dont_process_return_in_direct() {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("Return").unwrap());
+        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("Return").unwrap());
         assert!(!actual);
     }
 }

@@ -195,14 +195,14 @@ mod tests {
     #[test]
     fn can_process_single() {
         let handler = DirectModeCommandHandler::test_handler();
-        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("a").unwrap());
         assert!(result);
     }
 
     #[test]
     fn can_process_intermediate() {
         let handler = DirectModeCommandHandler::test_handler();
-        let result = handler.can_process(&CskkKeyEvent::from_str("k").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("k").unwrap());
         assert!(result);
     }
 
@@ -216,10 +216,10 @@ mod tests {
         ));
         assert!(result);
 
-        let result = handler.can_process(&CskkKeyEvent::from_str("b").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("b").unwrap());
         assert!(result);
 
-        let result = handler.can_process(&CskkKeyEvent::from_str("Y").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("Y").unwrap());
         assert!(result);
     }
 
@@ -228,7 +228,7 @@ mod tests {
         let handler = DirectModeCommandHandler::test_handler();
 
         let result = handler.get_instruction(
-            &CskkKeyEvent::from_str("b").unwrap(),
+            &CskkKeyEvent::from_string_representation("b").unwrap(),
             &get_test_state(),
             false,
         );
@@ -239,7 +239,7 @@ mod tests {
     fn switch_mode() {
         init_test_logger();
         let handler = DirectModeCommandHandler::test_handler();
-        let key_event = CskkKeyEvent::from_str("B").unwrap();
+        let key_event = CskkKeyEvent::from_string_representation("B").unwrap();
         assert!(key_event.get_symbol() <= xkb::keysyms::KEY_asciitilde);
         assert!(xkb::keysyms::KEY_A <= key_event.get_symbol());
 
@@ -257,7 +257,7 @@ mod tests {
     fn consume_ctrl_j_on_non_modechange() {
         init_test_logger();
         let handler = DirectModeCommandHandler::test_handler();
-        let key_event = CskkKeyEvent::from_str("C-j").unwrap();
+        let key_event = CskkKeyEvent::from_string_representation("C-j").unwrap();
         let result = handler.get_instruction(&key_event, &get_test_state(), false);
         assert_eq!(Instruction::FinishConsumingKeyEvent, result[0]);
     }
