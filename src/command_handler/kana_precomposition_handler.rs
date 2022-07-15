@@ -8,10 +8,10 @@ use log::error;
 
 // PreComposition とそのサブモード
 #[derive(Debug)]
-pub struct KanaPrecompositionHandler {}
+pub(crate) struct KanaPrecompositionHandler {}
 
 impl KanaPrecompositionHandler {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         KanaPrecompositionHandler {}
     }
 }
@@ -151,14 +151,14 @@ mod tests {
     #[test]
     fn can_process_single() {
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.can_process(&CskkKeyEvent::from_str("a").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("a").unwrap());
         assert!(result);
     }
 
     #[test]
     fn can_process_intermediate() {
         let handler = KanaPrecompositionHandler::test_handler();
-        let result = handler.can_process(&CskkKeyEvent::from_str("k").unwrap());
+        let result = handler.can_process(&CskkKeyEvent::from_string_representation("k").unwrap());
         assert!(result);
     }
 
@@ -167,7 +167,7 @@ mod tests {
         let handler = KanaPrecompositionHandler::test_handler();
 
         let result = handler.get_instruction(
-            &CskkKeyEvent::from_str("space").unwrap(),
+            &CskkKeyEvent::from_string_representation("space").unwrap(),
             &get_test_state(),
             false,
         );
@@ -187,8 +187,11 @@ mod tests {
         let mut test_state = get_test_state();
         test_state.raw_to_composite = "あ".to_string();
         let handler = KanaPrecompositionHandler::test_handler();
-        let result =
-            handler.get_instruction(&CskkKeyEvent::from_str("K").unwrap(), &test_state, false);
+        let result = handler.get_instruction(
+            &CskkKeyEvent::from_string_representation("K").unwrap(),
+            &test_state,
+            false,
+        );
         assert_eq!(
             Instruction::ChangeCompositionMode {
                 composition_mode: CompositionMode::PreCompositionOkurigana,

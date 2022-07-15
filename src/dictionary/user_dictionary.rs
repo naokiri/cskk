@@ -15,7 +15,7 @@ use std::io::{BufWriter, Write};
 ///
 ///
 #[derive(Debug)]
-pub struct UserDictionary {
+pub(crate) struct UserDictionary {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
@@ -27,17 +27,14 @@ pub struct UserDictionary {
 const BUF_SIZE: usize = 1024;
 
 impl UserDictionary {
-    pub fn new(file_path: &str, encode: &str) -> Self {
-        if let Ok(dictionary) = load_dictionary(file_path, encode.as_bytes()) {
-            UserDictionary {
-                file_path: String::from(file_path),
-                encode: encode.to_string(),
-                dictionary,
-                has_change: false,
-            }
-        } else {
-            panic!("Failed to load dictionary {}", file_path)
-        }
+    pub(crate) fn new(file_path: &str, encode: &str) -> Result<Self, CskkError> {
+        let dictionary = load_dictionary(file_path, encode.as_bytes())?;
+        Ok(UserDictionary {
+            file_path: String::from(file_path),
+            encode: encode.to_string(),
+            dictionary,
+            has_change: false,
+        })
     }
 }
 
@@ -159,7 +156,7 @@ mod test {
 
     #[test]
     fn userdict() -> Result<(), CskkError> {
-        let mut user_dictionary = UserDictionary::new("tests/data/empty.dat", "utf-8");
+        let mut user_dictionary = UserDictionary::new("tests/data/empty.dat", "utf-8")?;
         let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
         user_dictionary.select_candidate(&candidate)?;
         user_dictionary.save_dictionary()?;

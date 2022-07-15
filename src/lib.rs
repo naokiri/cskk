@@ -19,8 +19,6 @@ use crate::config::CskkConfig;
 use crate::cskkstate::CskkState;
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::FileDictionary;
-use crate::dictionary::static_dict::StaticFileDict;
-use crate::dictionary::user_dictionary::UserDictionary;
 use crate::dictionary::{
     confirm_candidate, get_all_candidates, numeric_entry_count, numeric_string_count,
     purge_candidate, replace_numeric_string, to_composite_to_numeric_dict_key, CskkDictionary,
@@ -53,7 +51,7 @@ mod env;
 pub mod error;
 mod form_changer;
 mod kana_builder;
-mod keyevent;
+pub mod keyevent;
 pub mod skk_modes;
 #[cfg(test)]
 mod testhelper;
@@ -121,29 +119,31 @@ pub struct CskkContext {
     config: CskkConfig,
 }
 
+/// C interface equivalents useful for testing? Might stop exposing at any point of update.
+/// Dictionary are exposed to library user directly, so use CskkDictionary::new_static_dict instead.
 pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        path_string,
-        encoding,
-    )))
+    CskkDictionary::new_static_dict(path_string, encoding).expect("Load static dict")
 }
 
+/// C interface equivalents useful for testing? Might stop exposing at any point of update.
+/// Dictionary are exposed to library user directly, so use CskkDictionary::new_user_dict instead.
 pub fn skk_user_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        path_string,
-        encoding,
-    )))
+    CskkDictionary::new_user_dict(path_string, encoding).expect("Load user dict")
 }
 
+/// Testing purpose? Use CskkContext::new instead. This interface might be deleted at any update.
+///
 pub fn skk_context_new_rs(dictionaries: Vec<Arc<CskkDictionary>>) -> CskkContext {
     CskkContext::new(InputMode::Hiragana, CompositionMode::Direct, dictionaries)
 }
 
-/// Test purpose
+/// Test purpose only.
 pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
     context.process_key_events_string(keyevents)
 }
 
+///
+/// Testing purpose? Use `CskkContext.poll_output()` instead. this interface might be deleted at any update.
 /// 現在のoutputをpollingする。
 ///
 pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
@@ -154,6 +154,7 @@ pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
 }
 
 /// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
+/// This interface might be deleted at any update. Use `CskkContext.get_preedit()` instead.
 ///
 pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
@@ -290,14 +291,15 @@ impl CskkContext {
     ///
     /// Retrieve and remove the current output string
     ///
-    pub(crate) fn poll_output(&mut self) -> Option<String> {
+    pub fn poll_output(&mut self) -> Option<String> {
         self.retrieve_output(true)
     }
 
     ///
     /// pollされていない入力を状態に応じて修飾して返す。
-    /// preeditという名称はueno/libskkより。
+    ///
     /// TODO: 常に返るので、Optionである必要がなかった。caller側できちんとOption扱いするか、返り値の型を変えるか。
+    /// TODO: Update to return (String, cursor_begin, cursor_end) as a Rust interface.
     ///
     pub fn get_preedit(&self) -> Option<String> {
         let mut result = String::new();
@@ -723,7 +725,7 @@ impl CskkContext {
         for cskkdict in &self.dictionaries {
             // Using mutex in match on purpose, never acquiring lock again.
             #[allow(clippy::significant_drop_in_scrutinee)]
-            let result = match *cskkdict.lock().unwrap() {
+            let result = match *cskkdict.mutex.lock().unwrap() {
                 CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.save_dictionary(),
                 CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.save_dictionary(),
                 CskkDictionaryType::EmptyDict(ref mut dictionary) => dictionary.save_dictionary(),
@@ -741,7 +743,7 @@ impl CskkContext {
         for cskkdict in &self.dictionaries {
             // Using mutex in match on purpose, never acquiring lock again.
             #[allow(clippy::significant_drop_in_scrutinee)]
-            let result = match *cskkdict.lock().unwrap() {
+            let result = match *cskkdict.mutex.lock().unwrap() {
                 CskkDictionaryType::StaticFile(ref mut dictionary) => dictionary.reload(),
                 CskkDictionaryType::UserFile(ref mut dictionary) => dictionary.reload(),
                 CskkDictionaryType::EmptyDict(_) => Ok(()),
@@ -1384,9 +1386,9 @@ mod unit_tests {
     #[test]
     fn will_process() {
         let cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         assert!(cskkcontext.will_process(&a));
-        let copy = CskkKeyEvent::from_str("C-c").unwrap();
+        let copy = CskkKeyEvent::from_string_representation("C-c").unwrap();
         assert!(!cskkcontext.will_process(&copy));
     }
 
@@ -1394,7 +1396,7 @@ mod unit_tests {
     fn process_key_event() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
 
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         let result = cskkcontext.process_key_event(&a);
         assert!(result);
     }
@@ -1402,7 +1404,7 @@ mod unit_tests {
     #[test]
     fn retrieve_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.retrieve_output(false).unwrap();
         assert_eq!("a", actual);
@@ -1415,7 +1417,7 @@ mod unit_tests {
     #[test]
     fn poll_output() {
         let mut cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_str("a").unwrap();
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
         cskkcontext.process_key_event(&a);
         let actual = cskkcontext.poll_output().unwrap();
         assert_eq!("a", actual);
@@ -1426,7 +1428,7 @@ mod unit_tests {
     #[test]
     fn get_preedit() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let capital_a = CskkKeyEvent::from_str("A").unwrap();
+        let capital_a = CskkKeyEvent::from_string_representation("A").unwrap();
         cskkcontext.process_key_event(&capital_a);
         let actual = cskkcontext.get_preedit().unwrap_or_else(|| {
             panic!("No preedit. context: {:?}", cskkcontext.current_state_ref())
@@ -1450,8 +1452,9 @@ mod unit_tests {
     #[test]
     fn process_backspace() {
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("BackSpace").unwrap());
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
         assert!(actual);
     }
 
@@ -1459,8 +1462,9 @@ mod unit_tests {
     fn process_period() {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        cskkcontext.process_key_event(&CskkKeyEvent::from_str("h").unwrap());
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("period").unwrap());
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("h").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("period").unwrap());
         assert!(actual);
     }
 
@@ -1468,7 +1472,8 @@ mod unit_tests {
     fn dont_process_return_in_direct() {
         init_test_logger();
         let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
-        let actual = cskkcontext.process_key_event(&CskkKeyEvent::from_str("Return").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("Return").unwrap());
         assert!(!actual);
     }
 }

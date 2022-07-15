@@ -168,19 +168,24 @@ mod tests {
 
     #[test]
     fn combine_with_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("a").unwrap(), &['b']);
+        let next_key = KanaBuilder::combined_key(
+            &CskkKeyEvent::from_string_representation("a").unwrap(),
+            &['b'],
+        );
         assert_eq!(vec!['b', 'a'], next_key);
     }
 
     #[test]
     fn combine_no_unprocessed() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("k").unwrap(), &[]);
+        let next_key =
+            KanaBuilder::combined_key(&CskkKeyEvent::from_string_representation("k").unwrap(), &[]);
         assert_eq!(vec!['k'], next_key);
     }
 
     #[test]
     fn combine_capital() {
-        let next_key = KanaBuilder::combined_key(&CskkKeyEvent::from_str("B").unwrap(), &[]);
+        let next_key =
+            KanaBuilder::combined_key(&CskkKeyEvent::from_string_representation("B").unwrap(), &[]);
         assert_eq!(vec!['b'], next_key);
     }
 
@@ -225,7 +230,10 @@ mod tests {
     fn can_continue() {
         let converter = KanaBuilder::test_converter();
         let unprocessed = vec![];
-        let actual = converter.can_continue(&CskkKeyEvent::from_str("Q").unwrap(), &unprocessed);
+        let actual = converter.can_continue(
+            &CskkKeyEvent::from_string_representation("Q").unwrap(),
+            &unprocessed,
+        );
         assert!(!actual);
     }
 }

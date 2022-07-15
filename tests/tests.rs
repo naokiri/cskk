@@ -5,9 +5,7 @@ mod utils;
 use crate::utils::{
     default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
 };
-use cskk::dictionary::static_dict::StaticFileDict;
-use cskk::dictionary::user_dictionary::UserDictionary;
-use cskk::dictionary::{CskkDictionary, CskkDictionaryType};
+use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
     skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
@@ -180,10 +178,7 @@ fn katakana_input() {
 
 #[test]
 fn save_dict() {
-    let dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        "tests/data/userdict.dat",
-        "utf-8",
-    )));
+    let dict = CskkDictionary::new_user_dict("tests/data/userdict.dat", "utf-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     skk_context_save_dictionaries_rs(&mut context);
     skk_context_reload_dictionary(&mut context);
@@ -214,14 +209,8 @@ fn empty_dict() {
 
 #[test]
 fn register_and_read() {
-    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        "tests/data/SKK-JISYO.S",
-        "euc-jp",
-    )));
-    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        "tests/data/empty.dat",
-        "utf-8",
-    )));
+    let static_dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
+    let user_dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -428,14 +417,8 @@ fn reset_precomposition_on_ctrl_g() {
 #[test]
 fn flush_kana_on_abort_no_candidate_registration() {
     init_test_logger();
-    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        "tests/data/SKK-JISYO.S",
-        "euc-jp",
-    )));
-    let user_dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        "tests/data/empty.dat",
-        "utf-8",
-    )));
+    let static_dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
+    let user_dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -621,10 +604,8 @@ fn wide_latin() {
 #[test]
 fn number_composition() {
     init_test_logger();
-    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        "tests/data/number_jisyo.dat",
-        "UTF-8",
-    )));
+    let static_dict =
+        CskkDictionary::new_static_dict("tests/data/number_jisyo.dat", "UTF-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
         &mut context,
@@ -750,10 +731,8 @@ fn rom_kana_conversion_vu() {
 #[test]
 fn multiple_number_composition() {
     init_test_logger();
-    let static_dict = CskkDictionary::new(CskkDictionaryType::StaticFile(StaticFileDict::new(
-        "tests/data/number_jisyo.dat",
-        "UTF-8",
-    )));
+    let static_dict =
+        CskkDictionary::new_static_dict("tests/data/number_jisyo.dat", "UTF-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
         &mut context,
@@ -769,10 +748,7 @@ fn multiple_number_composition() {
 #[test]
 fn register_number() {
     init_test_logger();
-    let dict = CskkDictionary::new(CskkDictionaryType::UserFile(UserDictionary::new(
-        "tests/data/empty.dat",
-        "utf-8",
-    )));
+    let dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,

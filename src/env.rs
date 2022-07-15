@@ -45,9 +45,9 @@ fn search_path_from_xdg_data_dir(
         }
     }
 
-    Err(CskkError::FileNotFound(format!(
-        "{} not found in xdg data home or dirs",
-        filepath
+    Err(CskkError::IoError(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        format!("{} not found in xdg data home or dirs", filepath),
     )))
 }
 
