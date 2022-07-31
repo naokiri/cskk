@@ -2,6 +2,7 @@ use crate::skk_modes::{CommaStyle, PeriodStyle};
 
 pub(crate) struct CskkConfig {
     pub(crate) auto_start_henkan_keywords: Vec<String>,
+    // Easy override only for period and comma for libskk compatibility.
     pub(crate) period_style: PeriodStyle,
     pub(crate) comma_style: CommaStyle,
 }

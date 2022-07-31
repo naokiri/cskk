@@ -1,7 +1,11 @@
+use crate::CskkError;
+use serde::{Deserialize, Deserializer};
+use std::str::FromStr;
+
 /// Rough design prototype yet
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, Serialize)]
 #[repr(C)]
 pub enum InputMode {
     // かなモード
@@ -16,10 +20,26 @@ pub enum InputMode {
     Ascii,
 }
 
+impl FromStr for InputMode {
+    type Err = CskkError;
+
+    fn from_str(s: &str) -> Result<InputMode, CskkError> {
+        match s {
+            "Hiragana" => Ok(InputMode::Hiragana),
+            "Katakana" => Ok(InputMode::Katakana),
+            "HankakuKatakana" => Ok(InputMode::HankakuKatakana),
+            "Zenkaku" => Ok(InputMode::Zenkaku),
+            "Ascii" => Ok(InputMode::Ascii),
+
+            s => Err(CskkError::ParseError(s.to_string())),
+        }
+    }
+}
+
 /// Rough design prototype yet
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, Serialize)]
 #[repr(C)]
 pub enum CompositionMode {
     // ■モード 確定入力モード
@@ -36,6 +56,23 @@ pub enum CompositionMode {
     // Implies that state stack has at least one more deeper state for registration input
     // ▼たじゅうに【▼とうろくできる【こんなふうに】】
     Register,
+}
+
+impl FromStr for CompositionMode {
+    type Err = CskkError;
+
+    fn from_str(s: &str) -> Result<CompositionMode, CskkError> {
+        match s {
+            "Direct" => Ok(CompositionMode::Direct),
+            "PreComposition" => Ok(CompositionMode::PreComposition),
+            "PreCompositionOkurigana" => Ok(CompositionMode::PreCompositionOkurigana),
+            "CompositionSelection" => Ok(CompositionMode::CompositionSelection),
+            "Abbreviation" => Ok(CompositionMode::Abbreviation),
+            "Register" => Ok(CompositionMode::Register),
+
+            s => Err(CskkError::ParseError(s.to_string())),
+        }
+    }
 }
 
 pub fn has_rom2kana_conversion(input_mode: &InputMode, composition_mode: &CompositionMode) -> bool {
@@ -68,4 +105,17 @@ pub enum CommaStyle {
     CommaJa,
     /// Use "，" for ","
     CommaEn,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn serde_check() {
+        let result = toml::to_string::<InputMode>(&InputMode::Hiragana).unwrap();
+        assert_eq!(r#""Hiragana""#, result);
+        let result = toml::from_str::<InputMode>(r#""Katakana""#).unwrap();
+        assert_eq!(InputMode::Katakana, result);
+    }
 }

@@ -45,13 +45,13 @@ pub fn default_test_context() -> CskkContext {
 }
 
 pub fn test_context_with_dictionaries(dictionaries: Vec<Arc<CskkDictionary>>) -> CskkContext {
-    CskkContext::new_from_shared_files(
+    CskkContext::new_from_specified_paths(
         InputMode::Hiragana,
         CompositionMode::Direct,
         dictionaries,
-        "shared/rule/hiragana.json",
         "shared/rule/kana_form.toml",
         "shared/rule/ascii_form.toml",
+        "shared/rules"
     )
 }
 

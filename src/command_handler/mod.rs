@@ -1,7 +1,10 @@
 use crate::keyevent::CskkKeyEvent;
-use crate::{CskkState, Instruction};
+use crate::CskkState;
+pub(crate) use instruction::Instruction;
 
+pub(crate) mod configurable_command_handler;
 pub mod direct_mode_command_handler;
+mod instruction;
 pub mod kana_composition_handler;
 pub mod kana_precomposition_handler;
 

@@ -1,0 +1,9 @@
+* Rules overview
+
+libcskk will support various typing rules in the future
+which define keyboard shortcuts and array-of-keys to kana conversion table.
+Rules are normally read from xdg data directory's libcskk/rules,
+which defaults to ~/.local/share/libcskk/rules as top priority and then searches $XDG_DATA_DIRES/libcskk/rules/
+
+See rules/metadata.toml and rules/default/rule.toml for example and definition.
+

@@ -53,10 +53,7 @@ impl CommandHandler for KanaCompositionHandler {
         {
             // 現在の変換で確定させ、Directに戻す
             instructions.push(Instruction::ConfirmComposition);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
             instructions.push(Instruction::FinishConsumingKeyEvent);
             return instructions;
         } else if !is_delegated
@@ -65,25 +62,20 @@ impl CommandHandler for KanaCompositionHandler {
         {
             // Abort
             instructions.push(Instruction::Abort);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::PreComposition,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(
+                CompositionMode::PreComposition,
+            ));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if !is_delegated && symbol == xkb::keysyms::KEY_X {
             instructions.push(Instruction::Purge);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if is_delegated {
             let candidate_list = &current_state.candidate_list;
             if candidate_list.is_empty() {
-                instructions.push(Instruction::ChangeCompositionMode {
-                    composition_mode: CompositionMode::Register,
-                    delegate: false,
-                })
+                instructions.push(Instruction::ChangeCompositionMode(
+                    CompositionMode::Register,
+                ));
             }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {
@@ -96,10 +88,9 @@ impl CommandHandler for KanaCompositionHandler {
             } else if candidate_list.has_next() {
                 instructions.push(Instruction::NextCandidatePointer);
             } else {
-                instructions.push(Instruction::ChangeCompositionMode {
-                    composition_mode: CompositionMode::Register,
-                    delegate: false,
-                })
+                instructions.push(Instruction::ChangeCompositionMode(
+                    CompositionMode::Register,
+                ));
             }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_x {
@@ -112,10 +103,9 @@ impl CommandHandler for KanaCompositionHandler {
                 instructions.push(Instruction::PreviousCandidatePointer);
             } else {
                 instructions.push(Instruction::Abort);
-                instructions.push(Instruction::ChangeCompositionMode {
-                    composition_mode: CompositionMode::PreComposition,
-                    delegate: false,
-                });
+                instructions.push(Instruction::ChangeCompositionMode(
+                    CompositionMode::PreComposition,
+                ));
             }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if !is_delegated
@@ -124,10 +114,7 @@ impl CommandHandler for KanaCompositionHandler {
             // 現在の変換で確定させ、次のモードでキー入力を処理させる。 "I s i space k" の kのような時。
             // 後続で入力として処理させるので、Finishしない。
             instructions.push(Instruction::ConfirmComposition);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: true,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
         }
 
         instructions
@@ -144,8 +131,6 @@ impl KanaCompositionHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dictionary::static_dict::StaticFileDict;
-    use crate::dictionary::CskkDictionaryType;
 
     #[test]
     fn can_process_single() {

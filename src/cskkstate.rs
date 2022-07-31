@@ -1,3 +1,5 @@
+use xkbcommon::xkb;
+use xkbcommon::xkb::Keysym;
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
 use crate::form_changer::kana_form_changer::KanaFormChanger;
@@ -13,7 +15,7 @@ pub(crate) struct CskkState {
     // 直前のCompositionMode。Abort時に元に戻すmode。
     pub(crate) previous_composition_mode: CompositionMode,
     // 入力文字で、かな確定済みでないものすべて
-    pub(crate) pre_conversion: Vec<char>,
+    pub(crate) pre_conversion: Vec<Keysym>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。送りあり変換時には加えてconverted_kana_to_okuriの一文字目の子音や'>'付き。Abbrebiation変換の場合kana-convertされる前の入力など
     pub(crate) raw_to_composite: String,
     // 未確定入力の漢字の読み部分。この時点ではひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
@@ -63,13 +65,14 @@ impl CskkState {
 
         match self.composition_mode {
             CompositionMode::Direct => {
-                converted.to_owned() + &unconverted.iter().collect::<String>()
+                converted.to_owned() + &unconverted.iter().map(|keysym| xkb::keysym_get_name(keysym.clone())).collect::<Vec<_>>().join("")
             }
             CompositionMode::PreComposition => {
                 "▽".to_owned()
                     + converted
                     + &kana_to_composite
-                    + &unconverted.iter().collect::<String>()
+                    //+ &unconverted.iter().collect::<String>()
+                + &unconverted.iter().map(|keysym| xkb::keysym_get_name(keysym.clone())).collect::<Vec<_>>().join("")
             }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
@@ -77,7 +80,8 @@ impl CskkState {
                     + &kana_to_composite
                     + "*"
                     + &kana_to_okuri
-                    + &unconverted.iter().collect::<String>()
+                    + &unconverted.iter().map(|keysym| xkb::keysym_get_name(keysym.clone())).collect::<Vec<_>>().join("")
+                    // + &unconverted.iter().collect::<String>()
             }
             CompositionMode::CompositionSelection => {
                 "▼".to_owned() + composited + &composited_okuri

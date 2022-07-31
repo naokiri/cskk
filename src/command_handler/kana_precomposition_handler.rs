@@ -45,10 +45,10 @@ impl CommandHandler for KanaPrecompositionHandler {
             // space
             instructions.push(Instruction::OutputNNIfAny(current_input_mode));
             instructions.push(Instruction::FlushPreviousCarryOver);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::CompositionSelection,
-                delegate: true,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(
+                CompositionMode::CompositionSelection
+            ));
+            instructions.push(Instruction::Delegate);
             return instructions;
         } else if symbol == xkb::keysyms::KEY_greater {
             // TODO: SKK16.2 マニュアル 5.5.3 接頭辞変換
@@ -65,10 +65,7 @@ impl CommandHandler for KanaPrecompositionHandler {
                 instructions.push(Instruction::FlushPreviousCarryOver);
                 instructions.push(Instruction::ConfirmAsKatakana);
             }
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_q && modifier.contains(SkkKeyModifier::CONTROL) {
             // C-q
@@ -79,10 +76,7 @@ impl CommandHandler for KanaPrecompositionHandler {
             // C-g
             instructions.push(Instruction::FlushPreviousCarryOver);
             instructions.push(Instruction::FlushConvertedKana);
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_j && modifier.contains(SkkKeyModifier::CONTROL) {
             // C-j
@@ -103,10 +97,7 @@ impl CommandHandler for KanaPrecompositionHandler {
                 }
             }
 
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::Direct,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(CompositionMode::Direct));
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_BackSpace
             || (modifier.contains(SkkKeyModifier::CONTROL)
@@ -120,10 +111,9 @@ impl CommandHandler for KanaPrecompositionHandler {
         {
             // 大文字
             if !current_state.raw_to_composite.is_empty() {
-                instructions.push(Instruction::ChangeCompositionMode {
-                    composition_mode: CompositionMode::PreCompositionOkurigana,
-                    delegate: false,
-                });
+                instructions.push(Instruction::ChangeCompositionMode(
+                    CompositionMode::PreCompositionOkurigana,
+                ));
             }
         }
 
@@ -174,10 +164,7 @@ mod tests {
         assert_eq!(Instruction::OutputNNIfAny(InputMode::Hiragana), result[0]);
         assert_eq!(Instruction::FlushPreviousCarryOver, result[1]);
         assert_eq!(
-            Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::CompositionSelection,
-                delegate: true
-            },
+            Instruction::ChangeCompositionMode(CompositionMode::CompositionSelection),
             result[2]
         );
     }
@@ -193,10 +180,7 @@ mod tests {
             false,
         );
         assert_eq!(
-            Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::PreCompositionOkurigana,
-                delegate: false
-            },
+            Instruction::ChangeCompositionMode(CompositionMode::PreCompositionOkurigana),
             result[0]
         );
     }

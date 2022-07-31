@@ -45,12 +45,10 @@ fn search_path_from_xdg_data_dir(
         }
     }
 
-    Err(CskkError::IoError(std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        format!("{} not found in xdg data home or dirs", filepath),
-    )))
+    Err(CskkError::Error("Not found".to_string()))
 }
 
+#[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;

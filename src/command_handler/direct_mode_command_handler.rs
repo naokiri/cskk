@@ -162,10 +162,9 @@ impl CommandHandler for DirectModeCommandHandler {
             && has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode)
             && (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&symbol)
         {
-            instructions.push(Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::PreComposition,
-                delegate: false,
-            });
+            instructions.push(Instruction::ChangeCompositionMode(
+                CompositionMode::PreComposition
+            ));
         }
         instructions
     }
@@ -245,10 +244,7 @@ mod tests {
 
         let result = handler.get_instruction(&key_event, &get_test_state(), false);
         assert_eq!(
-            Instruction::ChangeCompositionMode {
-                composition_mode: CompositionMode::PreComposition,
-                delegate: false
-            },
+            Instruction::ChangeCompositionMode(CompositionMode::PreComposition),
             result[0]
         );
     }
