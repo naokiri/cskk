@@ -174,7 +174,6 @@ impl CskkRuleMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CompositionMode, CskkKeyEvent, InputMode, Instruction};
     #[derive(Deserialize, Debug)]
     struct CommandOnly {
         #[serde(flatten)]
@@ -185,7 +184,6 @@ mod tests {
     fn load_preset_file() {
         let filepath = "shared/rules/default/rule.toml";
         let result = CskkRule::load_rule_file(Path::new(&filepath)).unwrap();
-        // println!("{:?}", result.conversion);
         println!("{:?}", result.command);
     }
 

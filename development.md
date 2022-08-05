@@ -1,5 +1,16 @@
 # Development note
 
+## deploy process
+Not automated yet.
+バージョン Cargo.toml 書き換え
+githubでReleaseからDraft a new releaseしてv0.0.1のようなタグを作ってリリース後
+
+git checkout v0.0.1
+cargo login && cargo publish --dry-run してよさそうなら 
+cargo publish
+
+という手順を踏む。
+
 ## libskk
 
 libskkを真似てazik等設定可能にしたい

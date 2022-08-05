@@ -772,7 +772,7 @@ impl CskkContext {
         let initial_unprocessed_vector = self.current_state_ref().pre_conversion.clone();
         let combined_keyinputs = KanaBuilder::combine(key_event, &initial_unprocessed_vector);
         let unchecked_kana_convert_result = self.kana_converter.convert(&combined_keyinputs);
-        //
+
         let skip_command = has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
             && unchecked_kana_convert_result != None;
 
@@ -803,9 +803,10 @@ impl CskkContext {
         let will_be_processed = (has_rom2kana_conversion(
             &self.current_state_ref().input_mode,
             &self.current_state_ref().composition_mode,
-        ) && self
+        ) && (self
             .kana_converter
-            .can_continue(key_event, &initial_unprocessed_vector))
+            .can_continue(key_event, &initial_unprocessed_vector)
+            || self.kana_converter.can_continue(key_event, &[])))
             || (!has_rom2kana_conversion(
                 &self.current_state_ref().input_mode,
                 &self.current_state_ref().composition_mode,
@@ -825,7 +826,7 @@ impl CskkContext {
 
             let initial_kanainput_composition_mode = self.current_state_ref().composition_mode;
 
-            if let Some((converted, carry_over)) = self
+            return if let Some((converted, carry_over)) = self
                 .kana_converter
                 .convert(&next_unprocessed_pre_conversion)
             {
@@ -840,7 +841,7 @@ impl CskkContext {
                     self.current_state_ref().get_capital_transition(),
                 );
                 let current_composition_mode = self.current_state_ref().composition_mode;
-                return match current_composition_mode {
+                match current_composition_mode {
                     CompositionMode::Direct => {
                         self.append_converted(&converted);
                         self.set_carry_over(&carry_over);
@@ -886,7 +887,7 @@ impl CskkContext {
                         log::debug!("Unreachable by having rom-kana conversion check.");
                         false
                     }
-                };
+                }
             } else {
                 // character input didn't make kana conversion in this else flow.
                 let current_input_mode = self.current_state_ref().input_mode;
@@ -1001,8 +1002,8 @@ impl CskkContext {
                 if self.current_state_ref().composition_mode == CompositionMode::PreComposition {
                     self.auto_start_henkan();
                 }
-                return true;
-            }
+                true
+            };
         } else if key_event.is_ascii_inputtable() && key_event.is_modifierless_input() {
             // key was input, but not in rom-kana conversion related modes so skip rom-kana related and input as is.
             match &self.current_state_ref().input_mode {
@@ -1238,6 +1239,31 @@ impl CskkContext {
         self.state_stack.last_mut().expect("State stack is empty!")
     }
 
+    ///
+    /// Returns if that key event can be processed by current CSKK
+    /// Only checking, doesn't change internal states
+    ///
+    pub fn will_process(&self, key_event: &CskkKeyEvent) -> bool {
+        let current_state = self.current_state_ref();
+        let handler = self.get_handler_v2();
+        let maybe_instruction = handler.get_instruction(
+            key_event,
+            &current_state.input_mode,
+            &current_state.composition_mode,
+        );
+        let has_rom2kana_in_current_mode =
+            has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode);
+        let will_be_character_input = key_event.is_modifierless_input()
+            && ((has_rom2kana_in_current_mode
+                && (self
+                    .kana_converter
+                    .can_continue(key_event, &current_state.pre_conversion)
+                    || self.kana_converter.can_continue(key_event, &[])))
+                || (!has_rom2kana_in_current_mode && key_event.is_ascii_inputtable()));
+
+        maybe_instruction.is_some() || will_be_character_input
+    }
+
     fn get_handler_v2(&self) -> &ConfigurableCommandHandler {
         &self.command_handler
     }
@@ -1362,6 +1388,15 @@ mod unit_tests {
             config: CskkConfig::default(),
             rule_metadata,
         }
+    }
+
+    #[test]
+    fn will_process() {
+        let cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
+        let a = CskkKeyEvent::from_string_representation("a").unwrap();
+        assert!(cskkcontext.will_process(&a));
+        let copy = CskkKeyEvent::from_string_representation("C-c").unwrap();
+        assert!(!cskkcontext.will_process(&copy));
     }
 
     #[test]

@@ -160,7 +160,7 @@ impl CskkKeyEvent {
     ///
     /// いわゆるAsciiの範囲で表示できる文字
     ///
-    pub fn is_ascii_inputtable(&self) -> bool {
+    pub(crate) fn is_ascii_inputtable(&self) -> bool {
         //　ueno/libskkに倣っているが、Latin 1 全部に拡張可能？
         xkb::keysyms::KEY_space <= self.symbol && self.symbol <= xkb::keysyms::KEY_asciitilde
     }
@@ -168,7 +168,7 @@ impl CskkKeyEvent {
     /// 文字入力のために使えるキーイベントならば true
     // ueno/libskkでは完全にモディファイア無しのキーのみかな変換に使っているが、
     // どうもSHIFTを許容しないといけなさそうなのでSHIFT付きキー入力も明らかにコマンドではない文字入力として扱う。
-    pub fn is_modifierless_input(&self) -> bool {
+    pub(crate) fn is_modifierless_input(&self) -> bool {
         self.modifiers.difference(SkkKeyModifier::SHIFT).is_empty()
     }
 
@@ -481,5 +481,11 @@ mod tests {
             vec![keysyms::KEY_question],
             CskkKeyEvent::keysyms_from_str("question")
         );
+    }
+
+    #[test]
+    fn is_modifierless() {
+        let key_event = CskkKeyEvent::from_str("C-c").unwrap();
+        assert!(!key_event.is_modifierless_input())
     }
 }
