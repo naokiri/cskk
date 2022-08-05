@@ -9,13 +9,8 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate xkbcommon;
 
-#[cfg(test)]
-use crate::candidate_list::CandidateList;
-use crate::command_handler::configurable_command_handler::ConfigurableCommandHandler;
-use crate::command_handler::direct_mode_command_handler::DirectModeCommandHandler;
-use crate::command_handler::kana_composition_handler::KanaCompositionHandler;
-use crate::command_handler::kana_precomposition_handler::KanaPrecompositionHandler;
-use crate::command_handler::{CommandHandler, Instruction};
+use crate::command_handler::ConfigurableCommandHandler;
+use crate::command_handler::Instruction;
 use crate::config::CskkConfig;
 use crate::cskkstate::CskkState;
 use crate::dictionary::candidate::Candidate;
@@ -66,15 +61,13 @@ mod testhelper;
 ///
 pub struct CskkContext {
     state_stack: Vec<CskkState>,
-    direct_handler: DirectModeCommandHandler,
-    kana_precomposition_handler: KanaPrecompositionHandler,
-    kana_composition_handler: KanaCompositionHandler,
     command_handler: ConfigurableCommandHandler,
     kana_converter: Box<KanaBuilder>,
     kana_form_changer: KanaFormChanger,
     ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
+    #[allow(dead_code)]
     rule_metadata: CskkRuleMetadata,
 }
 
@@ -698,7 +691,6 @@ impl CskkContext {
             // TODO: from ueno/libskk's comment, returning false for all release might need to be reconsidered on dictionary editing.
             return false;
         }
-        // self.process_key_event_inner(key_event, false)
         self.process_key_event_inner_v2(key_event)
     }
 
@@ -739,8 +731,6 @@ impl CskkContext {
     }
 
     pub fn set_dictionaries(&mut self, dicts: Vec<Arc<CskkDictionary>>) {
-        self.kana_composition_handler
-            .set_dictionaries(dicts.clone());
         self.dictionaries = dicts;
     }
 
@@ -954,10 +944,7 @@ impl CskkContext {
                             initial_kanainput_composition_mode,
                             self.current_state_ref().get_capital_transition(),
                         );
-                        self.input_as_continuous_kana(
-                            key_event,
-                            initial_kanainput_composition_mode,
-                        );
+                        self.input_as_continuous_kana(key_event);
                     } else if self.kana_converter.can_continue(key_event, &[]) {
                         // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                         // まずpre_convertedを整理してから入力として扱う。
@@ -975,10 +962,7 @@ impl CskkContext {
                         if self.current_state_ref().converted_kana_to_okuri.is_empty() {
                             self.current_state().clear_okuri_first_letter();
                         }
-                        self.input_as_continuous_kana(
-                            key_event,
-                            initial_kanainput_composition_mode,
-                        );
+                        self.input_as_continuous_kana(key_event);
                     } else {
                         // kana builderですら扱えないキー。
                         // スペースや記号を想定。
@@ -1076,22 +1060,6 @@ impl CskkContext {
             match instruction {
                 Instruction::ChangeCompositionMode(composition_mode) => {
                     self.set_composition_mode(*composition_mode);
-                    // if *composition_mode == CompositionMode::Register {
-                    //     let previous_mode = if is_delegated {
-                    //         self.current_state_ref().previous_composition_mode
-                    //     } else {
-                    //         self.current_state_ref().composition_mode
-                    //     };
-                    //     self.enter_register_mode(previous_mode);
-                    // } else if *composition_mode == CompositionMode::CompositionSelection {
-                    //     self.update_candidate_list();
-                    //     self.set_composition_mode(*composition_mode);
-                    // } else {
-                    //     self.set_composition_mode(*composition_mode);
-                    // }
-                }
-                Instruction::Delegate => {
-                    //must_delegate = true;
                 }
                 Instruction::ChangeInputMode(input_mode) => {
                     self.set_input_mode(*input_mode);
@@ -1102,15 +1070,6 @@ impl CskkContext {
                 Instruction::FlushPreviousCarryOver => {
                     self.reset_unconverted();
                 }
-                // Instruction::UpdateCandidateList => {
-                //     // おそらく呼ばれないはずだが、なぜか変換候補と変換対象の同期が取れていない時のコマンド
-                //     self.update_candidate_list();
-                //     if self.current_state_ref().candidate_list.is_empty() {
-                //         // Directly change to Register mode ignoring current composition mode.
-                //         let previous_mode = self.current_state_ref().previous_composition_mode;
-                //         self.enter_register_mode(previous_mode);
-                //     }
-                // }
                 Instruction::FlushConvertedKana => {
                     self.reset_converted_kanas();
                 }
@@ -1123,10 +1082,10 @@ impl CskkContext {
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
                 }
-                Instruction::FinishConsumingKeyEvent => {
+                Instruction::FinishKeyEvent => {
                     return true;
                 }
-                Instruction::FinishNotConsumingKeyEvent => {
+                Instruction::PassthroughKeyEvent => {
                     return false;
                 }
                 Instruction::ConfirmAsKatakana => {
@@ -1196,7 +1155,6 @@ impl CskkContext {
                         self.set_composition_mode(CompositionMode::PreComposition);
                     } else {
                         self.previous_candidate();
-
                     }
                 }
                 #[allow(unreachable_patterns)]
@@ -1207,384 +1165,6 @@ impl CskkContext {
         }
 
         false
-    }
-
-    // FIXME: まだ良いルールが把握できていない中でインクリメンタルに機能を追加しているのでぐちゃぐちゃ。一通り機能ができてバグ修正できたらリファクタリング
-    ///
-    /// 上から順に
-    /// rom2kana可能? -yes-> かな入力として処理 (大文字のみcompositionmode変更コマンドとしても処理)
-    /// 現在のCompositionMode内で解釈されるコマンド？ -yes-> compositionmode用コマンドとして処理
-    /// rom2kana継続可能 or ascii？ -yes-> 継続入力として処理
-    /// rom2kana継続不可能 -all-> Flush後に入力として処理
-    ///
-    fn process_key_event_inner(&mut self, key_event: &CskkKeyEvent, is_delegated: bool) -> bool {
-        debug!("Keyevent: {:?}", key_event);
-        let kana_converter = &self.kana_converter;
-        let current_state = self.current_state_ref();
-        let initial_composition_mode = current_state.composition_mode;
-        let initial_unprocessed_vector = &current_state.pre_conversion.clone();
-        // TODO: configurability refactored combined_key
-        let combined_keys =
-            kana_converter.next_unprocessed_state(key_event, initial_unprocessed_vector);
-        let modifier = key_event.get_modifier();
-
-        // Shift以外のmodifierがある場合はかな変換とみなさない。
-        if (modifier - SkkKeyModifier::SHIFT).is_empty()
-            && has_rom2kana_conversion(&current_state.input_mode, &current_state.composition_mode)
-        {
-            if let Some((converted, carry_over)) = kana_converter.convert(&combined_keys) {
-                // clone to live long after possibly changing composition mode.
-                let converted = converted.clone();
-                let carry_over = carry_over.clone();
-
-                let symbol = key_event.get_symbol();
-
-                let initial_composition_mode = current_state.composition_mode;
-                let is_capital = (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&symbol);
-                if is_capital && initial_composition_mode == CompositionMode::Direct {
-                    self.set_composition_mode(CompositionMode::PreComposition);
-                } else if is_capital
-                    && initial_composition_mode == CompositionMode::PreComposition
-                    && !current_state.get_composite_key().is_empty()
-                {
-                    self.set_composition_mode(CompositionMode::PreCompositionOkurigana);
-                }
-
-                let current_state = self.current_state_ref();
-                let current_composition_mode = &current_state.composition_mode.clone();
-                return match current_composition_mode {
-                    CompositionMode::Direct => {
-                        self.append_converted(&converted);
-                        self.set_carry_over(&carry_over);
-                        true
-                    }
-                    CompositionMode::PreComposition => {
-                        self.append_converted_to_composite(&converted);
-                        self.set_carry_over(&carry_over);
-                        self.auto_start_henkan();
-                        true
-                    }
-                    CompositionMode::PreCompositionOkurigana => {
-                        if let Some(key_char) = key_event.get_symbol_char() {
-                            self.current_state().try_set_okuri_first_letter(key_char);
-                        } else {
-                            debug!("Unreachable. Key event without symbol char is kana converted. Okuri will be ignored on composition.");
-                        }
-                        if initial_composition_mode == CompositionMode::PreComposition
-                            && !initial_unprocessed_vector.is_empty()
-                        {
-                            // 以前入力されていた部分はPreComposition側として処理する。
-                            // 例: "t T" の't'部分が 'っ' とかな変換される場合
-                            self.append_converted_to_composite(&converted)
-                        } else {
-                            self.append_converted_to_okuri(&converted)
-                        }
-                        self.set_carry_over(&carry_over);
-                        // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
-                        if carry_over.is_empty() {
-                            self.update_candidate_list();
-                            self.set_composition_mode(CompositionMode::CompositionSelection);
-                            return self.process_key_event_inner(key_event, true);
-                        }
-                        true
-                    }
-                    _ => {
-                        debug!("Unreachable by has rom-kana conversion check.");
-                        false
-                    }
-                };
-            }
-        }
-
-        let handler = self.get_handler(&current_state.input_mode, &current_state.composition_mode);
-        // if !handler.can_process(key_event) {
-        //     return false;
-        // }
-        let instructions = handler.get_instruction(key_event, current_state, is_delegated);
-        drop(handler);
-
-        let mut must_delegate = false;
-        for instruction in instructions {
-            debug!("{:?}", &instruction);
-            match instruction {
-                Instruction::ChangeCompositionMode(composition_mode) => {
-                    if composition_mode == CompositionMode::Register {
-                        let previous_mode = if is_delegated {
-                            self.current_state_ref().previous_composition_mode
-                        } else {
-                            self.current_state_ref().composition_mode
-                        };
-                        self.enter_register_mode(previous_mode);
-                    } else if composition_mode == CompositionMode::CompositionSelection {
-                        self.update_candidate_list();
-                        self.set_composition_mode(composition_mode);
-                    } else {
-                        self.set_composition_mode(composition_mode);
-                    }
-                }
-                Instruction::Delegate => {
-                    must_delegate = true;
-                }
-                Instruction::ChangeInputMode(input_mode) => {
-                    self.set_input_mode(input_mode);
-                }
-                Instruction::OutputNNIfAny(input_mode) => {
-                    self.output_nn_if_any(input_mode, initial_composition_mode);
-                }
-                Instruction::FlushPreviousCarryOver => {
-                    self.reset_unconverted();
-                }
-                Instruction::UpdateCandidateList => {
-                    // おそらく呼ばれないはずだが、なぜか変換候補と変換対象の同期が取れていない時のコマンド
-                    self.update_candidate_list();
-                    if self.current_state_ref().candidate_list.is_empty() {
-                        // Directly change to Register mode ignoring current composition mode.
-                        let previous_mode = self.current_state_ref().previous_composition_mode;
-                        self.enter_register_mode(previous_mode);
-                    }
-                }
-                Instruction::FlushConvertedKana => {
-                    self.reset_converted_kanas();
-                }
-                Instruction::Abort => {
-                    // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
-                    self.reset_composited();
-                    self.consolidate_converted_to_to_composite();
-                    self.abort_register_mode();
-                }
-                Instruction::ConfirmComposition => {
-                    self.confirm_current_composition_candidate();
-                }
-                Instruction::FinishConsumingKeyEvent => {
-                    return true;
-                }
-                Instruction::FinishNotConsumingKeyEvent => {
-                    return false;
-                }
-                Instruction::ConfirmAsKatakana => {
-                    self.confirm_current_kana_to_composite(InputMode::Katakana);
-                    self.set_composition_mode(CompositionMode::Direct);
-                }
-                Instruction::ConfirmAsHiragana => {
-                    self.confirm_current_kana_to_composite(InputMode::Hiragana);
-                    self.set_composition_mode(CompositionMode::Direct);
-                }
-                Instruction::ConfirmAsJISX0201 => {
-                    self.confirm_current_kana_to_composite(InputMode::HankakuKatakana);
-                    self.set_composition_mode(CompositionMode::Direct);
-                }
-                Instruction::ConfirmDirect => {
-                    return if self.state_stack.len() > 1 {
-                        self.exit_register_mode(&self.current_state_ref().confirmed.to_owned());
-                        true
-                    } else {
-                        false
-                    }
-                }
-                Instruction::Purge => {
-                    self.purge_current_composition_candidate();
-                }
-                Instruction::NextCandidatePointer => {
-                    self.next_candidate();
-                }
-                Instruction::PreviousCandidatePointer => {
-                    self.previous_candidate();
-                }
-                Instruction::DeletePrecomposition => {
-                    self.delete_precomposition();
-                }
-                Instruction::DeleteDirect => {
-                    return self.delete_direct();
-                }
-                #[allow(unreachable_patterns)]
-                _ => {
-                    debug!("unimplemented instruction: {:?}", &instruction);
-                }
-            }
-        }
-        if must_delegate && is_delegated {
-            // Delegated more than twice in commands. Something is wrong.
-            // Return in odd state but better than infinte loop.
-            return false;
-        }
-        if must_delegate {
-            return self.process_key_event_inner(key_event, true);
-        }
-
-        // ここまで来たらかな変換もなく、ステート変更等の命令としての処理が済み、素の入力として処理する状態
-        let mut did_input = false;
-        if (modifier - SkkKeyModifier::SHIFT).is_empty() {
-            match &self.current_state_ref().composition_mode {
-                CompositionMode::CompositionSelection => {
-                    debug!("Some key in composition selection. Ignoring.")
-                }
-                CompositionMode::Direct
-                | CompositionMode::PreComposition
-                | CompositionMode::PreCompositionOkurigana => {
-                    match &self.current_state_ref().input_mode {
-                        InputMode::Ascii => {
-                            if key_event.is_ascii_inputtable()
-                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
-                            {
-                                if let Some(key_char) = key_event.get_symbol_char() {
-                                    match &self.current_state_ref().composition_mode {
-                                        CompositionMode::Direct => {
-                                            self.append_confirmed_raw_char(key_char);
-                                            did_input = true;
-                                        }
-                                        _ => {
-                                            log::debug!(
-                                                "Unreachable. Ascii should be always in Direct mode."
-                                            );
-                                            return false;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        InputMode::Zenkaku => {
-                            if key_event.is_ascii_inputtable()
-                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
-                            {
-                                if let Some(key_char) = key_event.get_symbol_char() {
-                                    let zenkaku =
-                                        self.ascii_form_changer.adjust_ascii_char(key_char);
-                                    match &self.current_state_ref().composition_mode {
-                                        CompositionMode::Direct => {
-                                            self.append_converted(&zenkaku);
-                                            did_input = true;
-                                        }
-                                        _ => {
-                                            log::debug!(
-                                                "Unreachable. ZenkakuAscii should be always in Direct mode."
-                                            );
-                                            return false;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        InputMode::Hiragana | InputMode::Katakana | InputMode::HankakuKatakana => {
-                            if key_event.is_ascii_inputtable()
-                                && (key_event.get_modifier() - SkkKeyModifier::SHIFT).is_empty()
-                            {
-                                if self
-                                    .kana_converter
-                                    .can_continue(key_event, initial_unprocessed_vector)
-                                {
-                                    // かな変換できる可能性が残るのでFlushはされない
-                                    did_input = self.input_as_continuous_kana(
-                                        key_event,
-                                        initial_composition_mode,
-                                    );
-                                } else {
-                                    // "k g" 等かな変換が続けられない場合、resetしてから入力として処理する。
-                                    // "n d" 等の場合、直前の'n'を'ん'とする。
-                                    let current_input_mode = self.current_state_ref().input_mode;
-                                    self.output_nn_if_any(
-                                        current_input_mode,
-                                        initial_composition_mode,
-                                    );
-                                    self.reset_unconverted();
-                                    let unprocessed_vector =
-                                        self.current_state_ref().pre_conversion.clone();
-                                    if let Some(key_char) = key_event.get_symbol_char() {
-                                        // カンマピリオドは特殊な設定と処理がある。
-                                        if let Some(converted) =
-                                            self.kana_converter.convert_periods(
-                                                &key_char,
-                                                self.config.period_style,
-                                                self.config.comma_style,
-                                            )
-                                        {
-                                            match &self.current_state_ref().composition_mode {
-                                                CompositionMode::Direct => {
-                                                    self.append_converted(&converted);
-                                                    did_input = true;
-                                                }
-                                                CompositionMode::PreComposition => {
-                                                    self.append_converted_to_composite(&converted);
-                                                    did_input = true;
-                                                }
-                                                CompositionMode::PreCompositionOkurigana => {
-                                                    self.reset_unconverted();
-                                                    self.append_converted_to_okuri(&converted);
-                                                    did_input = true;
-                                                    // self.update_candidate_list();
-                                                    // self.set_composition_mode(
-                                                    //     CompositionMode::CompositionSelection,
-                                                    // );
-                                                    // return self
-                                                    //     .process_key_event_inner(key_event, true);
-                                                }
-                                                _ => {
-                                                    debug!("Unreachable");
-                                                    return false;
-                                                }
-                                            }
-                                        } else if self
-                                            .kana_converter
-                                            .can_continue(key_event, &unprocessed_vector)
-                                        {
-                                            return self.input_as_continuous_kana(
-                                                key_event,
-                                                initial_composition_mode,
-                                            );
-                                        } else if key_event.get_symbol() == xkb::keysyms::KEY_q
-                                            || key_event.get_symbol() == xkb::keysyms::KEY_Q
-                                        {
-                                            // kana builder で該当がない場合でもcskkで処理しないとおかしなことになるのでtrueを返す
-                                            // コマンドとして処理するとddskkの実装から離れることでlibskkとも動作を合わせるのが難しく、ここで直接指定。
-                                            // TODO: kanaとして続けられないかもしれないが、記号ではない文字であるかどうかの判定をどこかに統合。[a-zA-Z]判定だけで良い？
-                                            // qはあえて消費し、 何もしない。
-                                            return true;
-                                        } else {
-                                            // kana builderで該当がない記号等
-                                            match &self.current_state_ref().composition_mode {
-                                                CompositionMode::Direct => {
-                                                    self.append_confirmed_raw_char(key_char);
-                                                    did_input = true;
-                                                }
-                                                CompositionMode::PreComposition => {
-                                                    self.append_converted_to_composite(
-                                                        &key_char.to_string(),
-                                                    );
-                                                    did_input = true;
-                                                }
-                                                CompositionMode::PreCompositionOkurigana => {
-                                                    self.append_converted_to_okuri(
-                                                        &key_char.to_string(),
-                                                    );
-                                                    did_input = true;
-                                                }
-
-                                                _ => {
-                                                    debug!("Unreachable");
-                                                    return false;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    debug!("didinput {}", did_input);
-                    // Auto-start henkan
-                    if did_input
-                        && self.current_state_ref().composition_mode
-                            == CompositionMode::PreComposition
-                    {
-                        self.auto_start_henkan();
-                    }
-                }
-                // TODO
-                CompositionMode::Abbreviation => {}
-                CompositionMode::Register => {}
-            }
-        }
-        // TODO: 入力として内部では処理しつつunhandledで返す命令は必要か調べる。ueno/libskkのviとの連携関連issueとか読むとわかるか？
-        did_input
     }
 
     fn auto_start_henkan(&mut self) {
@@ -1602,7 +1182,7 @@ impl CskkContext {
                     .ends_with(suffix)
             {
                 let newlen = self.current_state_ref().get_composite_key().len() - suffix.len();
-                for i in 0..suffix.chars().count() {
+                for _i in 0..suffix.chars().count() {
                     self.current_state().delete_char_from_raw_to_composite();
                 }
                 self.current_state()
@@ -1619,12 +1199,8 @@ impl CskkContext {
     }
 
     /// process key_event as character input without conversion or composition.
-    /// CompositionModeによってどこに付加されるかが変わる。
-    fn input_as_continuous_kana(
-        &mut self,
-        key_event: &CskkKeyEvent,
-        initial_composition_mode: CompositionMode,
-    ) -> bool {
+    /// 現在のCompositionModeによってどこに付加されるかが変わる。
+    fn input_as_continuous_kana(&mut self, key_event: &CskkKeyEvent) -> bool {
         match &self.current_state_ref().composition_mode {
             CompositionMode::Direct | CompositionMode::PreComposition => {
                 self.set_unconverted(
@@ -1663,33 +1239,6 @@ impl CskkContext {
         self.state_stack.last_mut().expect("State stack is empty!")
     }
 
-    ///
-    /// Returns if that key event can be processed by current CSKK
-    /// Only checking, doesn't change internal states
-    /// TODO: maybe not a proper impl for IM? can be replaced with just checking meta of keyevent?
-    ///
-    #[allow(dead_code)]
-    pub fn will_process(&self, key_event: &CskkKeyEvent) -> bool {
-        let current_state = self.current_state_ref();
-        let handler = self.get_handler(&current_state.input_mode, &current_state.composition_mode);
-        handler.can_process(key_event)
-    }
-
-    fn get_handler<'a>(
-        &'a self,
-        _input_mode: &InputMode,
-        composition_mode: &CompositionMode,
-    ) -> Box<dyn CommandHandler + 'a> {
-        // FIXME: this _ => default handler looks error prone
-        match composition_mode {
-            CompositionMode::Direct => Box::new(&self.direct_handler),
-            CompositionMode::PreComposition => Box::new(&self.kana_precomposition_handler),
-            CompositionMode::PreCompositionOkurigana => Box::new(&self.kana_precomposition_handler),
-            CompositionMode::CompositionSelection => Box::new(&self.kana_composition_handler),
-            _ => Box::new(&self.direct_handler),
-        }
-    }
-
     fn get_handler_v2(&self) -> &ConfigurableCommandHandler {
         &self.command_handler
     }
@@ -1721,18 +1270,12 @@ impl CskkContext {
         let rule_metadata = CskkRuleMetadata::load_metadata()?;
         let default_rule = rule_metadata.load_default_rule()?;
 
-        let kana_direct_handler = DirectModeCommandHandler::new();
-        let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::new(&default_rule));
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
 
         Ok(Self {
             state_stack: initial_stack,
-            direct_handler: kana_direct_handler,
-            kana_precomposition_handler,
-            kana_composition_handler,
             kana_converter,
             command_handler,
             kana_form_changer: KanaFormChanger::default_kanaform_changer(),
@@ -1755,18 +1298,12 @@ impl CskkContext {
     ) -> Self {
         let rule_metadata = CskkRuleMetadata::load_metadata_from_directory(rule_filepath).unwrap();
         let default_rule = rule_metadata.load_default_rule().unwrap();
-        let kana_direct_handler = DirectModeCommandHandler::new();
-        let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::new(&default_rule));
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
         Self {
             state_stack: initial_stack,
-            direct_handler: kana_direct_handler,
-            kana_precomposition_handler,
-            kana_composition_handler,
             kana_converter,
             command_handler,
             kana_form_changer: KanaFormChanger::from_file(kana_form_changer_filepath),
@@ -1812,18 +1349,12 @@ mod unit_tests {
             .expect("Failed to load metadata for test context");
         let default_rule = rule_metadata.load_default_rule().unwrap();
 
-        let kana_direct_handler = DirectModeCommandHandler::new();
-        let kana_precomposition_handler = KanaPrecompositionHandler::new();
-        let kana_composition_handler = KanaCompositionHandler::new(dictionaries.clone());
         let kana_converter = Box::new(KanaBuilder::test_converter());
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
         CskkContext {
             state_stack: initial_stack,
-            direct_handler: kana_direct_handler,
-            kana_precomposition_handler,
-            kana_composition_handler,
             kana_converter,
             command_handler,
             kana_form_changer: KanaFormChanger::test_kana_form_changer(),
@@ -1832,15 +1363,6 @@ mod unit_tests {
             config: CskkConfig::default(),
             rule_metadata,
         }
-    }
-
-    #[test]
-    fn will_process() {
-        let cskkcontext = new_test_context(InputMode::Ascii, CompositionMode::Direct);
-        let a = CskkKeyEvent::from_string_representation("a").unwrap();
-        assert!(cskkcontext.will_process(&a));
-        let copy = CskkKeyEvent::from_string_representation("C-c").unwrap();
-        assert!(!cskkcontext.will_process(&copy));
     }
 
     #[test]

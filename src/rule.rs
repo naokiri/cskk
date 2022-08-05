@@ -3,7 +3,7 @@ use crate::{CompositionMode, CskkError, CskkKeyEvent, InputMode, Instruction};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
@@ -87,18 +87,18 @@ impl CskkCommandRuleInner {
             InputMode::HankakuKatakana => Some(&self.hankakukatakana),
             InputMode::Zenkaku => Some(&self.zenkaku),
             InputMode::Ascii => Some(&self.ascii),
-            _ => None,
         }
     }
 }
 
 impl CskkRule {
+    #[allow(dead_code)]
     pub(crate) fn load_default_rule_file() -> Result<Self, CskkError> {
         let filepath = filepath_from_xdg_data_dir("libcskk/rules/default/rule.toml")?;
-        Self::load_rule_file(&filepath)
+        Self::load_rule_file(&Path::new(&filepath))
     }
 
-    pub(crate) fn load_rule_file(filepath: &str) -> Result<Self, CskkError> {
+    pub(crate) fn load_rule_file(filepath: &Path) -> Result<Self, CskkError> {
         let mut file = File::open(filepath)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
@@ -161,10 +161,7 @@ impl CskkRuleMetadata {
             let mut file_path = base_direcotry.clone();
             file_path.push(&rule.path);
             file_path.push("rule.toml");
-            let mut file = File::open(file_path)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
-            let result = toml::from_str::<CskkRule>(&contents)?;
+            let result = CskkRule::load_rule_file(file_path.as_path())?;
             Ok(result)
         } else {
             Err(CskkError::Error(
@@ -187,7 +184,7 @@ mod tests {
     #[test]
     fn load_preset_file() {
         let filepath = "shared/rules/default/rule.toml";
-        let result = CskkRule::load_rule_file(filepath).unwrap();
+        let result = CskkRule::load_rule_file(Path::new(&filepath)).unwrap();
         // println!("{:?}", result.conversion);
         println!("{:?}", result.command);
     }

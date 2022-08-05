@@ -1,11 +1,10 @@
-use std::fmt::{Debug, Formatter};
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
 use crate::form_changer::kana_form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
-use std::ops::Add;
+use std::fmt::{Debug, Formatter};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{Keysym, keysym_get_name};
+use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
 /// Rough prototype yet.
@@ -165,13 +164,20 @@ impl CskkState {
 
 impl Debug for CskkState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let keysyms: Vec<String> = self.pre_conversion.iter().map(|x| keysym_get_name(*x)).collect();
+        let keysyms: Vec<String> = self
+            .pre_conversion
+            .iter()
+            .map(|x| keysym_get_name(*x))
+            .collect();
         f.debug_struct("CskkState")
-            .field("Mode",&(&self.composition_mode, &self.input_mode))
+            .field("Mode", &(&self.composition_mode, &self.input_mode))
             .field("previous_composition_mode", &self.previous_composition_mode)
             .field("pre_conversion", &keysyms)
             .field("raw_to_composite", &self.raw_to_composite)
-            .field("converted_kana_to_composite", &self.converted_kana_to_composite)
+            .field(
+                "converted_kana_to_composite",
+                &self.converted_kana_to_composite,
+            )
             .field("converted_kana_to_okuri", &self.converted_kana_to_okuri)
             .field("okuri_first_letter", &self.okuri_first_letter)
             .field("composited_okuri", &self.composited_okuri)
@@ -201,8 +207,7 @@ impl CskkState {
             composited_okuri: "".to_string(),
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
-            capital_transition: false
+            capital_transition: false,
         }
     }
-
 }

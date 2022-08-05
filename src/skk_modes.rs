@@ -1,5 +1,5 @@
 use crate::CskkError;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use std::str::FromStr;
 
 /// Rough design prototype yet

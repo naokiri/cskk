@@ -2,48 +2,28 @@ use crate::{CompositionMode, CskkError, InputMode};
 use regex::Regex;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer};
-use std::fmt;
-use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 ///
 ///
-// FIXME: Finish*, Delegate, ConfirmDirect, DeleteDirect の4つのみキー処理を終わる可能性があるのを設定を書く時に間違えないよう明示的にしたい
+// FIXME: FinishKeyEvent, PassThroughKeyEvent, ConfirmDirect, DeleteDirect の4つのみキー処理を終わる可能性があるのを設定を書く時に間違えないよう明示的にしたい
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum Instruction {
     // Abort current composition selection, registration
     Abort,
-    // // #[serde(deserialize_with = "subinputmode_instruction_deserialize")]
     ChangeInputMode(InputMode),
-    // InputModeHiragana,
-    // InputModeKatakana,
-    // InputModeHankakuKatakana,
-    // InputModeZenkaku,
-    // InputModeAscii,
     // Try to convert preconversion if in input mode which has conversion. Mostly (or only?) just for single 'n' conversion.
     // (ctrl q)コマンドのように現在のinput_modeに依らない変換が必要なのでinputmodeも指定しなければならない。
     #[allow(clippy::upper_case_acronyms)]
     OutputNNIfAny(InputMode),
-    // OutputNNIfAnyHiragana,
-    // OutputNNIfAnyKatakana,
-    // OutputNNIfAnyHankakuKatakana,
     FlushPreviousCarryOver,
     FlushConvertedKana,
     ChangeCompositionMode(CompositionMode),
-    // CompositionModeDirect,
-    // CompositionModePreComposition,
-    // CompositionModePreCompositionOkurigana,
-    // CompositionModeCompositionSelection,
-    // CompositionModeAbbreviation,
-    // CompositionModeRegister,
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
-    FinishConsumingKeyEvent,
+    FinishKeyEvent,
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用?
     #[allow(dead_code)]
-    FinishNotConsumingKeyEvent,
-    // keyeventを処理せず、(モード変更した状態で)再処理する
-    // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
-    Delegate,
+    PassthroughKeyEvent,
     // 次の候補を指そうとする。候補があればポインタを進めるが、無い場合はRegisterモードへ移行する。
     TryNextCandidate,
     // 前の候補を指そうとする。
@@ -57,8 +37,8 @@ pub(crate) enum Instruction {
     // 現在の変換候補で確定する
     ConfirmComposition,
     // 現在の変換前文字列を漢字変換せずに確定する。 Hiragana/Katakana/HankakuKatakana のみ
-    // TODO:
     ConfirmPreComposition(InputMode),
+    // TODO: ConfirmAs(InputMode)
     ConfirmAsHiragana,
     ConfirmAsKatakana,
     #[allow(clippy::upper_case_acronyms)]
@@ -83,8 +63,7 @@ impl FromStr for Instruction {
             "Abort" => Some(Instruction::Abort),
             "FlushPreviousCarryOver" => Some(Instruction::FlushPreviousCarryOver),
             "FlushConvertedKana" => Some(Instruction::FlushConvertedKana),
-            "FinishConsumingKeyEvent" => Some(Instruction::FinishConsumingKeyEvent),
-            "Delegate" => Some(Instruction::Delegate),
+            "FinishKeyEvent" => Some(Instruction::FinishKeyEvent),
             "UpdateCandidateList" => Some(Instruction::UpdateCandidateList),
             "NextCandidatePointer" => Some(Instruction::NextCandidatePointer),
             "PreviousCandidatePointer" => Some(Instruction::PreviousCandidatePointer),
@@ -98,6 +77,7 @@ impl FromStr for Instruction {
             "DeleteDirect" => Some(Instruction::DeleteDirect),
             "TryNextCandidate" => Some(Instruction::TryNextCandidate),
             "TryPreviousCandidate" => Some(Instruction::TryPreviousCandidate),
+            "PassthroughKeyEvent" => Some(Instruction::PassthroughKeyEvent),
             _ => None,
         } {
             return Ok(simple_instruction);
@@ -116,7 +96,9 @@ impl FromStr for Instruction {
             match &capture[1] {
                 "OutputNNIfAny" => return Ok(Instruction::OutputNNIfAny(input_mode)),
                 "ChangeInputMode" => return Ok(Instruction::ChangeInputMode(input_mode)),
-                "ConfirmPreComposition" => return Ok(Instruction::ConfirmPreComposition(input_mode)),
+                "ConfirmPreComposition" => {
+                    return Ok(Instruction::ConfirmPreComposition(input_mode))
+                }
                 _ => {}
             }
         }
@@ -157,21 +139,6 @@ impl<'de> Deserialize<'de> for Instruction {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    // #[test]
-    // fn fromstr_check() {
-    //     let result = Instruction::from_str("ConfirmDirect").unwrap();
-    //     assert_eq!(Instruction::ConfirmDirect, result);
-    //     let result = Instruction::from_str("ChangeInputMode(Hiragana)").unwrap();
-    //     assert_eq!(Instruction::ChangeInputMode(InputMode::Hiragana), result);
-    //     let result = Instruction::from_str("ChangeInputMode(Ascii)").unwrap();
-    //     assert_eq!(Instruction::ChangeInputMode(InputMode::Ascii), result);
-    //     let result = Instruction::from_str("ChangeCompositionMode(PreComposition)").unwrap();
-    //     assert_eq!(
-    //         Instruction::ChangeCompositionMode(CompositionMode::PreComposition),
-    //         result
-    //     );
-    // }
 
     #[derive(Deserialize)]
     struct InstructionOnly {

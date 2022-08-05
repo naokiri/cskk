@@ -1,4 +1,3 @@
-use serde::de::Error;
 use thiserror::Error;
 
 // General error that haven't determined what this is.

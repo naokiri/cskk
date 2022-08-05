@@ -1,6 +1,8 @@
-use std::collections::HashMap;
-
+use crate::keyevent::CskkKeyEvent;
+use crate::rule::CskkRule;
+use crate::skk_modes::{CommaStyle, PeriodStyle};
 use sequence_trie::SequenceTrie;
+use std::collections::HashMap;
 use xkbcommon::xkb::keysyms;
 #[cfg(test)]
 use xkbcommon::xkb::keysyms::{
@@ -8,11 +10,6 @@ use xkbcommon::xkb::keysyms::{
     KEY_A, KEY_B,
 };
 use xkbcommon::xkb::Keysym;
-
-use crate::keyevent::CskkKeyEvent;
-use crate::rule::CskkRule;
-use crate::skk_modes::{CommaStyle, PeriodStyle};
-use crate::SkkKeyModifier;
 
 pub(crate) type Converted = String;
 pub(crate) type CarryOver = Vec<Keysym>;
@@ -159,7 +156,10 @@ impl KanaBuilder {
         process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
         process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
 
-        process_list.insert(&[keysyms::KEY_t, keysyms::KEY_s, keysyms::KEY_u], ("つ".to_string(), vec![]));
+        process_list.insert(
+            &[keysyms::KEY_t, keysyms::KEY_s, keysyms::KEY_u],
+            ("つ".to_string(), vec![]),
+        );
 
         KanaBuilder {
             process_map: process_list,
