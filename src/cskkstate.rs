@@ -75,7 +75,7 @@ impl CskkState {
                 converted.to_owned()
                     + &unconverted
                         .iter()
-                        .map(|keysym| xkb::keysym_get_name(keysym.clone()))
+                        .map(|keysym| xkb::keysym_get_name(*keysym))
                         .collect::<Vec<_>>()
                         .join("")
             }
@@ -84,7 +84,7 @@ impl CskkState {
                     + converted
                     + &kana_to_composite
                     //+ &unconverted.iter().collect::<String>()
-                + &unconverted.iter().map(|keysym| xkb::keysym_get_name(keysym.clone())).collect::<Vec<_>>().join("")
+                + &unconverted.iter().map(|keysym| xkb::keysym_get_name(*keysym)).collect::<Vec<_>>().join("")
             }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
@@ -94,7 +94,7 @@ impl CskkState {
                     + &kana_to_okuri
                     + &unconverted
                         .iter()
-                        .map(|keysym| xkb::keysym_get_name(keysym.clone()))
+                        .map(|keysym| xkb::keysym_get_name(*keysym))
                         .collect::<Vec<_>>()
                         .join("")
                 // + &unconverted.iter().collect::<String>()
@@ -123,7 +123,7 @@ impl CskkState {
             s.push(c);
             return s;
         }
-        return self.raw_to_composite.to_owned();
+        self.raw_to_composite.to_owned()
     }
 
     // FIXME: 本来はstate内での齟齬を防ぐために、これをpub(crate)ではなくして個別で操作できないように他の内容を操作するメソッドで同時管理したい。

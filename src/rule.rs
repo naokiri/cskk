@@ -95,7 +95,7 @@ impl CskkRule {
     #[allow(dead_code)]
     pub(crate) fn load_default_rule_file() -> Result<Self, CskkError> {
         let filepath = filepath_from_xdg_data_dir("libcskk/rules/default/rule.toml")?;
-        Self::load_rule_file(&Path::new(&filepath))
+        Self::load_rule_file(Path::new(&filepath))
     }
 
     pub(crate) fn load_rule_file(filepath: &Path) -> Result<Self, CskkError> {
