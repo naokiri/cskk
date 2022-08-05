@@ -300,6 +300,10 @@ impl CskkContext {
         }
     }
 
+    pub fn get_version() -> String {
+        env!("CARGO_PKG_VERSION").to_string()
+    }
+
     fn append_confirmed_raw_char(&mut self, result: char) {
         let current_state = self.current_state();
         current_state.confirmed.push(result);
