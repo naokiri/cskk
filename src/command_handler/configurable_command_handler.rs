@@ -12,6 +12,7 @@ impl ConfigurableCommandHandler {
         }
     }
 
+    /// コマンドとして処理し、文字入力として処理しない場合にinstructionを返す。
     pub(crate) fn get_instruction(
         &self,
         key_event: &CskkKeyEvent,

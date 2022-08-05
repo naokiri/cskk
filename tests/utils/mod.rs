@@ -24,18 +24,24 @@ pub fn transition_check(
     let input_mode = skk_context_get_input_mode_rs(context);
     assert_eq!(
         output, expected_output,
-        "(output == expected) failed for '{}'",
-        key_inputs
+        "(output == expected) failed for '{}' starting from '{:?},{:?}'",
+        key_inputs,
+        initial_composition_mode,
+        initial_input_mode
     );
     assert_eq!(
         preedit, expected_preedit,
-        "(preedit == expected) failed for '{}'",
-        key_inputs
+        "(preedit == expected) failed for '{}' starting from '{:?},{:?}'",
+        key_inputs,
+        initial_composition_mode,
+        initial_input_mode
     );
     assert_eq!(
         input_mode, expected_input_mode,
-        "(input_mode == expected) failed for '{}'",
-        key_inputs
+        "(input_mode == expected) failed for '{}' starting from '{:?},{:?}'",
+        key_inputs,
+        initial_composition_mode,
+        initial_input_mode
     );
 }
 

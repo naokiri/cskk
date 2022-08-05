@@ -80,7 +80,7 @@ impl CommandHandler for KanaCompositionHandler {
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_space {
             // 次の候補に進む
-            let raw_to_composite = &current_state.raw_to_composite;
+            let raw_to_composite = &current_state.get_composite_key();
             let candidate_list = &current_state.candidate_list;
             let current_composition = current_state.candidate_list.get_current_to_composite();
             if !current_composition.eq(raw_to_composite) {
@@ -94,7 +94,7 @@ impl CommandHandler for KanaCompositionHandler {
             }
             instructions.push(Instruction::FinishConsumingKeyEvent);
         } else if symbol == xkb::keysyms::KEY_x {
-            let raw_to_composite = &current_state.raw_to_composite;
+            let raw_to_composite = &current_state.get_composite_key();
             let candidate_list = &current_state.candidate_list;
             let current_composition = current_state.candidate_list.get_current_to_composite();
             if !current_composition.eq(raw_to_composite) {

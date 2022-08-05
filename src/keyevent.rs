@@ -1,11 +1,11 @@
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::fmt::Formatter;
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysym_from_name, keysyms, Keysym};
+use xkbcommon::xkb::{keysym_from_name, keysyms, Keysym, keysym_get_name};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
@@ -76,7 +76,7 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 /// e.g.
 /// "(control a)" "C-a" "M-Left" "l" "space"
 ///
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub struct CskkKeyEvent {
     symbol: xkb::Keysym,
     modifiers: SkkKeyModifier,
@@ -168,7 +168,7 @@ impl CskkKeyEvent {
     /// 文字入力のために使えるキーイベントならば true
     // ueno/libskkでは完全にモディファイア無しのキーのみかな変換に使っているが、
     // どうもSHIFTを許容しないといけなさそうなのでSHIFT付きキー入力も明らかにコマンドではない文字入力として扱う。
-    pub fn is_letter_input(&self) -> bool {
+    pub fn is_modifierless_input(&self) -> bool {
         self.modifiers.difference(SkkKeyModifier::SHIFT).is_empty()
     }
 
@@ -339,6 +339,17 @@ impl Display for CskkKeyEvent {
     }
 }
 
+impl Debug for CskkKeyEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let name = keysym_get_name(self.symbol);
+        f.debug_struct("CskkKeyEvent")
+            .field("symbol", &self.symbol)
+            .field("key_name", &name)
+            .field("modifiers", &self.modifiers)
+            .finish()
+    }
+}
+
 impl<'de> Deserialize<'de> for CskkKeyEvent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -348,6 +359,7 @@ impl<'de> Deserialize<'de> for CskkKeyEvent {
         CskkKeyEvent::from_str(s).map_err(D::Error::custom)
     }
 }
+
 
 #[cfg(test)]
 mod tests {

@@ -45,7 +45,9 @@ pub(crate) enum Instruction {
     // FIXME: PrecompositionからspaceでCompositionを働かせるためにDelegateを作ったが、Delegate無限ループに陥いらないようにする仕組みがない。
     Delegate,
     // 次の候補を指そうとする。候補があればポインタを進めるが、無い場合はRegisterモードへ移行する。
-    NextCandidate,
+    TryNextCandidate,
+    // 前の候補を指そうとする。
+    TryPreviousCandidate,
     // 現在の変換候補リストを作りなおす
     UpdateCandidateList,
     // 変換候補ポインタを進める
@@ -54,6 +56,9 @@ pub(crate) enum Instruction {
     PreviousCandidatePointer,
     // 現在の変換候補で確定する
     ConfirmComposition,
+    // 現在の変換前文字列を漢字変換せずに確定する。 Hiragana/Katakana/HankakuKatakana のみ
+    // TODO:
+    ConfirmPreComposition(InputMode),
     ConfirmAsHiragana,
     ConfirmAsKatakana,
     #[allow(clippy::upper_case_acronyms)]
@@ -91,7 +96,8 @@ impl FromStr for Instruction {
             "Purge" => Some(Instruction::Purge),
             "DeletePrecomposition" => Some(Instruction::DeletePrecomposition),
             "DeleteDirect" => Some(Instruction::DeleteDirect),
-            "NextCandidate" => Some(Instruction::NextCandidate),
+            "TryNextCandidate" => Some(Instruction::TryNextCandidate),
+            "TryPreviousCandidate" => Some(Instruction::TryPreviousCandidate),
             _ => None,
         } {
             return Ok(simple_instruction);
@@ -110,6 +116,7 @@ impl FromStr for Instruction {
             match &capture[1] {
                 "OutputNNIfAny" => return Ok(Instruction::OutputNNIfAny(input_mode)),
                 "ChangeInputMode" => return Ok(Instruction::ChangeInputMode(input_mode)),
+                "ConfirmPreComposition" => return Ok(Instruction::ConfirmPreComposition(input_mode)),
                 _ => {}
             }
         }
@@ -144,18 +151,6 @@ impl<'de> Deserialize<'de> for Instruction {
         let s: &str = Deserialize::deserialize(deserializer)?;
         let result = Instruction::from_str(s);
         result.map_err(|_| Error::invalid_value(Unexpected::Str(s), &"invalid string"))
-    }
-}
-
-impl Display for Instruction {
-    #[allow(unused_must_use)]
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Instruction::ChangeCompositionMode(composition_mode) => {
-                writeln!(f, "ChangeComopositionMode: {:?}", composition_mode)
-            }
-            _ => writeln!(f, "Display-unsupported instruction. This is a TODO."),
-        }
     }
 }
 

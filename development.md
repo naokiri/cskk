@@ -20,6 +20,7 @@ rom-kana converterがファイルを読むようにして終わり
 command
 #### libskk
 1. Stateごとにcommandの文字列を探して、存在し、かつ現在Stateが処理できればcommandとして処理
+    1.1. ただし、コマンドによってrom_kana_converterが処理できない場合のみ処理等アドホックに無視されたりする。
 2. commandとして処理できなかったらstateに応じたinputmodeの素の入力として処理できれば処理 (Stateによる)
 3. stateが変更されており、キー処理が終了していなければ再度キー入力を新しいstateのハンドラで処理するため、ループする。実際のコードではStartStateから'next-candidate'の時のみSelectStateハンドラへ処理が移譲されている。 cskkと同様で、PreComposition->CompositionSelection->Registerの二段飛ばしを実装するため？
 
@@ -75,7 +76,8 @@ Composition
 - delegated時のみ候補が空ならRegisterモードへ再度送っている。
 - candidate_listが正しい状態かをチェックして、candidtate_listを更新するか、次の候補へ移動するか、Registerモードへ送るかを決めている。これをnext_candidate、previous_candidateとしてハンドラ内では判断しないようにして、コマンド処理側でcandidate_listの何番目を指しているかによって動作を変える。
 
-
+### 
+まず上記next/previous candidateの変更だけでリファクタリング後、Instructionの不要部分を消してからマージしたい。
 
 ## bug or feature?
 ### Shift 押しっぱなしの送り仮名

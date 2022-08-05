@@ -110,7 +110,7 @@ impl CommandHandler for KanaPrecompositionHandler {
             && current_state.composition_mode == CompositionMode::PreComposition
         {
             // 大文字
-            if !current_state.raw_to_composite.is_empty() {
+            if !current_state.get_composite_key().is_empty() {
                 instructions.push(Instruction::ChangeCompositionMode(
                     CompositionMode::PreCompositionOkurigana,
                 ));
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn go_to_okuri_submode() {
         let mut test_state = get_test_state();
-        test_state.raw_to_composite = "あ".to_string();
+        test_state.append_raw_to_composite("あ");
         let handler = KanaPrecompositionHandler::test_handler();
         let result = handler.get_instruction(
             &CskkKeyEvent::from_string_representation("K").unwrap(),

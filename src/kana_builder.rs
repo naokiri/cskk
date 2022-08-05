@@ -90,8 +90,9 @@ impl KanaBuilder {
     ///
     /// 接続可能かどうか確認せずにunprocessedにkey_eventのKeysymを足したものを返す。
     /// ただし、[A-Z]は[a-z]とみなされる。
+    /// 通常はnext_unprocessed_stateで入力の結果を見る。
     ///
-    fn combine(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
+    pub(crate) fn combine(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
         combined.push(Self::uncapitalize(key_event.get_symbol()));
@@ -157,6 +158,8 @@ impl KanaBuilder {
         process_list.insert(&[KEY_k, KEY_u], ("く".to_string(), vec![]));
         process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
         process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
+
+        process_list.insert(&[keysyms::KEY_t, keysyms::KEY_s, keysyms::KEY_u], ("つ".to_string(), vec![]));
 
         KanaBuilder {
             process_map: process_list,
@@ -247,6 +250,17 @@ mod tests {
             &unprocessed,
         );
         assert!(!actual);
+    }
+
+    #[test]
+    fn can_continue_2of3letter() {
+        let converter = KanaBuilder::test_converter();
+        let unprocessed = vec![keysyms::KEY_t];
+        let actual = converter.can_continue(
+            &CskkKeyEvent::from_string_representation("s").unwrap(),
+            &unprocessed,
+        );
+        assert!(actual);
     }
 
     #[test]

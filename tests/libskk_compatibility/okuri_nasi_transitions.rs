@@ -2,7 +2,7 @@
 //! ueno/libskk_compatibility tests/basic.c okuri_nasi_transitionsより
 //!
 
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
@@ -62,6 +62,7 @@ fn okuri_nasi_transitions_basic() {
 
 #[test]
 fn okuri_nasi_transitions_all_capital() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -178,6 +179,7 @@ fn okuri_nasi_transitions_other_inputmodes() {
 
 #[test]
 fn okuri_nasi_transitions_ignore_non_command_ctrl() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,

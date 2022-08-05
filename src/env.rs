@@ -8,6 +8,7 @@ use std::path::PathBuf;
 ///
 /// filepath: relative path like "libcskk/foo/bar.toml"
 // TODO: Not a scope of this class. Move to a different class?
+// TODO: Replace caller with xdg::BaseDirectories
 pub fn filepath_from_xdg_data_dir(filepath: &str) -> Result<String, CskkError> {
     let home_env = env::var("HOME");
     let xdg_data_home_env = env::var("XDG_DATA_HOME");

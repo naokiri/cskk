@@ -20,17 +20,6 @@ fn abort_transitions() {
         InputMode::Hiragana,
     );
     skk_context_reset_rs(&mut context);
-    // Back to preedit
-    transition_check(
-        &mut context,
-        CompositionMode::Direct,
-        InputMode::Hiragana,
-        "A p a space C-g",
-        "▽あぱ",
-        "",
-        InputMode::Hiragana,
-    );
-    skk_context_reset_rs(&mut context);
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -57,6 +46,22 @@ fn abort_transitions() {
         InputMode::Hiragana,
         "A o i O C-g",
         "▽あおいお",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn abort_transitions_from_register_direct() {
+    init_test_logger();
+    let mut context = default_test_context();
+    // Back to preedit
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A p a space C-g",
+        "▽あぱ",
         "",
         InputMode::Hiragana,
     );
