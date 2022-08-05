@@ -6,7 +6,6 @@ extern crate sequence_trie;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 extern crate xkbcommon;
 
 use crate::command_handler::ConfigurableCommandHandler;
