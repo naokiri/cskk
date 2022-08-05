@@ -22,12 +22,12 @@ pub enum CskkError {
     #[error(transparent)]
     XDGBaseDirectoryError {
         #[from]
-        source: xdg::BaseDirectoriesError
+        source: xdg::BaseDirectoriesError,
     },
     #[error(transparent)]
     InfallibleError {
         // Error that never can happens.
         #[from]
-        source: core::convert::Infallible
-    }
+        source: core::convert::Infallible,
+    },
 }

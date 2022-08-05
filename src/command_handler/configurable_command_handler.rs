@@ -30,9 +30,9 @@ impl ConfigurableCommandHandler {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-    use crate::CskkRuleMetadata;
     use super::*;
+    use crate::CskkRuleMetadata;
+    use std::str::FromStr;
 
     fn test_preset_handler() -> ConfigurableCommandHandler {
         let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("shared/rules").unwrap();
@@ -43,9 +43,13 @@ mod test {
     #[test]
     fn get_instruction() {
         let handler = test_preset_handler();
-        let result = handler.get_instruction(&CskkKeyEvent::from_str(&"BackSpace").unwrap(), &InputMode::Hiragana, &CompositionMode::Direct).unwrap();
+        let result = handler
+            .get_instruction(
+                &CskkKeyEvent::from_str(&"BackSpace").unwrap(),
+                &InputMode::Hiragana,
+                &CompositionMode::Direct,
+            )
+            .unwrap();
         assert_eq!(Instruction::DeleteDirect, result[0]);
     }
-
-
 }

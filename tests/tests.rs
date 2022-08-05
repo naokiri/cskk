@@ -373,7 +373,6 @@ fn previous_candidate() {
     );
 }
 
-
 #[test]
 fn previous_candidate_with_okuri() {
     init_test_logger();

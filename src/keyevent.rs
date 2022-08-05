@@ -1,11 +1,11 @@
 use std::fmt;
-use std::fmt::{Debug, Display};
 use std::fmt::Formatter;
+use std::fmt::{Debug, Display};
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysym_from_name, keysyms, Keysym, keysym_get_name};
+use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms, Keysym};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
@@ -359,7 +359,6 @@ impl<'de> Deserialize<'de> for CskkKeyEvent {
         CskkKeyEvent::from_str(s).map_err(D::Error::custom)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

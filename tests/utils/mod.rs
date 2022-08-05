@@ -25,23 +25,17 @@ pub fn transition_check(
     assert_eq!(
         output, expected_output,
         "(output == expected) failed for '{}' starting from '{:?},{:?}'",
-        key_inputs,
-        initial_composition_mode,
-        initial_input_mode
+        key_inputs, initial_composition_mode, initial_input_mode
     );
     assert_eq!(
         preedit, expected_preedit,
         "(preedit == expected) failed for '{}' starting from '{:?},{:?}'",
-        key_inputs,
-        initial_composition_mode,
-        initial_input_mode
+        key_inputs, initial_composition_mode, initial_input_mode
     );
     assert_eq!(
         input_mode, expected_input_mode,
         "(input_mode == expected) failed for '{}' starting from '{:?},{:?}'",
-        key_inputs,
-        initial_composition_mode,
-        initial_input_mode
+        key_inputs, initial_composition_mode, initial_input_mode
     );
 }
 
@@ -57,7 +51,7 @@ pub fn test_context_with_dictionaries(dictionaries: Vec<Arc<CskkDictionary>>) ->
         dictionaries,
         "shared/rule/kana_form.toml",
         "shared/rule/ascii_form.toml",
-        "shared/rules"
+        "shared/rules",
     )
 }
 
