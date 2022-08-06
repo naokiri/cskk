@@ -93,6 +93,7 @@ jobs:
       - name: cargo-c-exists
         id: cargoCCheck
         run: test -e ~/.cargo/bin/cargo-cbuild
+        continue-on-error: true
       - name: Install cargo-c
         if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
         uses: actions-rs/cargo@v1
