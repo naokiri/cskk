@@ -105,7 +105,7 @@ jobs:
           command: cbuild
       - name: Install library
         with:
-          command: sudo cargo cinstall
+          command: sudo cargo cinstall --prefix=/tmp --datadir="$HOME/.local/share"
       #- name: copy shared data
       #  run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.
