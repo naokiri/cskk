@@ -19,3 +19,19 @@ fn z_slash() {
     );
     skk_context_reset_rs(&mut context);
 }
+
+#[test]
+fn mu() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "m u",
+        "",
+        "む",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
