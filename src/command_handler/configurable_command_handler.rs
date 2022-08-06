@@ -1,5 +1,5 @@
 use crate::rule::{CskkCommandRule, CskkRule};
-use crate::{CompositionMode, CskkKeyEvent, InputMode, Instruction};
+use crate::{CompositionMode, CskkKeyEvent, InputMode, Instruction, SkkKeyModifier};
 
 pub(crate) struct ConfigurableCommandHandler {
     command_rule: CskkCommandRule,
@@ -19,9 +19,16 @@ impl ConfigurableCommandHandler {
         current_input_mode: &InputMode,
         current_compositon_mode: &CompositionMode,
     ) -> Option<Vec<Instruction>> {
+        let mut matching_key = key_event.clone();
+        if matching_key.is_upper() {
+            matching_key
+                .get_modifier_mut()
+                .remove(SkkKeyModifier::SHIFT);
+        }
+
         if let Some(inner_rules) = self.command_rule.get_inner_ruleset(current_compositon_mode) {
             if let Some(command_map) = inner_rules.get_command_map(current_input_mode) {
-                return command_map.get(key_event).map(|x| x.to_owned());
+                return command_map.get(&matching_key).map(|x| x.to_owned());
             }
         }
         None

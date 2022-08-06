@@ -165,6 +165,13 @@ impl CskkKeyEvent {
         xkb::keysyms::KEY_space <= self.symbol && self.symbol <= xkb::keysyms::KEY_asciitilde
     }
 
+    ///
+    /// いわゆるAsciiの大文字。
+    ///
+    pub(crate) fn is_upper(&self) -> bool {
+        xkb::keysyms::KEY_A <= self.symbol && self.symbol <= xkb::keysyms::KEY_Z
+    }
+
     /// 文字入力のために使えるキーイベントならば true
     // ueno/libskkでは完全にモディファイア無しのキーのみかな変換に使っているが、
     // どうもSHIFTを許容しないといけなさそうなのでSHIFT付きキー入力も明らかにコマンドではない文字入力として扱う。
@@ -189,6 +196,10 @@ impl CskkKeyEvent {
 
     pub(crate) fn get_modifier(&self) -> SkkKeyModifier {
         self.modifiers
+    }
+
+    pub(crate) fn get_modifier_mut(&mut self) -> &mut SkkKeyModifier {
+        &mut self.modifiers
     }
 
     pub(crate) fn get_symbol(&self) -> xkb::Keysym {

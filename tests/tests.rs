@@ -860,3 +860,34 @@ fn auto_start_henkan_cleanup() {
     );
     skk_context_reset_rs(&mut context);
 }
+
+///
+/// Shiftキーを押したままlキーを押した時、単なるLのつもりで {"Ｌ", modifier: SHIFT} となるので、
+/// 大文字の場合シフト抜きの素のキーとしてコマンドを検索する。
+/// 小文字の場合は通常のキーボードで存在しないが、一応そのまま別のものとして扱う。
+///
+#[test]
+fn allow_shift_as_part_of_capital_only() {
+    init_test_logger();
+    let mut context = default_test_context();
+    // 普通のキーボードでは存在しえないが、Shift-lとしてlとは別に扱うことにしている。
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "(shift l)",
+        "",
+        "l",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "(shift L)",
+        "",
+        "",
+        InputMode::Zenkaku,
+    );
+}
