@@ -499,6 +499,7 @@ impl CskkContext {
             .push_str(&composited_kanji_and_okuri);
         current_state.composited_okuri.clear();
         current_state.clear_raw_to_composite();
+        current_state.clear_okuri_first_letter();
         current_state.converted_kana_to_composite.clear();
         current_state.converted_kana_to_okuri.clear();
         current_state.candidate_list.clear();

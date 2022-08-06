@@ -844,3 +844,19 @@ fn abort_precomposite_mode() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn auto_start_henkan_cleanup() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A K i A i space",
+        "▼愛",
+        "飽き",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
