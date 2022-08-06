@@ -104,9 +104,9 @@ jobs:
         with:
           command: cbuild
       - name: Install library
-        run: sudo cargo cinstall --prefix=/tmp --datadir="$HOME/.local/share"
-      #- name: copy shared data
-      #  run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
+        uses: actions-rs/cargo@v1
+        with:
+          command: cinstall --prefix=./tmp --datadir="$HOME/.local/share"
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'

@@ -35,7 +35,7 @@ mod test {
     use std::str::FromStr;
 
     fn test_preset_handler() -> ConfigurableCommandHandler {
-        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("shared/rules").unwrap();
+        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("assets/rules").unwrap();
         let default_rule = rule_metadata.load_default_rule().unwrap();
         ConfigurableCommandHandler::new(&default_rule)
     }
@@ -45,7 +45,7 @@ mod test {
         let handler = test_preset_handler();
         let result = handler
             .get_instruction(
-                &CskkKeyEvent::from_str(&"BackSpace").unwrap(),
+                &CskkKeyEvent::from_str("BackSpace").unwrap(),
                 &InputMode::Hiragana,
                 &CompositionMode::Direct,
             )
