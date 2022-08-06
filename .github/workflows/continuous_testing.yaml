@@ -103,6 +103,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cbuild
+      - name: Show built file
+        run: ls -l ./target/
 #      - name: Install library
 #        uses: actions-rs/cargo@v1
 #        with:
