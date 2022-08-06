@@ -107,7 +107,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cinstall
-          args: --prefix="./tmp" --datadir="$HOME/.local/share"
+          args: --prefix=./tmp --datadir=$HOME/.local/share
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
