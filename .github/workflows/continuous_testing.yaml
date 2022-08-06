@@ -134,6 +134,12 @@ jobs:
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
         run: ln -fs libcskk.so ./target/x86_64-apple-darwin/debug/libcskk.so.0
+      - name: Show built file
+        if: matrix.os == 'macOS-latest'
+        run: ls -l ./target/*
+      - name: Show built file under debug
+        if: matrix.os == 'macOS-latest'
+        run: ls -l ./target/x86_64-apple-darwin/debug/
       - name: Build lib test (MacOS)
         if: matrix.os == 'macOS-latest'
         run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-apple-darwin/debug/ -lcskk -o ./tests/lib_test
