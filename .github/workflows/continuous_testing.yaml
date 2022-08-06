@@ -1,5 +1,5 @@
 name: Test
-on: [push, workflow_dispatch]
+on: [ push, workflow_dispatch ]
 
 jobs:
   lint:
@@ -106,7 +106,8 @@ jobs:
       - name: Install library
         uses: actions-rs/cargo@v1
         with:
-          command: cinstall --prefix=./tmp --datadir="$HOME/.local/share"
+          command: cinstall
+          args: --prefix="./tmp" --datadir="$HOME/.local/share"
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
