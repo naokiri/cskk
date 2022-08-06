@@ -75,12 +75,9 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/.crates*
-            ~/.cargo/bin
+            ~/.cargo
             target
-          key: ${{ runner.os }}-cargo-libtest-v5-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.8.1+cargo-0.53
+          key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
@@ -133,7 +130,7 @@ jobs:
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.so ./target/x86_64-apple-darwin/debug/libcskk.so.0
+        run: ln -fs libcskk.0.5.2.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
         if: matrix.os == 'macOS-latest'
         run: ls -l ./target/*
