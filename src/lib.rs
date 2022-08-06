@@ -1030,14 +1030,19 @@ impl CskkContext {
                                     return false;
                                 }
                             }
+                        } else {
+                            return false;
                         }
                     }
+
+                    if self.current_state_ref().composition_mode == CompositionMode::PreComposition
+                    {
+                        self.auto_start_henkan();
+                    }
+                    return true;
                 }
 
-                if self.current_state_ref().composition_mode == CompositionMode::PreComposition {
-                    self.auto_start_henkan();
-                }
-                true
+                false
             };
         } else if key_event.is_ascii_inputtable() && key_event.is_modifierless_input() {
             // key was input, but not in rom-kana conversion related modes so skip rom-kana related and input as is.
@@ -1309,8 +1314,6 @@ impl CskkContext {
     }
 
     /// Mainly for test purpose, but exposed to test as library.
-    /// FIXME: Remove this clippy rule allow when parameterize on array length is stable in Rust. maybe 1.51?
-    #[allow(clippy::ptr_arg)]
     fn process_key_events(&mut self, key_event_seq: &KeyEventSeq) -> bool {
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);

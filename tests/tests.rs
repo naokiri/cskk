@@ -6,11 +6,13 @@ use crate::utils::{
     default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
 };
 use cskk::dictionary::CskkDictionary;
+use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
-    skk_context_set_auto_start_henkan_keywords_rs,
+    skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
+    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs,
 };
+use std::str::FromStr;
 use std::sync::Arc;
 
 // TODO: Split into several files.
@@ -890,4 +892,18 @@ fn allow_shift_as_part_of_capital_only() {
         "",
         InputMode::Zenkaku,
     );
+}
+
+#[test]
+fn arrow() {
+    init_test_logger();
+    let mut context = default_test_context();
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Right").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Up").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Left").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Down").unwrap());
+    assert!(!processed);
 }
