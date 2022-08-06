@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn load_preset_file() {
-        let filepath = "shared/rules/default/rule.toml";
+        let filepath = "assets/rules/default/rule.toml";
         let result = CskkRule::load_rule_file(Path::new(&filepath)).unwrap();
         println!("{:?}", result.command);
     }

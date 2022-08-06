@@ -1405,7 +1405,7 @@ mod unit_tests {
         let dict = Arc::new(skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp"));
         let dictionaries = vec![dict];
 
-        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("shared/rules")
+        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("assets/rules")
             .expect("Failed to load metadata for test context");
         let default_rule = rule_metadata.load_default_rule().unwrap();
 
