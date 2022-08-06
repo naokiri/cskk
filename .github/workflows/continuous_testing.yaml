@@ -1,5 +1,5 @@
 name: Test
-on: [ push, workflow_dispatch ]
+on: [push, workflow_dispatch]
 
 jobs:
   lint:
@@ -103,11 +103,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cbuild
-      - name: Install library
-        uses: actions-rs/cargo@v1
-        with:
-          command: cinstall
-          args: --prefix=./tmp --datadir=$HOME/.local/share
+#      - name: Install library
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: cargo cinstall --prefix=/tmp --datadir=~/.local/share
+      - name: copy shared data
+        run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
