@@ -112,14 +112,23 @@ pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
 
+///
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないのでABI
+///
 pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
 }
 
+///
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので
+///
 pub fn skk_context_get_composition_mode_rs(context: &CskkContext) -> CompositionMode {
     context.current_state_ref().composition_mode
 }
 
+///
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので
+///
 pub fn skk_context_reset_rs(context: &mut CskkContext) {
     context.poll_output();
     context.reset_state_stack();
@@ -140,18 +149,27 @@ pub fn skk_context_set_input_mode_rs(context: &mut CskkContext, input_mode: Inpu
     context.set_input_mode(input_mode)
 }
 
+///
+/// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
+/// Rust libとしてはsave_dictionaryを使用する。
+///
 pub fn skk_context_save_dictionaries_rs(context: &mut CskkContext) {
     context.save_dictionary();
 }
 
 ///
 /// reload current dictionaries
-/// For integration test purpose.
+/// For integration test purpose.ABI変更を明示しないバージョンアップデートにより公開を止めうる。
+/// Rust libとしてはreload_dictionaryを代わりに用いる
 ///
 pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
     context.reload_dictionary();
 }
 
+///
+/// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
+/// Rust libとしてはset_dictionariesを使用する。
+///
 pub fn skk_context_set_dictionaries_rs(
     context: &mut CskkContext,
     dictionaries: Vec<Arc<CskkDictionary>>,
@@ -159,10 +177,18 @@ pub fn skk_context_set_dictionaries_rs(
     context.set_dictionaries(dictionaries);
 }
 
+///
+/// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
+/// 内部状態なので、Rust libが使用することを想定しない。
+///
 pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String {
     context.current_state_ref().get_composite_key()
 }
 
+///
+/// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
+/// Rust libとしてはset_dictionariesを使用する。
+///
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
     context.current_state_ref().candidate_list.len()
 }
@@ -393,6 +419,7 @@ impl CskkContext {
     fn reset_unconverted(&mut self) {
         let current_state = self.current_state();
         current_state.pre_conversion.clear();
+        current_state.set_capital_transition(false);
     }
 
     fn set_carry_over(&mut self, unconv: &[Keysym]) {
@@ -503,12 +530,14 @@ impl CskkContext {
         let current_state = self.current_state();
         let do_reset = !current_state.pre_conversion.is_empty();
         current_state.pre_conversion.clear();
+        current_state.clear_okuri_first_letter();
+        current_state.set_capital_transition(false);
         do_reset
     }
 
     fn reset_converted_kanas(&mut self) {
         let current_state = self.current_state();
-        current_state.delete_char_from_raw_to_composite();
+        current_state.clear_raw_to_composite();
         current_state.converted_kana_to_composite.clear();
         current_state.converted_kana_to_okuri.clear();
     }
@@ -516,6 +545,7 @@ impl CskkContext {
     fn reset_composited(&mut self) {
         let current_state = self.current_state();
         current_state.composited_okuri.clear();
+        current_state.clear_okuri_first_letter();
         current_state.candidate_list.clear();
     }
 

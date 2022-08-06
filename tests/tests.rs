@@ -819,3 +819,28 @@ fn delete_on_beginning_of_register_mode() {
     );
     skk_context_reset_rs(&mut context);
 }
+
+#[test]
+fn abort_precomposite_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i C-g A i space",
+        "▼愛",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A K C-g A K i space",
+        "▼開き",
+        "",
+        InputMode::Hiragana,
+    );
+}

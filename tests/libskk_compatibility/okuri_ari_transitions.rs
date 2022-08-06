@@ -63,6 +63,7 @@ fn basic() {
 
 #[test]
 fn check_nn_on_composition_mode_switching() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
