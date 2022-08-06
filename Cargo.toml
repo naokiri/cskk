@@ -35,7 +35,7 @@ xdg = { version ="^2.4" }
 env_logger = "0.8"
 
 [package.metadata.capi]
-min_version = "0.6.10"
+min_version = "0.9.6"
 
 [package.metadata.capi.header]
 name = "libcskk"
@@ -45,5 +45,5 @@ generation = true
 name = "libcskk"
 description = "SKK (Simple Kana Kanji) henkan library"
 
-[package.metadata.capi.install]
-name = "libcskk"
+[package.metadata.capi.install.data]
+assets = [{from="assets/**"}]

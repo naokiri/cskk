@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-c --version 0.9.5
+          args: cargo-c --version 0.9.6
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
@@ -103,8 +103,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cbuild
-      - name: copy shared data
-        run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/capi/share/* ~/.local/share/libcskk
+      - name: Install library
+        uses: actions-rs/cargo@v1
+        with:
+          command: cinstall
+      #- name: copy shared data
+      #  run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
