@@ -131,6 +131,9 @@ jobs:
       - name: copy header file (MacOS)
         if: matrix.os == 'macOS-latest'
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+      - name: link lib versioning (MacOS)
+        if: matrix.os == 'macOS-latest'
+        run: ln -s libcskk.so ./target/x86_64-apple-darwin/debug/libcskk.so.0
       - name: Build lib test (MacOS)
         if: matrix.os == 'macOS-latest'
         run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-apple-darwin/debug/ -lcskk -o ./tests/lib_test
