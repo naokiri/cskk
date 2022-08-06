@@ -374,6 +374,23 @@ fn previous_candidate() {
 }
 
 #[test]
+fn previous_candidate_with_okuri() {
+    init_test_logger();
+    let mut context = default_test_context();
+    // This differs from libskk on purpose.
+    // libskk keeps okuri, but inputting letter after previous candidate seems broken as of libskk v1.0.5
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H a Z u x",
+        "▽はず",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
 fn kakutei_with_ctrl_j() {
     init_test_logger();
     let mut context = default_test_context();

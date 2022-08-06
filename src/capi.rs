@@ -468,6 +468,18 @@ pub extern "C" fn skk_context_set_comma_style(context: &mut CskkContext, comma_s
 }
 
 ///
+/// Get library version at the compile time.
+///
+/// # Safety
+/// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
+/// 返り値はcallerがskk_free_stringしないと実体がメモリリークする。
+///
+#[no_mangle]
+pub extern "C" fn skk_library_get_version() -> *mut c_char {
+    CString::new(CskkContext::get_version()).unwrap().into_raw()
+}
+
+///
 /// # Safety
 ///
 /// dictionary_array must have at least dictionary_count number of CskkDictionary

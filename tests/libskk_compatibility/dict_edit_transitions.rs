@@ -101,6 +101,7 @@ fn register_mode_transitions_composition() {
     let user_dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
+    init_test_logger();
 
     transition_check(
         &mut context,
@@ -267,6 +268,7 @@ fn register_mode_xtsu() {
 
 #[test]
 fn register_mode_input_modes_change() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,

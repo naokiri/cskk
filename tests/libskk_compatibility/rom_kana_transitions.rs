@@ -93,7 +93,7 @@ fn rom_kana_transitions_basic() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Katakana,
-        "n .",
+        "n period",
         "",
         "ン。",
         InputMode::Katakana,
@@ -103,6 +103,7 @@ fn rom_kana_transitions_basic() {
 
 #[test]
 fn rom_kana_transitions_include_command_letter() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -141,6 +142,7 @@ fn rom_kana_transitions_abort() {
 
 #[test]
 fn rom_kana_transitions_kana_form_change_without_input_mode() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -217,7 +219,12 @@ fn rom_kana_conversion_vu_conversion() {
         "ゔ",
         InputMode::Katakana,
     );
-    skk_context_reset_rs(&mut context);
+}
+
+#[test]
+fn rom_kana_conversion_vu_hankaku() {
+    init_test_logger();
+    let mut context = default_test_context();
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -267,11 +274,26 @@ fn rom_kana_transitions_with_inputs() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "N o b a - s u C-q",
+        "N o b a minus s u C-q",
         "",
         "ﾉﾊﾞｰｽ",
         InputMode::Hiragana,
     );
+}
+
+#[test]
+fn simple_space() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "space",
+        "",
+        " ",
+        InputMode::Hiragana,
+    )
 }
 
 #[test]

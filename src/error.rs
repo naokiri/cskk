@@ -7,6 +7,27 @@ use thiserror::Error;
 pub enum CskkError {
     #[error("Some kind of error: {0}")]
     Error(String),
+    #[error("Failed to parse: {0}")]
+    ParseError(String),
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    TomlFileLoadError {
+        #[from]
+        source: toml::de::Error,
+    },
+    #[error(transparent)]
+    IoError {
+        #[from]
+        source: std::io::Error,
+    },
+    #[error(transparent)]
+    XDGBaseDirectoryError {
+        #[from]
+        source: xdg::BaseDirectoriesError,
+    },
+    #[error(transparent)]
+    InfallibleError {
+        // Error that never can happens.
+        #[from]
+        source: core::convert::Infallible,
+    },
 }

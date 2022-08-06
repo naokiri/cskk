@@ -161,6 +161,7 @@ fn cancel_dict_edit() {
 
 #[test]
 fn dict_edit_initial_state() {
+    init_test_logger();
     let mut context = default_test_context();
     // Space removed from original to match actual test it has to test.
     transition_check(

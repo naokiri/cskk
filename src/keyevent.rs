@@ -1,15 +1,16 @@
 use std::fmt;
-use std::fmt::Display;
 use std::fmt::Formatter;
+use std::fmt::{Debug, Display};
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysyms, Keysym};
+use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms, Keysym};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
 use std::ops::BitAndAssign;
+use std::str::FromStr;
 
 bitflags! {
     ///
@@ -75,7 +76,7 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 /// e.g.
 /// "(control a)" "C-a" "M-Left" "l" "space"
 ///
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub struct CskkKeyEvent {
     symbol: xkb::Keysym,
     modifiers: SkkKeyModifier,
@@ -125,103 +126,64 @@ impl CskkKeyEvent {
         }
     }
 
-    /// wrapper of keysym_from_name to pretend some words as a known key name.
-    fn keysym_from_name(word: &str) -> xkb::Keysym {
-        match word {
-            "." => xkb::keysym_from_name("period", xkb::KEYSYM_NO_FLAGS),
-            "-" => xkb::keysym_from_name("minus", xkb::KEYSYM_NO_FLAGS),
-            _ => xkb::keysym_from_name(word, xkb::KEYSYM_NO_FLAGS),
+    ///
+    /// space区切りで各wordがKeysymであればそのKeysymとして、そうでなければ各バイトをasciiとみなした文字のKeysymとして変換する。
+    /// 変換できなかったものは無視される。
+    ///
+    /// "space 無視" -> KEY_space
+    /// "lk Shift_L" -> KEY_l, KEY_k, KEY_Shift_L
+    /// "ab" -> KEY_a, KEY_b
+    /// "at" -> KEY_at
+    ///
+    /// "Up", "at", "mu", "ae", "oe", "ht", "ff", "cr", "lf", "nl", "IO" 等短い名称のKeysymは対応するKeysym扱いされるので、2つのKeysym扱いしたい場合はスペースを間に入れる必要がある。
+    ///
+    pub(crate) fn keysyms_from_str(string: &str) -> Vec<Keysym> {
+        let mut result = vec![];
+        let words = string.split(' ');
+        for word in words {
+            let word = word.trim();
+            let word_keysym = keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
+            if keysyms::KEY_NoSymbol == word_keysym {
+                for char in word.chars() {
+                    let char_keysym = keysym_from_name(&char.to_string(), xkb::KEYSYM_NO_FLAGS);
+                    if keysyms::KEY_NoSymbol != char_keysym {
+                        result.push(char_keysym);
+                    }
+                }
+            } else {
+                result.push(word_keysym);
+            }
         }
+        result
     }
 
     ///
     /// いわゆるAsciiの範囲で表示できる文字
     ///
-    pub fn is_ascii_inputtable(&self) -> bool {
+    pub(crate) fn is_ascii_inputtable(&self) -> bool {
         //　ueno/libskkに倣っているが、Latin 1 全部に拡張可能？
         xkb::keysyms::KEY_space <= self.symbol && self.symbol <= xkb::keysyms::KEY_asciitilde
+    }
+
+    /// 文字入力のために使えるキーイベントならば true
+    // ueno/libskkでは完全にモディファイア無しのキーのみかな変換に使っているが、
+    // どうもSHIFTを許容しないといけなさそうなのでSHIFT付きキー入力も明らかにコマンドではない文字入力として扱う。
+    pub(crate) fn is_modifierless_input(&self) -> bool {
+        self.modifiers.difference(SkkKeyModifier::SHIFT).is_empty()
     }
 
     ///
     /// string representation to KeyEvent.
     /// When parsing fails keysym is likely to be a voidsymbol
     ///
-    /// Probably testing purpose and not intended to be used from library users. May delete this interface at any update.
+    /// Testing purpose and not intended to be used from library users. May delete this interface at any update.
     /// Use `from_keysym_with_flags` for now instead.
     ///
     pub fn from_string_representation(key: &str) -> Result<CskkKeyEvent, CskkError> {
-        let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
-        let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
-        let key = key.trim();
-        if key.starts_with('(') && key.ends_with(')') {
-            let words = key.trim_start_matches('(').trim_end_matches(')').split(' ');
-            for word in words {
-                match word {
-                    "control" => {
-                        modifier.set(SkkKeyModifier::CONTROL, true);
-                    }
-                    "meta" => {
-                        modifier.set(SkkKeyModifier::META, true);
-                    }
-                    "alt" => {
-                        modifier.set(SkkKeyModifier::MOD1, true);
-                    }
-                    "lshift" => {
-                        modifier.set(SkkKeyModifier::L_SHIFT, true);
-                        modifier.set(SkkKeyModifier::SHIFT, true);
-                    }
-                    "rshift" => {
-                        modifier.set(SkkKeyModifier::R_SHIFT, true);
-                        modifier.set(SkkKeyModifier::SHIFT, true);
-                    }
-                    "shift" => {
-                        modifier.set(SkkKeyModifier::SHIFT, true);
-                    }
-                    _ => {
-                        keysym = CskkKeyEvent::keysym_from_name(word);
-                    }
-                }
-            }
-        } else {
-            let keyname: &str = if key.len() > 2 {
-                match &key[0..2] {
-                    "C-" => {
-                        modifier.set(SkkKeyModifier::CONTROL, true);
-                        &key[2..]
-                    }
-                    "M-" => {
-                        modifier.set(SkkKeyModifier::META, true);
-                        &key[2..]
-                    }
-                    "A-" => {
-                        modifier.set(SkkKeyModifier::MOD1, true);
-                        &key[2..]
-                    }
-                    "G-" => {
-                        modifier.set(SkkKeyModifier::MOD5, true);
-                        &key[2..]
-                    }
-                    _ => key,
-                }
-            } else {
-                key
-            };
-            keysym = CskkKeyEvent::keysym_from_name(keyname);
-        }
-
-        if keysym == xkb::keysyms::KEY_VoidSymbol {
-            Err(CskkError::Error("No str checked".to_owned()))
-        } else if keysym == xkb::keysyms::KEY_NoSymbol {
-            Err(CskkError::Error("Not a key symbol: {}".to_owned()))
-        } else {
-            Ok(CskkKeyEvent {
-                modifiers: modifier,
-                symbol: keysym,
-            })
-        }
+        Self::from_str(key)
     }
 
-    pub fn get_symbol_char(&self) -> Option<char> {
+    pub(crate) fn get_symbol_char(&self) -> Option<char> {
         xkb::keysym_to_utf8(self.symbol).chars().next()
     }
 
@@ -288,6 +250,85 @@ impl CskkKeyEvent {
     }
 }
 
+impl FromStr for CskkKeyEvent {
+    type Err = CskkError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
+        let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
+        let key = s.trim();
+        // parenで囲われているものはスペース区切りのModifierとkeysymのみ認める。
+        // ddskkやlibskkテストケースをそのまま使うための措置。
+        if key.starts_with('(') && key.ends_with(')') {
+            let words = key.trim_start_matches('(').trim_end_matches(')').split(' ');
+            for word in words {
+                match word {
+                    "control" => {
+                        modifier.set(SkkKeyModifier::CONTROL, true);
+                    }
+                    "meta" => {
+                        modifier.set(SkkKeyModifier::META, true);
+                    }
+                    "alt" => {
+                        modifier.set(SkkKeyModifier::MOD1, true);
+                    }
+                    "lshift" => {
+                        modifier.set(SkkKeyModifier::L_SHIFT, true);
+                        modifier.set(SkkKeyModifier::SHIFT, true);
+                    }
+                    "rshift" => {
+                        modifier.set(SkkKeyModifier::R_SHIFT, true);
+                        modifier.set(SkkKeyModifier::SHIFT, true);
+                    }
+                    "shift" => {
+                        modifier.set(SkkKeyModifier::SHIFT, true);
+                    }
+                    _ => {
+                        keysym = keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
+                    }
+                }
+            }
+        } else {
+            // 簡易な表記として[CMAG]- 接頭辞を修飾子として認める。
+            let keyname: &str = if key.len() > 2 {
+                match &key[0..2] {
+                    "C-" => {
+                        modifier.set(SkkKeyModifier::CONTROL, true);
+                        &key[2..]
+                    }
+                    "M-" => {
+                        modifier.set(SkkKeyModifier::META, true);
+                        &key[2..]
+                    }
+                    "A-" => {
+                        modifier.set(SkkKeyModifier::MOD1, true);
+                        &key[2..]
+                    }
+                    "G-" => {
+                        modifier.set(SkkKeyModifier::MOD5, true);
+                        &key[2..]
+                    }
+                    _ => key,
+                }
+            } else {
+                key
+            };
+            keysym = keysym_from_name(keyname, xkb::KEYSYM_NO_FLAGS);
+        }
+
+        if keysym == xkb::keysyms::KEY_VoidSymbol {
+            Err(CskkError::ParseError("No str checked".to_owned()))
+        } else if keysym == xkb::keysyms::KEY_NoSymbol {
+            Err(CskkError::ParseError(format!("Not a key symbol: {}", s)))
+        } else {
+            Ok(CskkKeyEvent {
+                modifiers: modifier,
+                symbol: keysym,
+            })
+        }
+    }
+}
+
 impl Display for CskkKeyEvent {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
         write!(
@@ -298,13 +339,24 @@ impl Display for CskkKeyEvent {
     }
 }
 
+impl Debug for CskkKeyEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let name = keysym_get_name(self.symbol);
+        f.debug_struct("CskkKeyEvent")
+            .field("symbol", &self.symbol)
+            .field("key_name", &name)
+            .field("modifiers", &self.modifiers)
+            .finish()
+    }
+}
+
 impl<'de> Deserialize<'de> for CskkKeyEvent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
-        CskkKeyEvent::from_string_representation(s).map_err(D::Error::custom)
+        CskkKeyEvent::from_str(s).map_err(D::Error::custom)
     }
 }
 
@@ -355,7 +407,7 @@ mod tests {
         let enter = CskkKeyEvent::from_string_representation("Return").unwrap();
         assert_eq!(enter.symbol, keysyms::KEY_Return);
 
-        let period = CskkKeyEvent::from_string_representation(".").unwrap();
+        let period = CskkKeyEvent::from_string_representation("period").unwrap();
         assert_eq!(period.symbol, keysyms::KEY_period);
     }
 
@@ -408,5 +460,32 @@ mod tests {
     fn get_symbol_char_no_display() {
         let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_Home, SkkKeyModifier::NONE);
         assert_eq!(None, key_event.get_symbol_char());
+    }
+
+    #[test]
+    fn keysyms_from_string() {
+        assert_eq!(
+            vec![keysyms::KEY_space],
+            CskkKeyEvent::keysyms_from_str("space 無視")
+        );
+        assert_eq!(
+            vec![keysyms::KEY_l, keysyms::KEY_k, keysyms::KEY_Shift_L],
+            CskkKeyEvent::keysyms_from_str("lk Shift_L")
+        );
+        assert_eq!(
+            vec![keysyms::KEY_a, keysyms::KEY_b],
+            CskkKeyEvent::keysyms_from_str("ab")
+        );
+        assert_eq!(vec![keysyms::KEY_at], CskkKeyEvent::keysyms_from_str("at"));
+        assert_eq!(
+            vec![keysyms::KEY_question],
+            CskkKeyEvent::keysyms_from_str("question")
+        );
+    }
+
+    #[test]
+    fn is_modifierless() {
+        let key_event = CskkKeyEvent::from_str("C-c").unwrap();
+        assert!(!key_event.is_modifierless_input())
     }
 }

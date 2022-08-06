@@ -1,19 +1,29 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
-
-use sequence_trie::SequenceTrie;
-
-use crate::env::filepath_from_xdg_data_dir;
 use crate::keyevent::CskkKeyEvent;
+use crate::rule::CskkRule;
 use crate::skk_modes::{CommaStyle, PeriodStyle};
+use sequence_trie::SequenceTrie;
+use std::collections::HashMap;
+use xkbcommon::xkb::keysyms;
+#[cfg(test)]
+use xkbcommon::xkb::keysyms::{
+    KEY_a, KEY_at, KEY_b, KEY_bracketleft, KEY_e, KEY_i, KEY_k, KEY_n, KEY_o, KEY_t, KEY_u, KEY_7,
+    KEY_A, KEY_B,
+};
+use xkbcommon::xkb::Keysym;
 
 pub(crate) type Converted = String;
-pub(crate) type CarryOver = Vec<char>;
+pub(crate) type CarryOver = Vec<Keysym>;
 
+///
+/// 単一あるいは複数のkeysymから文字への変換(convert)を担う部分。主にローマ字からひらがなへの変換に使われるが、ひらがなに限定しない。
+/// keysymには[A-Z]が[a-z]とは別に存在するが、[a-z]と同じとみなす。
+/// この構造体自体は状態を持たない。
+///
+/// 例として一般的なローマ字変換の設定では[KEY_k KEY_k]の入力をconvertすると"っ"に変換され、CarryOverとして[KEY_k]が残る。
+///
 #[derive(Clone, Debug)]
 pub(crate) struct KanaBuilder {
-    process_map: SequenceTrie<char, (Converted, CarryOver)>,
+    process_map: SequenceTrie<Keysym, (Converted, CarryOver)>,
 }
 
 impl KanaBuilder {
@@ -21,29 +31,39 @@ impl KanaBuilder {
     //! 未決時にもconvertすると確定してしまうので、ddskkのskk-kana-input実装と違う作りになっている。要再検討
     //!
 
-    /// returns unprocessed vector appending the key_event
-    pub fn combined_key(key_event: &CskkKeyEvent, unprocessed: &[char]) -> Vec<char> {
+    /// このunprocessedの状態を持っている時にkey_eventを入力した'直後'、実際の変換を行う前のunprocessed状態を返す。
+    ///
+    /// 例えば一般的なローマ字変換の設定の場合、[Key_l] に Key_kを入力してそのまま続く変換状態は存在しないため、[Key_k]のみが返る。
+    /// [Key_k]にKey_aを入力すると[Key_k, Key_a]が返る。この返り値をconvertに通すことで変換後の文字列"な"と変換後の次のunprocessed状態である[] (空ベクタ)を得ることができる。
+    /// [Key_n]にKey_yを入力すると"にゃ(nya)"等の変換に続きうるので以前の状態に続いた状態として[Key_n, Key_y]が返るが、convertに渡してもこの時点では変換不能なためNoneが返る。
+    /// そもそもハンドラーで対応できないKey_spaceなどが入力されると空ベクタを返す。
+    pub(crate) fn next_unprocessed_state(
+        &self,
+        key_event: &CskkKeyEvent,
+        unprocessed: &[Keysym],
+    ) -> Vec<Keysym> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
 
-        match key_event.get_symbol_char() {
-            None => combined,
-            Some(key_char) => {
-                combined.push(key_char.to_ascii_lowercase());
-                combined
-            }
+        combined.push(key_event.get_symbol());
+        if self.can_continue(key_event, unprocessed) {
+            Self::combine(key_event, unprocessed)
+        } else if self.can_continue(key_event, &[]) {
+            vec![key_event.get_symbol()]
+        } else {
+            vec![]
         }
     }
 
-    /// convert the unprocessed vector into kana and the remaining carryover if matching kana exists
-    pub fn convert(&self, kana: &[char]) -> Option<&(Converted, CarryOver)> {
+    /// convert the unprocessed vector into String and the remaining carryover if matching String exists
+    pub(crate) fn convert(&self, kana: &[Keysym]) -> Option<&(Converted, CarryOver)> {
         self.process_map.get(kana)
     }
 
     ///
     /// Not in the normal convert function because caller should know ",." to treat this specially for composition mode changes.
     ///
-    pub fn convert_periods(
+    pub(crate) fn convert_periods(
         &self,
         kana: &char,
         period_style: PeriodStyle,
@@ -64,62 +84,58 @@ impl KanaBuilder {
         }
     }
 
-    // 今のunprocessedに続いて次のkey_eventが来た時にかな変換を続けられるか。
-    // e.g.
-    // k j -> false
-    // t t -> true ('っt' として続けられるため)
-    pub fn can_continue(&self, key_event: &CskkKeyEvent, unprocessed: &[char]) -> bool {
+    ///
+    /// 接続可能かどうか確認せずにunprocessedにkey_eventのKeysymを足したものを返す。
+    /// ただし、[A-Z]は[a-z]とみなされる。
+    /// 通常はnext_unprocessed_stateで入力の結果を見る。
+    ///
+    pub(crate) fn combine(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
+        let mut combined = vec![];
+        combined.extend_from_slice(unprocessed);
+        combined.push(Self::uncapitalize(key_event.get_symbol()));
+        combined
+    }
+
+    fn uncapitalize(keysym: Keysym) -> Keysym {
+        if (keysyms::KEY_A..=keysyms::KEY_Z).contains(&keysym) {
+            keysym + 0x0020
+        } else {
+            keysym
+        }
+    }
+
+    /// 今のunprocessedに続いて次のkey_eventが来た時にかな変換を続けられるか。
+    /// 一般的なローマ字変換での例
+    /// k j -> false
+    /// t t -> true ('っt' として続けられるため)
+    pub(crate) fn can_continue(&self, key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> bool {
         self.get_node(key_event, unprocessed).is_some()
     }
 
     fn get_node(
         &self,
         key_event: &CskkKeyEvent,
-        unprocessed: &[char],
-    ) -> Option<&SequenceTrie<char, (Converted, CarryOver)>> {
-        let key = KanaBuilder::combined_key(key_event, unprocessed);
+        unprocessed: &[Keysym],
+    ) -> Option<&SequenceTrie<Keysym, (Converted, CarryOver)>> {
+        let key = KanaBuilder::combine(key_event, unprocessed);
         self.process_map.get_node(&key)
     }
 
-    fn converter_from_string(contents: &str) -> Self {
+    fn converter_from_hashmap(map: &HashMap<String, (String, String)>) -> Self {
         let mut process_map = SequenceTrie::new();
-        let map: HashMap<String, (String, String)> =
-            serde_json::from_str(contents).expect("content error");
-        for (k, (carry, conv)) in &map {
-            let mut key = vec![];
-            for c in k.chars() {
-                key.push(c);
-            }
-
-            let mut carry_over = vec![];
-            for c in carry.chars() {
-                carry_over.push(c);
-            }
+        for (k, (carry, conv)) in map {
+            let key = CskkKeyEvent::keysyms_from_str(k);
+            let carry_over = CskkKeyEvent::keysyms_from_str(carry);
 
             let converted = conv.to_owned();
 
             process_map.insert(&key, (converted, carry_over));
         }
-
         Self { process_map }
     }
 
-    /// For e2e test purpose. Use default_converter instead.
-    pub fn converter_from_file(filename: &str) -> Self {
-        let mut file = File::open(filename).expect("file not found");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("file read error");
-
-        KanaBuilder::converter_from_string(&contents)
-    }
-
-    pub fn default_converter() -> Self {
-        let filepath = filepath_from_xdg_data_dir("libcskk/rule/hiragana.json");
-        if let Ok(filepath) = filepath {
-            KanaBuilder::converter_from_file(&filepath)
-        } else {
-            KanaBuilder::converter_from_string("")
-        }
+    pub(crate) fn new(rule: &CskkRule) -> Self {
+        KanaBuilder::converter_from_hashmap(rule.get_conversion_rule())
     }
 }
 
@@ -128,17 +144,22 @@ impl KanaBuilder {
     pub fn test_converter() -> Self {
         let mut process_list = SequenceTrie::new();
 
-        process_list.insert(&['a'], ("あ".to_string(), vec![]));
-        process_list.insert(&['i'], ("い".to_string(), vec![]));
-        process_list.insert(&['u'], ("う".to_string(), vec![]));
-        process_list.insert(&['e'], ("え".to_string(), vec![]));
-        process_list.insert(&['o'], ("お".to_string(), vec![]));
+        process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
+        process_list.insert(&[KEY_i], ("い".to_string(), vec![]));
+        process_list.insert(&[KEY_u], ("う".to_string(), vec![]));
+        process_list.insert(&[KEY_e], ("え".to_string(), vec![]));
+        process_list.insert(&[KEY_o], ("お".to_string(), vec![]));
 
-        process_list.insert(&['k', 'a'], ("か".to_string(), vec![]));
-        process_list.insert(&['k', 'i'], ("き".to_string(), vec![]));
-        process_list.insert(&['k', 'u'], ("く".to_string(), vec![]));
-        process_list.insert(&['k', 'e'], ("け".to_string(), vec![]));
-        process_list.insert(&['k', 'o'], ("こ".to_string(), vec![]));
+        process_list.insert(&[KEY_k, KEY_a], ("か".to_string(), vec![]));
+        process_list.insert(&[KEY_k, KEY_i], ("き".to_string(), vec![]));
+        process_list.insert(&[KEY_k, KEY_u], ("く".to_string(), vec![]));
+        process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
+        process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
+
+        process_list.insert(
+            &[keysyms::KEY_t, keysyms::KEY_s, keysyms::KEY_u],
+            ("つ".to_string(), vec![]),
+        );
 
         KanaBuilder {
             process_map: process_list,
@@ -149,12 +170,12 @@ impl KanaBuilder {
     fn test_ant_converter() -> Self {
         let mut process_list = SequenceTrie::new();
 
-        process_list.insert(&['a'], ("あ".to_string(), vec![]));
-        process_list.insert(&['n'], ("ん".to_string(), vec![]));
-        process_list.insert(&['n', 'n'], ("ん".to_string(), vec![]));
-        process_list.insert(&['n', 'a'], ("な".to_string(), vec![]));
-        process_list.insert(&['t', 'a'], ("た".to_string(), vec![]));
-        process_list.insert(&['t', 't'], ("っ".to_string(), vec!['t']));
+        process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
+        process_list.insert(&[KEY_n], ("ん".to_string(), vec![]));
+        process_list.insert(&[KEY_n, KEY_n], ("ん".to_string(), vec![]));
+        process_list.insert(&[KEY_n, KEY_n], ("な".to_string(), vec![]));
+        process_list.insert(&[KEY_t, KEY_a], ("た".to_string(), vec![]));
+        process_list.insert(&[KEY_t, KEY_t], ("っ".to_string(), vec![KEY_t]));
 
         KanaBuilder {
             process_map: process_list,
@@ -168,62 +189,56 @@ mod tests {
 
     #[test]
     fn combine_with_unprocessed() {
-        let next_key = KanaBuilder::combined_key(
+        let combined = KanaBuilder::combine(
             &CskkKeyEvent::from_string_representation("a").unwrap(),
-            &['b'],
+            &[KEY_b],
         );
-        assert_eq!(vec!['b', 'a'], next_key);
+        assert_eq!(vec![KEY_b, KEY_a], combined);
     }
 
     #[test]
     fn combine_no_unprocessed() {
-        let next_key =
-            KanaBuilder::combined_key(&CskkKeyEvent::from_string_representation("k").unwrap(), &[]);
-        assert_eq!(vec!['k'], next_key);
+        let combined =
+            KanaBuilder::combine(&CskkKeyEvent::from_string_representation("k").unwrap(), &[]);
+        assert_eq!(vec![KEY_k], combined);
     }
 
     #[test]
     fn combine_capital() {
-        let next_key =
-            KanaBuilder::combined_key(&CskkKeyEvent::from_string_representation("B").unwrap(), &[]);
-        assert_eq!(vec!['b'], next_key);
+        let combined =
+            KanaBuilder::combine(&CskkKeyEvent::from_string_representation("B").unwrap(), &[]);
+        assert_eq!(vec![KEY_b], combined);
     }
 
     #[test]
-    fn converter_from_string() {
-        let content = r#"
-        {
-            "a": ["", "あ" ],
-            "bb": ["b", "っ" ],
-            "ba": ["", "ば" ],
-            "be": ["", "べ" ]
-        }
-        "#
-        .to_string();
-        let converter = KanaBuilder::converter_from_string(&content);
-
-        let (converted, carry_over) = converter.convert(&['a']).unwrap();
-        assert_eq!(converted, "あ");
-        assert_eq!(Vec::<char>::with_capacity(0), *carry_over);
+    fn uncapitalize() {
+        // 変換する
+        assert_eq!(KEY_a, KanaBuilder::uncapitalize(KEY_A));
+        assert_eq!(KEY_b, KanaBuilder::uncapitalize(KEY_B));
+        // 変換しない
+        assert_eq!(KEY_7, KanaBuilder::uncapitalize(KEY_7));
+        // 大文字の境界
+        assert_eq!(KEY_at, KanaBuilder::uncapitalize(KEY_at));
+        assert_eq!(KEY_bracketleft, KanaBuilder::uncapitalize(KEY_bracketleft));
     }
 
     #[test]
     fn convert() {
         let converter = KanaBuilder::test_converter();
 
-        let result = converter.convert(&['k']);
+        let result = converter.convert(&[KEY_k]);
         assert_eq!(result, None);
     }
 
     #[test]
     fn ant_tree_convert() {
         let converter = KanaBuilder::test_ant_converter();
-        let result = converter.convert(&['t']);
+        let result = converter.convert(&[KEY_t]);
         assert_eq!(result, None);
 
-        let (kana, carry_over) = converter.convert(&['t', 't']).unwrap();
+        let (kana, carry_over) = converter.convert(&[KEY_t, KEY_t]).unwrap();
         assert_eq!("っ", kana);
-        assert_eq!(*carry_over, vec!['t'])
+        assert_eq!(*carry_over, vec![KEY_t])
     }
 
     #[test]
@@ -235,5 +250,49 @@ mod tests {
             &unprocessed,
         );
         assert!(!actual);
+    }
+
+    #[test]
+    fn can_continue_2of3letter() {
+        let converter = KanaBuilder::test_converter();
+        let unprocessed = vec![keysyms::KEY_t];
+        let actual = converter.can_continue(
+            &CskkKeyEvent::from_string_representation("s").unwrap(),
+            &unprocessed,
+        );
+        assert!(actual);
+    }
+
+    #[test]
+    fn can_continue_na() {
+        let converter = KanaBuilder::test_ant_converter();
+        let unprocessed = vec![keysyms::KEY_n];
+        let actual = converter.can_continue(
+            &CskkKeyEvent::from_string_representation("a").unwrap(),
+            &unprocessed,
+        );
+        assert!(!actual);
+    }
+
+    #[test]
+    fn can_not_continue() {
+        let converter = KanaBuilder::test_ant_converter();
+        let unprocessed = vec![];
+        let actual = converter.can_continue(
+            &CskkKeyEvent::from_string_representation("space").unwrap(),
+            &unprocessed,
+        );
+        assert!(!actual);
+    }
+
+    #[test]
+    fn next_unprocessed_state() {
+        let converter = KanaBuilder::test_ant_converter();
+        let unprocessed = vec![];
+        let actual = converter.next_unprocessed_state(
+            &CskkKeyEvent::from_string_representation("space").unwrap(),
+            &unprocessed,
+        );
+        assert_eq!(actual, Vec::<Keysym>::new());
     }
 }

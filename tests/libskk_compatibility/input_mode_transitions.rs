@@ -2,7 +2,7 @@
 //! ueno/libskk_compatibility tests/basic.c input_mode_transitionsより
 //!
 
-use crate::utils::{default_test_context, transition_check};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 
@@ -92,8 +92,8 @@ fn input_mode_transitions_hiragana() {
 
 #[test]
 fn input_mode_transition_katakana() {
+    init_test_logger();
     let mut context = default_test_context();
-
     transition_check(
         &mut context,
         CompositionMode::Direct,
