@@ -146,7 +146,7 @@ jobs:
         run: ls -l ./target/x86_64-apple-darwin/debug/
       - name: Build lib test (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-apple-darwin/debug/ -lcskk -o ./tests/lib_test
+        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
       - name: Run lib test (MacOS)
         if: matrix.os == 'macOS-latest'
         run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
