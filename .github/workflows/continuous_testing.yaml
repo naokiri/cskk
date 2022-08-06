@@ -115,7 +115,7 @@ jobs:
         run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
       - name: link lib versioning (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: ln -s ./target/x86_64-unknown-linux-gnu/debug/libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.0
+        run: ln -s libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.0
       - name: Show built file
         if: matrix.os == 'ubuntu-latest'
         run: ls -l ./target/*
