@@ -40,7 +40,8 @@ In Ubuntu e.g.
 
 ## Install
 
-Run
+When you have root priviledge, run the following.
+This will run `cargo cbuild --release` and install the files generated under target/{arch}/release and the data under assets/ to proper directories.
 
 ```shell
     cargo cinstall --release
@@ -50,14 +51,15 @@ To install to non-standard directories, append following options like this. See
 [cargo-c](https://github.com/lu-zero/cargo-c)  for details.
 
 ```shell
-    cargo cinstall --release --prefix=/usr --includedir=/tmp/other/place
+    cargo cinstall --release --prefix="/tmp" --datadir="$HOME/.local/share"
 ```
 
-- prefix: Prefix appended to the default libdir, includedir, and pkgconfigdir. Default is '/usr/local'
+- prefix: Prefix appended to the default libdir, includedir, pkgconfigdir, and datarootdir. Default is '/usr/local'
 - libdir: Directory to install the library. Default is '/lib'
 - includedir: Directory to install the header file. Default is '/include'
-- pkgconfigdir: Direcotry to install the .pc file for pkg-config. Default is '/lib/pkgconfig'
-
+- pkgconfigdir: Directory to install the .pc file for pkg-config. Default is '/lib/pkgconfig'
+- datarootdir: Directory to install the data files (assets directory in cskk project's case). Default is 'share'
+- datadir: Override datarootdir. An option to install data to a directory out of prefixed dirs. Default is unset (use datarootdir as is)
 
 ## Development status
 

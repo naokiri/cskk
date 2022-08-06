@@ -48,24 +48,26 @@ Ubuntu等では以下のコマンドでインストール
 
 ## インストール方法
 
-以下を実行する
+root権限がある場合、以下を実行する。
+これは`cargo cbuild --release`でtarget/{arch}/release/以下に生成されたファイルとassets/以下のファイルを適切なディレクトリにインストールする。
 
 ```shell
-    cargo cinstall --release 
+    cargo cinstall --release
 ```
 
 標準的なパス以外にインストールする場合は、以下のような引数を与える。
 詳細は [cargo-c](https://github.com/lu-zero/cargo-c) を参照のこと。
 
 ```shell
-    cargo cinstall --release --prefix=/usr --includedir=/tmp/other/place
+    cargo cinstall --release --prefix="/tmp" --datadir="$HOME/.local/share"
 ```
 
-- prefix: libdir, includedir, pkgconfigdir 共通接頭部分。デフォルトは '/usr/local'
+- prefix: libdir, includedir, pkgconfigdir, datarootdir 共通接頭部分。デフォルトは '/usr/local'
 - libdir: ライブラリインストール先。デフォルトは '/lib'
 - includedir: ヘッダファイルイストール先。デフォルトは '/include'
 - pkgconfigdir: pkg-config用の.pcファイルインストール先。デフォルトは '/lib/pkgconfig'
-
+- datarootdir: データファイル(cskkプロジェクトではassetsディレクトリ下)のインストール先。デフォルトは'share'
+- datadir: datarootdirを上書きするデータファイルのインストール先。prefixを無視してdataのインストール先を指定できる。デフォルトは指定なし(つまりdatarootdirを用いる。)
 
 ## 開発状況
 
