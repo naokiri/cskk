@@ -6,11 +6,13 @@ use crate::utils::{
     default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
 };
 use cskk::dictionary::CskkDictionary;
+use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
-    skk_context_set_auto_start_henkan_keywords_rs,
+    skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
+    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs,
 };
+use std::str::FromStr;
 use std::sync::Arc;
 
 // TODO: Split into several files.
@@ -859,4 +861,49 @@ fn auto_start_henkan_cleanup() {
         InputMode::Hiragana,
     );
     skk_context_reset_rs(&mut context);
+}
+
+///
+/// Shiftキーを押したままlキーを押した時、単なるLのつもりで {"Ｌ", modifier: SHIFT} となるので、
+/// 大文字の場合シフト抜きの素のキーとしてコマンドを検索する。
+/// 小文字の場合は通常のキーボードで存在しないが、一応そのまま別のものとして扱う。
+///
+#[test]
+fn allow_shift_as_part_of_capital_only() {
+    init_test_logger();
+    let mut context = default_test_context();
+    // 普通のキーボードでは存在しえないが、Shift-lとしてlとは別に扱うことにしている。
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "(shift l)",
+        "",
+        "l",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "(shift L)",
+        "",
+        "",
+        InputMode::Zenkaku,
+    );
+}
+
+#[test]
+fn arrow() {
+    init_test_logger();
+    let mut context = default_test_context();
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Right").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Up").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Left").unwrap());
+    assert!(!processed);
+    let processed = context.process_key_event(&CskkKeyEvent::from_str("Down").unwrap());
+    assert!(!processed);
 }

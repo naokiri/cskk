@@ -7,11 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cargo
@@ -39,11 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install required libs (Ubuntu)
@@ -72,21 +76,26 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/.crates*
-            ~/.cargo/bin
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             target
-          key: ${{ runner.os }}-cargo-libtest-v5-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.8.1+cargo-0.53
+          key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
           command: install
           args: cbindgen
+      - name: cargo-c-exists
+        id: cargoCCheck
+        run: test -e ~/.cargo/bin/cargo-cbuild
+        continue-on-error: true
       - name: Install cargo-c
+        if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
         uses: actions-rs/cargo@v1
         with:
           command: install
@@ -113,6 +122,15 @@ jobs:
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
+      - name: link lib versioning (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.0
+      - name: Show built file
+        if: matrix.os == 'ubuntu-latest'
+        run: ls -l ./target/*
+      - name: Show built file under debug
+        if: matrix.os == 'ubuntu-latest'
+        run: ls -l ./target/x86_64-unknown-linux-gnu/debug/
       - name: Build lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o ./tests/lib_test
@@ -122,9 +140,18 @@ jobs:
       - name: copy header file (MacOS)
         if: matrix.os == 'macOS-latest'
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+      - name: link lib versioning (MacOS)
+        if: matrix.os == 'macOS-latest'
+        run: ln -fs libcskk.0.5.2.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+      - name: Show built file
+        if: matrix.os == 'macOS-latest'
+        run: ls -l ./target/*
+      - name: Show built file under debug
+        if: matrix.os == 'macOS-latest'
+        run: ls -l ./target/x86_64-apple-darwin/debug/
       - name: Build lib test (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-apple-darwin/debug/ -lcskk -o ./tests/lib_test
+        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
       - name: Run lib test (MacOS)
         if: matrix.os == 'macOS-latest'
         run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
