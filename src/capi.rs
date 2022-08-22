@@ -29,6 +29,7 @@ pub struct CskkRulesFfi {
 }
 
 impl CskkRulesFfi {
+    #[allow(clippy::result_unit_err)]
     pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, ()> {
         let id = CString::new(rust_id).unwrap();
         let name = CString::new(rust_name).unwrap();

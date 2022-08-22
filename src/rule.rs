@@ -16,19 +16,13 @@ pub(crate) struct CskkRule {
 // Metadata.toml file
 pub(crate) struct CskkRuleMetadata {
     base_dir: PathBuf,
-    //rules: CskkRuleDirectoryMetadata,
-    rules: BTreeMap<String, CskkRuleDirectoryMetadataEntry>,
+    rules: BTreeMap<String, CskkRuleMetadataEntry>,
 }
-//
-// #[derive(Serialize, Deserialize, Debug)]
-// pub(crate) struct CskkRuleDirectoryMetadata {
-//     entry: BTreeMap<String, CskkRuleDirectoryMetadataEntry>,
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct CskkRuleDirectoryMetadataEntry {
-    pub(crate) name: String,
-    pub(crate) description: String,
+pub struct CskkRuleMetadataEntry {
+    pub name: String,
+    pub description: String,
     // path directory of actual rule.toml
     path: String,
 }
@@ -128,8 +122,8 @@ impl CskkRuleMetadata {
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
             //let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
-            let result =
-                toml::from_str::<BTreeMap<String, CskkRuleDirectoryMetadataEntry>>(&contents)?;
+            let result = toml::from_str::<BTreeMap<String, CskkRuleMetadataEntry>>(&contents)?;
+
             Ok(CskkRuleMetadata {
                 base_dir: rule_directory,
                 rules: result,
@@ -150,7 +144,7 @@ impl CskkRuleMetadata {
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         //let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
-        let result = toml::from_str::<BTreeMap<String, CskkRuleDirectoryMetadataEntry>>(&contents)?;
+        let result = toml::from_str::<BTreeMap<String, CskkRuleMetadataEntry>>(&contents)?;
         Ok(CskkRuleMetadata {
             base_dir: rule_directory,
             rules: result,
@@ -184,7 +178,7 @@ impl CskkRuleMetadata {
     }
 
     /// 使えるルールの(キー、名称、説明)を返す
-    pub(crate) fn get_rule_list(&self) -> &BTreeMap<String, CskkRuleDirectoryMetadataEntry> {
+    pub(crate) fn get_rule_list(&self) -> &BTreeMap<String, CskkRuleMetadataEntry> {
         &self.rules
     }
 }

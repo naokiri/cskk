@@ -23,7 +23,7 @@ use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
-use crate::rule::{CskkRuleDirectoryMetadataEntry, CskkRuleMetadata};
+use crate::rule::{CskkRuleMetadata, CskkRuleMetadataEntry};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::ascii_form_changer::AsciiFormChanger;
@@ -1389,7 +1389,7 @@ impl CskkContext {
     ///
     /// 使えるruleのリストを返す。
     ///
-    pub fn get_available_rules(&self) -> &BTreeMap<String, CskkRuleDirectoryMetadataEntry> {
+    pub fn get_available_rules(&self) -> &BTreeMap<String, CskkRuleMetadataEntry> {
         self.rule_metadata.get_rule_list()
     }
 
