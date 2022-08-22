@@ -12,10 +12,11 @@ use crate::{
     skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
 };
 use std::convert::TryFrom;
-use std::ffi::{CStr, CString};
+use std::ffi::{c_void, CStr, CString};
+use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_uint};
 use std::sync::Arc;
-use std::{mem, slice};
+use std::{mem, ptr, slice};
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
@@ -63,6 +64,7 @@ impl Drop for CskkRulesFfi {
 pub unsafe extern "C" fn skk_context_new(
     dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
+    rule: *mut c_char,
 ) -> *mut CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
     Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
@@ -525,7 +527,7 @@ pub extern "C" fn skk_library_get_version() -> *mut c_char {
 }
 
 ///
-/// returns a pointer to an Rules array,
+/// returns a pointer to an Rules array. Retruns NULL in error.
 /// sets the total number of entries in the array in the given `length` parameter.
 /// The parameter is required to free the returned array later.
 ///
@@ -552,9 +554,14 @@ pub unsafe extern "C" fn skk_get_rules(length: *mut c_uint) -> *mut CskkRulesFfi
     // 2^32 rules are very unlikely. Low priority for now.
     *length = u32::try_from(count).unwrap();
 
-    let ptr = retval_stack.as_mut_ptr();
-    mem::forget(retval_stack);
-    ptr
+    if count > 0 {
+        let mut retval = ManuallyDrop::new(retval_stack);
+        retval.as_mut_ptr()
+    } else {
+        // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
+        // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
+        ptr::null_mut()
+    }
 }
 
 ///
