@@ -2,7 +2,7 @@ use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::{
-    skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
+    get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
     skk_context_get_current_candidate_count_rs,
     skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
     skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
@@ -63,7 +63,7 @@ impl Drop for CskkRulesFfi {
 pub unsafe extern "C" fn skk_context_new(
     dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
-) -> *const CskkContext {
+) -> *mut CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
     Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
 }
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn skk_context_new(
 pub unsafe extern "C" fn skk_file_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *const CskkDictionaryFfi {
+) -> *mut CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
     let cskk_dictionary_ffi = CskkDictionaryFfi {
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn skk_file_dict_new(
 pub unsafe extern "C" fn skk_user_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *const CskkDictionaryFfi {
+) -> *mut CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
 
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn skk_user_dict_new(
 /// If not, memory leaks.
 ///
 #[no_mangle]
-pub unsafe extern "C" fn skk_empty_dict_new() -> *const CskkDictionaryFfi {
+pub unsafe extern "C" fn skk_empty_dict_new() -> *mut CskkDictionaryFfi {
     Box::into_raw(Box::new(CskkDictionaryFfi {
         dictionary: Arc::new(CskkDictionary::new_empty_dict().unwrap()),
     }))
@@ -337,7 +337,7 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
     keysym: u32,
     modifier: u32,
     is_release: bool,
-) -> *const CskkKeyEvent {
+) -> *mut CskkKeyEvent {
     Box::into_raw(Box::new(CskkKeyEvent::from_fcitx_keyevent(
         keysym, modifier, is_release,
     )))
@@ -536,24 +536,23 @@ pub extern "C" fn skk_library_get_version() -> *mut c_char {
 /// caller must free the returned array by [skk_free_rules] API.
 ///
 #[no_mangle]
-pub unsafe extern "C" fn skk_context_get_rules(
-    context: &CskkContext,
-    length: *mut c_uint,
-) -> *const CskkRulesFfi {
-    let rulemap = context.get_available_rules();
+pub unsafe extern "C" fn skk_get_rules(length: *mut c_uint) -> *mut CskkRulesFfi {
+    let rulemap = get_available_rules().unwrap();
+
     let mut retval_stack = vec![];
+    let count = rulemap.len();
     for (key, metadataentry) in rulemap {
-        let rule = CskkRulesFfi::new(key, &metadataentry.name, &metadataentry.description).unwrap();
+        let rule =
+            CskkRulesFfi::new(&key, &metadataentry.name, &metadataentry.description).unwrap();
         retval_stack.push(rule);
     }
-    let count = rulemap.len();
     // Make Vec capacity to be equals length so that we can restore on free function.
-    retval_stack.set_len(rulemap.len());
+    retval_stack.set_len(count);
     // FIXME: Here, if user had make more than 2^32-1 rules this will cause trouble.
     // 2^32 rules are very unlikely. Low priority for now.
     *length = u32::try_from(count).unwrap();
 
-    retval_stack.as_ptr()
+    retval_stack.as_mut_ptr()
 }
 
 ///

@@ -178,8 +178,8 @@ impl CskkRuleMetadata {
     }
 
     /// 使えるルールの(キー、名称、説明)を返す
-    pub(crate) fn get_rule_list(&self) -> &BTreeMap<String, CskkRuleMetadataEntry> {
-        &self.rules
+    pub(crate) fn get_rule_list(self) -> BTreeMap<String, CskkRuleMetadataEntry> {
+        self.rules
     }
 }
 

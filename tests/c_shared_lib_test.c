@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 /**
  * Shallow checking of libcskk.h
@@ -27,7 +28,7 @@ int main() {
   assert(retval);
   char *output = skk_context_poll_output(context);
   printf("%s\n", output);
-  assert(strcmp(output, "あ"));
+  assert(strcmp(output, "あ") == 0);
   skk_free_string(output);
 
   skk_free_dictionary(dict[0]);

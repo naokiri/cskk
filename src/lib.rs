@@ -67,8 +67,6 @@ pub struct CskkContext {
     ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
-    #[allow(dead_code)]
-    rule_metadata: CskkRuleMetadata,
 }
 
 /// C interface equivalents useful for testing? Might stop exposing at any point of update.
@@ -267,6 +265,14 @@ pub fn skk_context_set_period_style_rs(context: &mut CskkContext, period_style: 
 
 pub fn skk_context_set_comma_style_rs(context: &mut CskkContext, comma_style: CommaStyle) {
     context.config.set_comma_style(comma_style);
+}
+
+///
+/// 使えるruleのリストを返す。
+///
+pub fn get_available_rules() -> Result<BTreeMap<String, CskkRuleMetadataEntry>, CskkError> {
+    let rulematadata = CskkRuleMetadata::load_metadata()?;
+    Ok(rulematadata.get_rule_list())
 }
 
 impl CskkContext {
@@ -1385,23 +1391,10 @@ impl CskkContext {
         true
     }
 
-    ///
-    /// 使えるruleのリストを返す。
-    ///
-    pub fn get_available_rule_keys(&self) -> Vec<&str> {
-        self.rule_metadata.get_rule_key_list()
-    }
-
-    ///
-    /// 使えるruleのリストを返す。
-    ///
-    pub fn get_available_rules(&self) -> &BTreeMap<String, CskkRuleMetadataEntry> {
-        self.rule_metadata.get_rule_list()
-    }
-
     /// Set to the specified rule.
     pub fn set_rule(&mut self, rule: &str) -> Result<(), CskkError> {
-        let new_rule = self.rule_metadata.load_rule(rule)?;
+        let rule_metadata = CskkRuleMetadata::load_metadata()?;
+        let new_rule = rule_metadata.load_rule(rule)?;
         let new_kana_converter = Box::new(KanaBuilder::new(&new_rule));
         let new_command_handler = ConfigurableCommandHandler::new(&new_rule);
         self.kana_converter = new_kana_converter;
@@ -1430,7 +1423,6 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
         })
     }
 
@@ -1458,7 +1450,6 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::from_file(ascii_from_changer_filepath),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
         }
     }
 }
@@ -1509,7 +1500,7 @@ mod unit_tests {
             ascii_form_changer: AsciiFormChanger::test_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
+            //rule_metadata,
         }
     }
 
