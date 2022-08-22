@@ -21,6 +21,26 @@ pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
 }
 
+#[repr(C)]
+pub struct CskkRulesFfi {
+    id: CString,
+    name: CString,
+    description: CString,
+}
+
+impl CskkRulesFfi {
+    pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, ()> {
+        let id = CString::new(rust_id).unwrap();
+        let name = CString::new(rust_name).unwrap();
+        let description = CString::new(rust_description).unwrap();
+        Ok(CskkRulesFfi {
+            id,
+            name,
+            description,
+        })
+    }
+}
+
 /// Returns newly allocated CSKKContext.
 ///
 /// # Safety
@@ -32,7 +52,7 @@ pub struct CskkDictionaryFfi {
 pub unsafe extern "C" fn skk_context_new(
     dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
-) -> *mut CskkContext {
+) -> *const CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
     Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
 }
@@ -50,7 +70,7 @@ pub unsafe extern "C" fn skk_context_new(
 pub unsafe extern "C" fn skk_file_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *mut CskkDictionaryFfi {
+) -> *const CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
     let cskk_dictionary_ffi = CskkDictionaryFfi {
@@ -75,7 +95,7 @@ pub unsafe extern "C" fn skk_file_dict_new(
 pub unsafe extern "C" fn skk_user_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
-) -> *mut CskkDictionaryFfi {
+) -> *const CskkDictionaryFfi {
     let path = CStr::from_ptr(c_path_string);
     let encoding = CStr::from_ptr(c_encoding);
 
@@ -95,7 +115,7 @@ pub unsafe extern "C" fn skk_user_dict_new(
 /// If not, memory leaks.
 ///
 #[no_mangle]
-pub unsafe extern "C" fn skk_empty_dict_new() -> *mut CskkDictionaryFfi {
+pub unsafe extern "C" fn skk_empty_dict_new() -> *const CskkDictionaryFfi {
     Box::into_raw(Box::new(CskkDictionaryFfi {
         dictionary: Arc::new(CskkDictionary::new_empty_dict().unwrap()),
     }))
@@ -245,6 +265,18 @@ pub unsafe extern "C" fn skk_free_dictionary(dictionary_ptr: *mut CskkDictionary
 }
 
 ///
+/// Free the rules given from [skk_context_get_rules]
+///
+/// # Safety
+/// 引数はいずれも[skk_context_get_rules]で得られるペアでなければならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_rules(rules_ptr: *mut CskkRulesFfi, length: c_uint) {
+    let length = length as usize;
+    Vec::from_raw_parts(rules_ptr, length, length);
+}
+
+///
 /// Get emphasizing range of preedit.
 /// offset: starting offset (in UTF-8 chars) of underline
 /// nchars: number of characters to be underlined
@@ -292,7 +324,7 @@ pub extern "C" fn skk_key_event_new_from_fcitx_keyevent(
     keysym: u32,
     modifier: u32,
     is_release: bool,
-) -> *mut CskkKeyEvent {
+) -> *const CskkKeyEvent {
     Box::into_raw(Box::new(CskkKeyEvent::from_fcitx_keyevent(
         keysym, modifier, is_release,
     )))
@@ -477,6 +509,38 @@ pub extern "C" fn skk_context_set_comma_style(context: &mut CskkContext, comma_s
 #[no_mangle]
 pub extern "C" fn skk_library_get_version() -> *mut c_char {
     CString::new(CskkContext::get_version()).unwrap().into_raw()
+}
+
+///
+/// returns a pointer to an Rules array,
+/// sets the total number of entries in the array in the given `length` parameter.
+/// The parameter is required to free the returned array later.
+///
+/// # Safety
+///
+/// the parameter `length` must be a pointer to a 32 bit unsigned int allocated in the caller side.
+/// caller must not modify any field in the returned struct in the array.
+/// caller must free the returned array by [skk_free_rules] API.
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_rules(
+    context: &CskkContext,
+    length: *mut c_uint,
+) -> *const CskkRulesFfi {
+    let rulemap = context.get_available_rules();
+    let mut retval_stack = vec![];
+    for (key, metadataentry) in rulemap {
+        let rule = CskkRulesFfi::new(key, &metadataentry.name, &metadataentry.description).unwrap();
+        retval_stack.push(rule);
+    }
+    let count = rulemap.len();
+    // Make Vec capacity to be equals length so that we can restore on free function.
+    retval_stack.set_len(rulemap.len());
+    // FIXME: Here, if user had make more than 2^32-1 rules this will cause trouble.
+    // 2^32 rules are very unlikely. Low priority for now.
+    *length = u32::try_from(count).unwrap();
+
+    retval_stack.as_ptr()
 }
 
 ///

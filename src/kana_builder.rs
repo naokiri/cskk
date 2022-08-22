@@ -47,7 +47,9 @@ impl KanaBuilder {
 
         combined.push(key_event.get_symbol());
         if self.can_continue(key_event, unprocessed) {
-            Self::combine(key_event, unprocessed)
+            Self::combine_raw(key_event, unprocessed)
+        } else if self.can_continue_lower(key_event, unprocessed) {
+            Self::combine_lower(key_event, unprocessed)
         } else if self.can_continue(key_event, &[]) {
             vec![key_event.get_symbol()]
         } else {
@@ -89,13 +91,26 @@ impl KanaBuilder {
     /// ただし、[A-Z]は[a-z]とみなされる。
     /// 通常はnext_unprocessed_stateで入力の結果を見る。
     ///
-    pub(crate) fn combine(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
+    pub(crate) fn combine_lower(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
         let mut combined = vec![];
         combined.extend_from_slice(unprocessed);
         combined.push(Self::uncapitalize(key_event.get_symbol()));
         combined
     }
 
+    ///
+    /// 接続可能かどうか確認せずにunprocessedにkey_eventのKeysymを足したものを返す。
+    /// 大文字もそのまま扱う。
+    /// 通常はnext_unprocessed_stateで入力の結果を見る。
+    ///
+    pub(crate) fn combine_raw(key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> Vec<Keysym> {
+        let mut combined = vec![];
+        combined.extend_from_slice(unprocessed);
+        combined.push(key_event.get_symbol());
+        combined
+    }
+
+    /// 大文字を対応する小文字に変換する。
     fn uncapitalize(keysym: Keysym) -> Keysym {
         if (keysyms::KEY_A..=keysyms::KEY_Z).contains(&keysym) {
             keysym + 0x0020
@@ -109,15 +124,36 @@ impl KanaBuilder {
     /// k j -> false
     /// t t -> true ('っt' として続けられるため)
     pub(crate) fn can_continue(&self, key_event: &CskkKeyEvent, unprocessed: &[Keysym]) -> bool {
-        self.get_node(key_event, unprocessed).is_some()
+        self.get_node_raw(key_event, unprocessed).is_some()
     }
 
-    fn get_node(
+    /// 今のunprocessedに続いて次のkey_eventが来た時に、それを小文字化すればかな変換を続けられるか。
+    /// 一般的なローマ字変換での例
+    /// k j -> false
+    /// t t -> true ('っt' として続けられるため)
+    pub(crate) fn can_continue_lower(
+        &self,
+        key_event: &CskkKeyEvent,
+        unprocessed: &[Keysym],
+    ) -> bool {
+        self.get_node_lower(key_event, unprocessed).is_some()
+    }
+
+    fn get_node_lower(
         &self,
         key_event: &CskkKeyEvent,
         unprocessed: &[Keysym],
     ) -> Option<&SequenceTrie<Keysym, (Converted, CarryOver)>> {
-        let key = KanaBuilder::combine(key_event, unprocessed);
+        let key = KanaBuilder::combine_lower(key_event, unprocessed);
+        self.process_map.get_node(&key)
+    }
+
+    fn get_node_raw(
+        &self,
+        key_event: &CskkKeyEvent,
+        unprocessed: &[Keysym],
+    ) -> Option<&SequenceTrie<Keysym, (Converted, CarryOver)>> {
+        let key = KanaBuilder::combine_raw(key_event, unprocessed);
         self.process_map.get_node(&key)
     }
 
@@ -189,7 +225,7 @@ mod tests {
 
     #[test]
     fn combine_with_unprocessed() {
-        let combined = KanaBuilder::combine(
+        let combined = KanaBuilder::combine_lower(
             &CskkKeyEvent::from_string_representation("a").unwrap(),
             &[KEY_b],
         );
@@ -198,15 +234,19 @@ mod tests {
 
     #[test]
     fn combine_no_unprocessed() {
-        let combined =
-            KanaBuilder::combine(&CskkKeyEvent::from_string_representation("k").unwrap(), &[]);
+        let combined = KanaBuilder::combine_lower(
+            &CskkKeyEvent::from_string_representation("k").unwrap(),
+            &[],
+        );
         assert_eq!(vec![KEY_k], combined);
     }
 
     #[test]
     fn combine_capital() {
-        let combined =
-            KanaBuilder::combine(&CskkKeyEvent::from_string_representation("B").unwrap(), &[]);
+        let combined = KanaBuilder::combine_lower(
+            &CskkKeyEvent::from_string_representation("B").unwrap(),
+            &[],
+        );
         assert_eq!(vec![KEY_b], combined);
     }
 

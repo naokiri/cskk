@@ -10,7 +10,7 @@ use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
     skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
-    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs,
+    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -906,4 +906,29 @@ fn arrow() {
     assert!(!processed);
     let processed = context.process_key_event(&CskkKeyEvent::from_str("Down").unwrap());
     assert!(!processed);
+}
+
+#[test]
+fn using_capital_letter() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
+    let mut context = CskkContext::new_from_specified_paths(
+        InputMode::Ascii,
+        CompositionMode::Direct,
+        vec![Arc::new(dict)],
+        "assets/rule/kana_form.toml",
+        "assets/rule/ascii_form.toml",
+        "tests/data/rules",
+    );
+
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "t s U",
+        "",
+        "ちいさいっ",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
 }

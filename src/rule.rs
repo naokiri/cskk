@@ -1,6 +1,6 @@
 use crate::env::filepath_from_xdg_data_dir;
 use crate::{CompositionMode, CskkError, CskkKeyEvent, InputMode, Instruction};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -16,21 +16,23 @@ pub(crate) struct CskkRule {
 // Metadata.toml file
 pub(crate) struct CskkRuleMetadata {
     base_dir: PathBuf,
-    rules: CskkRuleDirectoryMetadata,
+    //rules: CskkRuleDirectoryMetadata,
+    rules: BTreeMap<String, CskkRuleDirectoryMetadataEntry>,
 }
+//
+// #[derive(Serialize, Deserialize, Debug)]
+// pub(crate) struct CskkRuleDirectoryMetadata {
+//     entry: BTreeMap<String, CskkRuleDirectoryMetadataEntry>,
+// }
 
-#[derive(Serialize, Deserialize)]
-pub(crate) struct CskkRuleDirectoryMetadata {
-    entry: Vec<CskkRuleDirectoryMetadataEntry>,
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct CskkRuleDirectoryMetadataEntry {
-    name: String,
-    description: String,
+    pub(crate) name: String,
+    pub(crate) description: String,
     // path directory of actual rule.toml
     path: String,
 }
+
 #[derive(Deserialize, Default, Clone, Debug)]
 pub(crate) struct CskkCommandRule {
     #[serde(default)]
@@ -125,14 +127,15 @@ impl CskkRuleMetadata {
             let mut file = File::open(metadata_file)?;
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
-            let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
-
+            //let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
+            let result =
+                toml::from_str::<BTreeMap<String, CskkRuleDirectoryMetadataEntry>>(&contents)?;
             Ok(CskkRuleMetadata {
                 base_dir: rule_directory,
                 rules: result,
             })
         } else {
-            Err(CskkError::Error("No rule metadata file".to_string()))
+            Err(CskkError::RuleError("No rule metadata file".to_string()))
         }
     }
 
@@ -146,28 +149,43 @@ impl CskkRuleMetadata {
         let mut file = File::open(metadata_file)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
-
+        //let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
+        let result = toml::from_str::<BTreeMap<String, CskkRuleDirectoryMetadataEntry>>(&contents)?;
         Ok(CskkRuleMetadata {
             base_dir: rule_directory,
             rules: result,
         })
     }
 
-    /// Load the first rule
+    /// Load the rule named "default"
     pub(crate) fn load_default_rule(&self) -> Result<CskkRule, CskkError> {
+        self.load_rule("default")
+    }
+
+    ///
+    /// 引数ruleのidのrule.tomlファイルを読み出す。
+    ///
+    pub(crate) fn load_rule(&self, rule: &str) -> Result<CskkRule, CskkError> {
         let base_direcotry = &self.base_dir;
-        if let Some(rule) = &self.rules.entry.get(0) {
+        if let Some(rule) = &self.rules.get(rule) {
             let mut file_path = base_direcotry.clone();
             file_path.push(&rule.path);
             file_path.push("rule.toml");
             let result = CskkRule::load_rule_file(file_path.as_path())?;
             Ok(result)
         } else {
-            Err(CskkError::Error(
-                "No available rule in metadata".to_string(),
-            ))
+            Err(CskkError::RuleError("Unknown rule specified.".to_string()))
         }
+    }
+
+    /// 使えるルールのキーのみ返す
+    pub(crate) fn get_rule_key_list(&self) -> Vec<&str> {
+        self.rules.keys().map(|x| x.as_ref()).collect()
+    }
+
+    /// 使えるルールの(キー、名称、説明)を返す
+    pub(crate) fn get_rule_list(&self) -> &BTreeMap<String, CskkRuleDirectoryMetadataEntry> {
+        &self.rules
     }
 }
 
@@ -185,6 +203,15 @@ mod tests {
         let filepath = "assets/rules/default/rule.toml";
         let result = CskkRule::load_rule_file(Path::new(&filepath)).unwrap();
         println!("{:?}", result.command);
+    }
+
+    #[test]
+    fn load_preset_metadata() {
+        let filepath = "assets/rules";
+        let result = CskkRuleMetadata::load_metadata_from_directory(filepath).unwrap();
+        println!("{:?}", result.rules);
+        let rule_load = result.load_default_rule();
+        assert!(rule_load.is_ok())
     }
 
     #[test]

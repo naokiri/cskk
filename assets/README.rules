@@ -1,5 +1,16 @@
+* Ruleについて
+libcskk は複数のルールセットを切り替えて使えるようになっている。
+キーボードでのコマンドおよび、かな変換のキーを設定できる。
+
+ルールはxdg標準のdataディレクトリ内の libcskk/rules から読まれる。
+デフォルトでは ~/.local/share/libcskk/rules が優先的に探索され、$XDG_DATA_DIRS/libcskk/rules/ が順に探索される。
+
+rules/metadata.toml および rules/default/rule.toml 内に例と説明がある。
+
+rulesディレクトリとは別に、今のlibcskkでは変更できない、固定のルールが'rule'に配置されている。
+
 * Rules overview
-libcskk will support various typing rules in the future
+libcskk supports various typing rules
 which define keyboard shortcuts and array-of-keys to kana conversion table.
 
 Rules are normally read from xdg data directory's libcskk/rules,
@@ -7,4 +18,4 @@ which defaults to ~/.local/share/libcskk/rules as top priority and then searches
 
 See rules/metadata.toml and rules/default/rule.toml for example and definition.
 
-There is another directory 'rule', which contains static rule.
+There is another directory 'rule', which contains currently static rule.
