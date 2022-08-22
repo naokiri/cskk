@@ -20,15 +20,26 @@ fn basic() {
         InputMode::Hiragana,
     );
     skk_context_reset_rs(&mut context);
+}
+
+// SKKのコマンドのlとAZIKのxと被るので、xxを拗音に当てている。
+// AZIKでは通常拗音単体ではなく拗音拡張を用いる。
+#[test]
+fn xx_youon() {
+    init_test_logger();
+    let mut context = default_test_context();
+    context.set_rule("azik").unwrap();
+
     transition_check(
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "k u x w a",
+        "x x a",
         "",
-        "くゎ",
+        "ぁ",
         InputMode::Hiragana,
     );
+    skk_context_reset_rs(&mut context);
 }
 
 #[test]
