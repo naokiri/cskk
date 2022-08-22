@@ -774,29 +774,34 @@ impl CskkContext {
 
     /// 大文字であり、かつコマンドではないキー入力をした時のモード変更を行う。
     ///
-    /// done_transition_on_kana_build:
+    /// done_transition_on_kana_build: 現在のkanabuildで既にモード変更を行っているかどうか。
+    ///
     fn transition_composition_mode_by_capital_letter(
         &mut self,
         key_event: &CskkKeyEvent,
         initial_kanainput_composition_mode: CompositionMode,
         done_transition_on_kana_build: bool,
-    ) {
+    ) -> bool {
         let is_capital =
             (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&key_event.get_symbol());
 
-        if is_capital
+        return if is_capital
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::Direct
         {
             self.set_composition_mode(CompositionMode::PreComposition);
             self.current_state().set_capital_transition(true);
+            true
         } else if is_capital
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::PreComposition
         {
             self.set_composition_mode(CompositionMode::PreCompositionOkurigana);
             self.current_state().set_capital_transition(true);
-        }
+            true
+        } else {
+            false
+        };
     }
 
     ///
@@ -924,9 +929,6 @@ impl CskkContext {
             &self.current_state_ref().input_mode,
             &self.current_state_ref().composition_mode,
         ) {
-            let next_unprocessed_pre_conversion = self
-                .kana_converter
-                .next_unprocessed_state(key_event, &initial_unprocessed_vector);
             let combined_raw = KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
             let combined_lower = KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
             let converted_lower = self.kana_converter.convert(&combined_lower);
@@ -953,19 +955,20 @@ impl CskkContext {
                 let converted = converted.clone();
                 let carry_over = carry_over.clone();
 
-                self.transition_composition_mode_by_capital_letter(
+                let did_change_mode = self.transition_composition_mode_by_capital_letter(
                     key_event,
                     initial_kanainput_composition_mode,
                     self.current_state_ref().get_capital_transition(),
                 );
                 let current_composition_mode = self.current_state_ref().composition_mode;
+                let lower_key_event = key_event.to_lower();
                 // When input made a kana conversion when tried with lower letter.
                 self.input_converted_kana(
-                    key_event,
+                    &lower_key_event,
                     current_composition_mode,
                     &converted,
                     carry_over.clone(),
-                    true,
+                    did_change_mode,
                     initial_unprocessed_vector,
                 );
                 return true;
@@ -1030,7 +1033,8 @@ impl CskkContext {
                         initial_kanainput_composition_mode,
                         self.current_state_ref().get_capital_transition(),
                     );
-                    self.input_as_continuous_kana(key_event);
+                    let lower_key_event = key_event.to_lower();
+                    self.input_as_continuous_kana(&lower_key_event);
                 } else if self.kana_converter.can_continue(key_event, &[]) {
                     // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                     // まずpre_convertedを整理してから入力として扱う。
@@ -1048,6 +1052,8 @@ impl CskkContext {
                         initial_kanainput_composition_mode,
                         self.current_state_ref().get_capital_transition(),
                     );
+                    let lower_key_event = key_event.to_lower();
+
                     // TODO: この現在のステートのクリーンアップは上と同じであるべきなので、stateの整理ができたらメソッドにまとめる。
                     self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
                     self.reset_unconverted();
@@ -1055,7 +1061,7 @@ impl CskkContext {
                     if self.current_state_ref().converted_kana_to_okuri.is_empty() {
                         self.current_state().clear_okuri_first_letter();
                     }
-                    self.input_as_continuous_kana(key_event);
+                    self.input_as_continuous_kana(&lower_key_event);
                 } else {
                     // kana builderですら扱えないキー。
                     // スペースや記号を想定。

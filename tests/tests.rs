@@ -932,3 +932,22 @@ fn using_capital_letter() {
     );
     skk_context_reset_rs(&mut context);
 }
+
+///
+/// 付ける の T u K e のようにせわしなくShift押したり離したりするのは失敗しやすいため、
+/// T u K E のように k e -> け という1変換の間にはShift押しっぱなしでもモード変更等として捉えない。
+///
+#[test]
+fn continuous_capital_kana_converting() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "T u K E",
+        "▼付け",
+        "",
+        InputMode::Hiragana,
+    );
+}

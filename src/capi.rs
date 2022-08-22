@@ -23,9 +23,9 @@ pub struct CskkDictionaryFfi {
 
 #[repr(C)]
 pub struct CskkRulesFfi {
-    id: CString,
-    name: CString,
-    description: CString,
+    id: *mut c_char,
+    name: *mut c_char,
+    description: *mut c_char,
 }
 
 impl CskkRulesFfi {
@@ -35,10 +35,20 @@ impl CskkRulesFfi {
         let name = CString::new(rust_name).unwrap();
         let description = CString::new(rust_description).unwrap();
         Ok(CskkRulesFfi {
-            id,
-            name,
-            description,
+            id: id.into_raw(),
+            name: name.into_raw(),
+            description: description.into_raw(),
         })
+    }
+}
+
+impl Drop for CskkRulesFfi {
+    fn drop(&mut self) {
+        unsafe {
+            drop(CString::from_raw(self.id));
+            drop(CString::from_raw(self.name));
+            drop(CString::from_raw(self.description));
+        }
     }
 }
 
@@ -189,6 +199,8 @@ pub unsafe extern "C" fn skk_context_process_key_event(
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
+    // Free時にmutである必要があるので*mut c_charで返しているが、c側で変更することを想定していない。
+    // Cではどうせ制約を付けられないので、*constで返しても意味はないが、本当は*constで返しておきながらfreeの引数としては*mutで受けたい。
     CString::new(skk_context_poll_output_rs(context))
         .unwrap()
         .into_raw()
