@@ -172,11 +172,6 @@ impl CskkRuleMetadata {
         }
     }
 
-    /// 使えるルールのキーのみ返す
-    pub(crate) fn get_rule_key_list(&self) -> Vec<&str> {
-        self.rules.keys().map(|x| x.as_ref()).collect()
-    }
-
     /// 使えるルールの(キー、名称、説明)を返す
     pub(crate) fn get_rule_list(self) -> BTreeMap<String, CskkRuleMetadataEntry> {
         self.rules

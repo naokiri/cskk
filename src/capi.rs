@@ -14,8 +14,8 @@ use crate::{
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_uint};
-use std::slice;
 use std::sync::Arc;
+use std::{mem, slice};
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
@@ -31,9 +31,9 @@ pub struct CskkRulesFfi {
 impl CskkRulesFfi {
     #[allow(clippy::result_unit_err)]
     pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, ()> {
-        let id = CString::new(rust_id).unwrap();
-        let name = CString::new(rust_name).unwrap();
-        let description = CString::new(rust_description).unwrap();
+        let id = CString::new(rust_id.to_string()).unwrap();
+        let name = CString::new(rust_name.to_string()).unwrap();
+        let description = CString::new(rust_description.to_string()).unwrap();
         Ok(CskkRulesFfi {
             id: id.into_raw(),
             name: name.into_raw(),
@@ -235,8 +235,8 @@ pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
-    // Get back ownership in Rust side, then do nothing.
-    CString::from_raw(ptr);
+    // Get back ownership in Rust side, then drop.
+    drop(CString::from_raw(ptr));
 }
 
 ///
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn skk_free_context(context_ptr: *mut CskkContext) {
     if context_ptr.is_null() {
         return;
     }
-    Box::from_raw(context_ptr);
+    drop(Box::from_raw(context_ptr));
 }
 
 ///
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn skk_free_dictionary(dictionary_ptr: *mut CskkDictionary
     if dictionary_ptr.is_null() {
         return;
     }
-    Box::from_raw(dictionary_ptr);
+    drop(Box::from_raw(dictionary_ptr));
 }
 
 ///
@@ -286,7 +286,7 @@ pub unsafe extern "C" fn skk_free_dictionary(dictionary_ptr: *mut CskkDictionary
 #[no_mangle]
 pub unsafe extern "C" fn skk_free_rules(rules_ptr: *mut CskkRulesFfi, length: c_uint) {
     let length = length as usize;
-    Vec::from_raw_parts(rules_ptr, length, length);
+    drop(Vec::from_raw_parts(rules_ptr, length, length));
 }
 
 ///
@@ -552,7 +552,9 @@ pub unsafe extern "C" fn skk_get_rules(length: *mut c_uint) -> *mut CskkRulesFfi
     // 2^32 rules are very unlikely. Low priority for now.
     *length = u32::try_from(count).unwrap();
 
-    retval_stack.as_mut_ptr()
+    let ptr = retval_stack.as_mut_ptr();
+    mem::forget(retval_stack);
+    ptr
 }
 
 ///
@@ -575,4 +577,19 @@ unsafe fn dictionaries_from_c_repr(
         Box::into_raw(cskkdict);
     }
     dict_array
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn rulesffi() {
+        let rule = CskkRulesFfi::new("id", "name", "description").unwrap();
+        unsafe {
+            assert_eq!(b'i', *rule.id as u8);
+            assert_eq!(b'd', *rule.id.offset(1) as u8);
+            assert_eq!(b'\0', *rule.id.offset(2) as u8);
+        }
+    }
 }
