@@ -23,7 +23,7 @@ use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
-use crate::rule::{CskkRuleMetadata, CskkRuleMetadataEntry};
+use crate::rule::{CskkRule, CskkRuleMetadata, CskkRuleMetadataEntry};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::ascii_form_changer::AsciiFormChanger;
@@ -67,6 +67,7 @@ pub struct CskkContext {
     ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
+    //rule: CskkRuleMetadataEntry,
 }
 
 /// C interface equivalents useful for testing? Might stop exposing at any point of update.
@@ -886,9 +887,10 @@ impl CskkContext {
         let unchecked_raw_kana_convert_result =
             self.kana_converter.convert(&raw_combined_keyinputs);
 
-        let skip_command = has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
-            && (unchecked_lower_kana_convert_result.is_some()
-                || unchecked_raw_kana_convert_result.is_some());
+        let skip_command = key_event.is_modifierless_input()
+            && (has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
+                && (unchecked_lower_kana_convert_result.is_some()
+                    || unchecked_raw_kana_convert_result.is_some()));
 
         if !skip_command {
             let maybe_instructions = self.get_handler_v2().get_instruction(
@@ -896,7 +898,6 @@ impl CskkContext {
                 &initial_input_mode,
                 &initial_composition_mode,
             );
-
             if let Some(instructions) = maybe_instructions {
                 return self.process_instructions(
                     &instructions,
@@ -915,13 +916,14 @@ impl CskkContext {
         // ここ以降がコマンドではない通常のキー入力扱い
 
         // CompositionSelectionModeで、入力っぽいと現在の選択肢で確定をしてDirectモードとして処理させる
-        let will_be_processed = (has_rom2kana_conversion(
-            &self.current_state_ref().input_mode,
-            &self.current_state_ref().composition_mode,
-        ) && (self
-            .kana_converter
-            .can_continue(key_event, &initial_unprocessed_vector)
-            || self.kana_converter.can_continue(key_event, &[])))
+        let will_be_processed = key_event.is_modifierless_input()
+            && (has_rom2kana_conversion(
+                &self.current_state_ref().input_mode,
+                &self.current_state_ref().composition_mode,
+            ) && (self
+                .kana_converter
+                .can_continue(key_event, &initial_unprocessed_vector)
+                || self.kana_converter.can_continue(key_event, &[])))
             || (!has_rom2kana_conversion(
                 &self.current_state_ref().input_mode,
                 &self.current_state_ref().composition_mode,
@@ -934,7 +936,8 @@ impl CskkContext {
         if has_rom2kana_conversion(
             &self.current_state_ref().input_mode,
             &self.current_state_ref().composition_mode,
-        ) {
+        ) && key_event.is_modifierless_input()
+        {
             let combined_raw = KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
             let combined_lower = KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
             let converted_lower = self.kana_converter.convert(&combined_lower);
@@ -1395,8 +1398,24 @@ impl CskkContext {
     pub fn set_rule(&mut self, rule: &str) -> Result<(), CskkError> {
         let rule_metadata = CskkRuleMetadata::load_metadata()?;
         let new_rule = rule_metadata.load_rule(rule)?;
-        let new_kana_converter = Box::new(KanaBuilder::new(&new_rule));
-        let new_command_handler = ConfigurableCommandHandler::new(&new_rule);
+        self.set_rule_inner(&new_rule)
+    }
+
+    /// Set to the specified rule from specified directory.
+    /// For testing purpose. Use [set_rule] instead.
+    pub fn set_rule_from_directory(
+        &mut self,
+        rule: &str,
+        rule_dirpath: &str,
+    ) -> Result<(), CskkError> {
+        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory(rule_dirpath)?;
+        let new_rule = rule_metadata.load_rule(rule)?;
+        self.set_rule_inner(&new_rule)
+    }
+
+    fn set_rule_inner(&mut self, new_rule: &CskkRule) -> Result<(), CskkError> {
+        let new_kana_converter = Box::new(KanaBuilder::new(new_rule));
+        let new_command_handler = ConfigurableCommandHandler::new(new_rule);
         self.kana_converter = new_kana_converter;
         self.command_handler = new_command_handler;
         Ok(())

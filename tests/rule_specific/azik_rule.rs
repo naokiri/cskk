@@ -1,15 +1,19 @@
-use crate::utils::{
-    default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
-};
-use cskk::skk_context_reset_rs;
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_modes::{CompositionMode, InputMode};
+use cskk::{skk_context_reset_rs, CskkContext};
+
+fn azik_test_context() -> CskkContext {
+    let mut context = default_test_context();
+    context
+        .set_rule_from_directory("azik", "assets/rules")
+        .unwrap();
+    context
+}
 
 #[test]
 fn basic() {
     init_test_logger();
-    let mut context = default_test_context();
-    context.set_rule("azik").unwrap();
-
+    let mut context = azik_test_context();
     transition_check(
         &mut context,
         CompositionMode::Direct,
@@ -27,8 +31,7 @@ fn basic() {
 #[test]
 fn xx_youon() {
     init_test_logger();
-    let mut context = default_test_context();
-    context.set_rule("azik").unwrap();
+    let mut context = azik_test_context();
 
     transition_check(
         &mut context,
@@ -45,8 +48,7 @@ fn xx_youon() {
 #[test]
 fn check_default_rule_removed() {
     init_test_logger();
-    let mut context = default_test_context();
-    context.set_rule("azik").unwrap();
+    let mut context = azik_test_context();
 
     transition_check(
         &mut context,
@@ -72,8 +74,7 @@ fn check_default_rule_removed() {
 #[test]
 fn using_q() {
     init_test_logger();
-    let mut context = default_test_context();
-    context.set_rule("azik").unwrap();
+    let mut context = azik_test_context();
 
     transition_check(
         &mut context,
@@ -90,8 +91,7 @@ fn using_q() {
 #[test]
 fn check_two_letter_keysyms() {
     init_test_logger();
-    let mut context = default_test_context();
-    context.set_rule("azik").unwrap();
+    let mut context = azik_test_context();
 
     transition_check(
         &mut context,
@@ -111,5 +111,33 @@ fn check_two_letter_keysyms() {
         "",
         "ひと",
         InputMode::Hiragana,
+    );
+}
+
+// https://github.com/ueno/libskk/issues/82
+// libskkのように'['ではなく、cskkでは'@'をデフォルトのモード切り替えに当てている。
+#[test]
+fn mode_switching_key() {
+    init_test_logger();
+    let mut context = azik_test_context();
+
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "bracketleft",
+        "",
+        "「",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "(control at)",
+        "",
+        "",
+        InputMode::HankakuKatakana,
     );
 }
