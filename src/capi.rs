@@ -10,14 +10,13 @@ use crate::{
     skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
     skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
     skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
-    CskkError,
 };
 use std::convert::TryFrom;
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::{CStr, CString};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_uint};
 use std::sync::Arc;
-use std::{mem, ptr, slice};
+use std::{ptr, slice};
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,

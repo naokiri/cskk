@@ -959,8 +959,11 @@ impl CskkContext {
                     initial_unprocessed_vector,
                 );
                 return true;
-            } else if key_event.is_upper() && converted_lower.is_some() {
+            } else if key_event.is_upper() {
                 if let Some((converted, carry_over)) = converted_lower {
+                    // When input can make kana conversion in lowercase input.
+                    // Try changing the composition mode and then insert kana.
+
                     let converted = converted.clone();
                     let carry_over = carry_over.clone();
 

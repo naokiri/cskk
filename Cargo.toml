@@ -8,6 +8,7 @@ readme = "README.md"
 description = "C ABIから使う事を目的とした SKK(Simple Kana Kanji henkan)方式のかな漢字変換ライブラリ"
 repository = "https://github.com/naokiri/cskk"
 categories = ["internationalization", "text-processing"]
+rust-version = "1.56"
 
 [lib]
 crate-type = ["cdylib", "lib"]
