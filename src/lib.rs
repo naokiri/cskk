@@ -1395,6 +1395,7 @@ impl CskkContext {
     }
 
     /// Set to the specified rule.
+    /// Rules will be read from XDG data directory which has libcskk/rules directory.
     pub fn set_rule(&mut self, rule: &str) -> Result<(), CskkError> {
         let rule_metadata = CskkRuleMetadata::load_metadata()?;
         let new_rule = rule_metadata.load_rule(rule)?;

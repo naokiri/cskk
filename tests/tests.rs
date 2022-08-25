@@ -894,6 +894,9 @@ fn allow_shift_as_part_of_capital_only() {
     );
 }
 
+///
+/// 現在surrounding_textに対応しないので、矢印キーは処理せずスルーする。
+///
 #[test]
 fn arrow() {
     init_test_logger();
@@ -908,6 +911,9 @@ fn arrow() {
     assert!(!processed);
 }
 
+///
+/// 大文字をかな変換の要素に入れられる。
+///
 #[test]
 fn using_capital_letter() {
     init_test_logger();

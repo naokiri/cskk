@@ -1,6 +1,4 @@
-use crate::utils::{
-    default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
-};
+use crate::utils::{default_test_context, init_test_logger, transition_check};
 use cskk::skk_context_reset_rs;
 use cskk::skk_modes::{CompositionMode, InputMode};
 

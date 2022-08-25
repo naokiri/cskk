@@ -10,6 +10,7 @@ use crate::{
     skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
     skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
     skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
+    CskkError,
 };
 use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
@@ -64,7 +65,6 @@ impl Drop for CskkRulesFfi {
 pub unsafe extern "C" fn skk_context_new(
     dictionary_array: &*mut CskkDictionaryFfi,
     dictionary_count: usize,
-    rule: *mut c_char,
 ) -> *mut CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
     Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
@@ -156,6 +156,32 @@ pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> Input
 #[no_mangle]
 pub extern "C" fn skk_context_get_composition_mode(context: &mut CskkContext) -> CompositionMode {
     skk_context_get_composition_mode_rs(context)
+}
+
+///
+/// Sets the conversion rule to the given rule_name.
+/// Returns 0 on success, -1 on error.
+///
+/// # Safety
+/// rule_name must be a valid pointer to a C-style string with string length smaller than 2^32 - 1
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_set_rule(
+    context: &mut CskkContext,
+    rule_name: *const c_char,
+) -> c_int {
+    let any_error = (|| -> anyhow::Result<()> {
+        let rule_name_str = CStr::from_ptr(rule_name);
+        let rule_name_str = rule_name_str.to_str()?;
+        context.set_rule(rule_name_str)?;
+        Ok(())
+    })();
+
+    if any_error.is_err() {
+        return -1;
+    }
+
+    0
 }
 
 /// Only for library test purpose. Do not use.
