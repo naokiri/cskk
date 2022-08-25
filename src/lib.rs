@@ -960,27 +960,28 @@ impl CskkContext {
                 );
                 return true;
             } else if key_event.is_upper() && converted_lower.is_some() {
-                let (converted, carry_over) = converted_lower.unwrap();
-                let converted = converted.clone();
-                let carry_over = carry_over.clone();
+                if let Some((converted, carry_over)) = converted_lower {
+                    let converted = converted.clone();
+                    let carry_over = carry_over.clone();
 
-                let did_change_mode = self.transition_composition_mode_by_capital_letter(
-                    key_event,
-                    initial_kanainput_composition_mode,
-                    self.current_state_ref().get_capital_transition(),
-                );
-                let current_composition_mode = self.current_state_ref().composition_mode;
-                let lower_key_event = key_event.to_lower();
-                // When input made a kana conversion when tried with lower letter.
-                self.input_converted_kana(
-                    &lower_key_event,
-                    current_composition_mode,
-                    &converted,
-                    carry_over.clone(),
-                    did_change_mode,
-                    initial_unprocessed_vector,
-                );
-                return true;
+                    let did_change_mode = self.transition_composition_mode_by_capital_letter(
+                        key_event,
+                        initial_kanainput_composition_mode,
+                        self.current_state_ref().get_capital_transition(),
+                    );
+                    let current_composition_mode = self.current_state_ref().composition_mode;
+                    let lower_key_event = key_event.to_lower();
+                    // When input made a kana conversion when tried with lower letter.
+                    self.input_converted_kana(
+                        &lower_key_event,
+                        current_composition_mode,
+                        &converted,
+                        carry_over,
+                        did_change_mode,
+                        initial_unprocessed_vector,
+                    );
+                    return true;
+                }
             }
 
             // character input didn't make kana conversion in this else flow.
