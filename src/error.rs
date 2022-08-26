@@ -1,3 +1,4 @@
+use std::ffi::NulError;
 use thiserror::Error;
 
 // General error that haven't determined what this is.
@@ -31,5 +32,10 @@ pub enum CskkError {
         // Error that never can happens.
         #[from]
         source: core::convert::Infallible,
+    },
+    #[error(transparent)]
+    FFIError {
+        #[from]
+        source: NulError,
     },
 }

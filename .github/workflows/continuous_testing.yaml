@@ -143,7 +143,7 @@ jobs:
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.0.6.0.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+        run: ln -fs libcskk.0.7.0.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
         if: matrix.os == 'macOS-latest'
         run: ls -l ./target/*

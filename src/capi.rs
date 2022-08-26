@@ -1,6 +1,7 @@
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
+use crate::CskkError::Error;
 use crate::{
     get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
     skk_context_get_current_candidate_count_rs,
@@ -10,6 +11,7 @@ use crate::{
     skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
     skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
     skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
+    CskkError,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -31,10 +33,10 @@ pub struct CskkRulesFfi {
 
 impl CskkRulesFfi {
     #[allow(clippy::result_unit_err)]
-    pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, ()> {
-        let id = CString::new(rust_id.to_string()).unwrap();
-        let name = CString::new(rust_name.to_string()).unwrap();
-        let description = CString::new(rust_description.to_string()).unwrap();
+    pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, CskkError> {
+        let id = CString::new(rust_id.to_string())?;
+        let name = CString::new(rust_name.to_string())?;
+        let description = CString::new(rust_description.to_string())?;
         Ok(CskkRulesFfi {
             id: id.into_raw(),
             name: name.into_raw(),
@@ -121,6 +123,7 @@ pub unsafe extern "C" fn skk_user_dict_new(
 
 ///
 /// Creates an empty dictionary. Returns the pointer of it.
+/// On error returns NULL pointer.
 ///
 /// # Safety
 /// Dictionary must be freed by skk_free_dictionary
@@ -128,9 +131,17 @@ pub unsafe extern "C" fn skk_user_dict_new(
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_empty_dict_new() -> *mut CskkDictionaryFfi {
-    Box::into_raw(Box::new(CskkDictionaryFfi {
-        dictionary: Arc::new(CskkDictionary::new_empty_dict().unwrap()),
-    }))
+    let maybe_result = (|| -> anyhow::Result<CskkDictionaryFfi> {
+        Ok(CskkDictionaryFfi {
+            dictionary: Arc::new(CskkDictionary::new_empty_dict()?),
+        })
+    })();
+
+    if let Ok(dict) = maybe_result {
+        Box::into_raw(Box::new(dict))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
@@ -192,8 +203,16 @@ pub unsafe extern "C" fn skk_context_process_key_events(
     context: &mut CskkContext,
     keyevents_cstring: *mut c_char,
 ) -> bool {
-    let keyevents = CStr::from_ptr(keyevents_cstring);
-    context.process_key_events_string(keyevents.to_str().unwrap())
+    let maybe_result = (|| -> anyhow::Result<bool> {
+        let keyevents = CStr::from_ptr(keyevents_cstring);
+        Ok(context.process_key_events_string(keyevents.to_str()?))
+    })();
+
+    if let Ok(result) = maybe_result {
+        result
+    } else {
+        false
+    }
 }
 
 ///
@@ -217,8 +236,9 @@ pub unsafe extern "C" fn skk_context_process_key_event(
 
 /// 現在のoutputをpollingする。
 ///
-/// RustでallocateされたCの文字列として扱える(=ヌル終端のある)UTF-8のバイト配列を返す。
+/// 成功時にはRustでallocateされたCの文字列として扱える(=ヌル終端のある)UTF-8のバイト配列を返す。
 /// C++20のchar8_t*のようなもの。
+/// エラー時にはNULLを返す。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -228,14 +248,21 @@ pub unsafe extern "C" fn skk_context_process_key_event(
 pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
     // Free時にmutである必要があるので*mut c_charで返しているが、c側で変更することを想定していない。
     // Cではどうせ制約を付けられないので、*constで返しても意味はないが、本当は*constで返しておきながらfreeの引数としては*mutで受けたい。
-    CString::new(skk_context_poll_output_rs(context))
-        .unwrap()
-        .into_raw()
+    let maybe_result =
+        (|| -> anyhow::Result<CString> { Ok(CString::new(skk_context_poll_output_rs(context))?) })(
+        );
+
+    if let Ok(result) = maybe_result {
+        result.into_raw()
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
 /// preedit文字列を返す。
 /// 返り値は\0終端のUTF-8文字配列。C++20で言うchar8_t*
+/// 失敗時にはNULLを返す。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -244,8 +271,21 @@ pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_c
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char {
-    let preedit = context.get_preedit().unwrap();
-    CString::new(preedit).unwrap().into_raw()
+    let maybe_result = (|| -> anyhow::Result<CString> {
+        let maybe_preedit = context.get_preedit();
+        if let Some(preedit) = maybe_preedit {
+            Ok(CString::new(preedit)?)
+        } else {
+            // 実質 unreachable!()
+            Err(Error("no preedit".to_string()).into())
+        }
+    })();
+
+    if let Ok(result) = maybe_result {
+        result.into_raw()
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
@@ -380,6 +420,7 @@ pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
 
 ///
 /// 現在の漢字変換対象文字列をUTF-8のC文字列で返す。
+/// Cで扱えない文字列などの失敗時にはNULLが返る。
 ///
 /// # Safety
 /// 返り値はCallerがskk_free_stringしなければならない。
@@ -388,9 +429,13 @@ pub extern "C" fn skk_context_reset(context: &mut CskkContext) {
 pub unsafe extern "C" fn skk_context_get_current_to_composite(
     context: &CskkContext,
 ) -> *mut c_char {
-    CString::new(skk_context_get_current_to_composite_rs(context))
-        .unwrap()
-        .into_raw()
+    let maybe_result = { CString::new(skk_context_get_current_to_composite_rs(context)) };
+
+    if let Ok(result) = maybe_result {
+        result.into_raw()
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
@@ -407,6 +452,9 @@ pub extern "C" fn skk_context_get_current_candidate_count(context: &CskkContext)
 /// 現在のリストのoffsetから最大でbuf_sizeまでをcandidate_buf内に入れる。
 /// 実際に返した個数は返り値として返す。
 ///
+/// 失敗時には返り値-1を返す。
+/// 失敗時にはcandidate_bufの中身については何も保証されず、freeする必要はない。
+///
 /// # Safety
 ///
 /// candidate_bufに*c_charがbuf_size分の容量があることはCaller側が保証しなければならない。
@@ -419,7 +467,7 @@ pub unsafe extern "C" fn skk_context_get_current_candidates(
     candidate_buf: *mut *mut c_char,
     buf_size: c_uint,
     offset: c_uint,
-) -> c_uint {
+) -> c_int {
     let candidates = skk_context_get_current_candidates_rs(context);
     let buffer = slice::from_raw_parts_mut(candidate_buf, buf_size as usize);
 
@@ -428,11 +476,20 @@ pub unsafe extern "C" fn skk_context_get_current_candidates(
     let returning_list = candidates.iter().skip(offset).take(buf_size).enumerate();
     let count = returning_list.len();
     for (i, candidate) in returning_list {
-        let c_string = CString::new(candidate.output.to_string()).unwrap();
-        buffer[i] = c_string.into_raw();
+        let maybe_c_string = CString::new(candidate.output.to_string());
+        if let Ok(c_string) = maybe_c_string {
+            buffer[i] = c_string.into_raw();
+        } else {
+            // Cleanup the CStrings we allocated so far and return -1
+            #[allow(clippy::needless_range_loop)]
+            for j in 0..i {
+                drop(CString::from_raw(buffer[j]))
+            }
+            return -1;
+        }
     }
 
-    count as c_uint
+    count as c_int
 }
 
 ///
@@ -454,7 +511,7 @@ pub unsafe extern "C" fn skk_free_candidate_list(
     }
     let list = slice::from_raw_parts_mut(candidate_list_ptr, size as usize);
     for candidate in list.iter() {
-        CString::from_raw(*candidate);
+        drop(CString::from_raw(*candidate));
     }
 }
 
@@ -541,6 +598,7 @@ pub extern "C" fn skk_context_set_comma_style(context: &mut CskkContext, comma_s
 
 ///
 /// Get library version at the compile time.
+/// 失敗時にはNULLを返す。
 ///
 /// # Safety
 /// 返り値のポインタの文字列を直接編集して文字列長を変えてはいけない。
@@ -548,13 +606,22 @@ pub extern "C" fn skk_context_set_comma_style(context: &mut CskkContext, comma_s
 ///
 #[no_mangle]
 pub extern "C" fn skk_library_get_version() -> *mut c_char {
-    CString::new(CskkContext::get_version()).unwrap().into_raw()
+    let maybe_result = CString::new(CskkContext::get_version());
+
+    if let Ok(result) = maybe_result {
+        result.into_raw()
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
 /// returns a pointer to an Rules array. Retruns NULL in error.
 /// sets the total number of entries in the array in the given `length` parameter.
 /// The parameter is required to free the returned array later.
+///
+/// 失敗時にはNULLを返し、lengthの内容は保証されない。
+/// 失敗時にはfreeする必要はない。
 ///
 /// # Safety
 ///
@@ -564,27 +631,34 @@ pub extern "C" fn skk_library_get_version() -> *mut c_char {
 ///
 #[no_mangle]
 pub unsafe extern "C" fn skk_get_rules(length: *mut c_uint) -> *mut CskkRulesFfi {
-    let rulemap = get_available_rules().unwrap();
-
     let mut retval_stack = vec![];
-    let count = rulemap.len();
-    for (key, metadataentry) in rulemap {
-        let rule =
-            CskkRulesFfi::new(&key, &metadataentry.name, &metadataentry.description).unwrap();
-        retval_stack.push(rule);
-    }
-    // Make Vec capacity to be equals length so that we can restore on free function.
-    retval_stack.set_len(count);
-    // FIXME: Here, if user had make more than 2^32-1 rules this will cause trouble.
-    // 2^32 rules are very unlikely. Low priority for now.
-    *length = u32::try_from(count).unwrap();
 
-    if count > 0 {
-        let mut retval = ManuallyDrop::new(retval_stack);
-        retval.as_mut_ptr()
+    let maybe_count = (|| -> anyhow::Result<usize> {
+        let rulemap = get_available_rules()?;
+
+        let count = rulemap.len();
+        for (key, metadataentry) in rulemap {
+            let rule = CskkRulesFfi::new(&key, &metadataentry.name, &metadataentry.description)?;
+            retval_stack.push(rule);
+        }
+        // Make Vec capacity to be equals length so that we can restore on free function.
+        retval_stack.set_len(count);
+        // FIXME: Here, if user had make more than 2^32-1 rules this will cause trouble.
+        // 2^32 rules are very unlikely. Low priority for now.
+        *length = u32::try_from(count)?;
+        Ok(count)
+    })();
+
+    if let Ok(count) = maybe_count {
+        if count > 0 {
+            let mut retval = ManuallyDrop::new(retval_stack);
+            retval.as_mut_ptr()
+        } else {
+            // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
+            // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
+            ptr::null_mut()
+        }
     } else {
-        // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
-        // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
         ptr::null_mut()
     }
 }
