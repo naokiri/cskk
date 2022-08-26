@@ -98,7 +98,23 @@ fn check_nn_on_composition_mode_switching() {
 }
 
 #[test]
-fn check_small_tsu_on_okuri() {
+fn check_small_tsu_on_okuri_ending() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "S a s S",
+        "▽さっ*s",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn check_small_tsu_on_okuri_starting() {
+    init_test_logger();
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -106,16 +122,6 @@ fn check_small_tsu_on_okuri() {
         InputMode::Hiragana,
         "S a S s",
         "▽さ*っs",
-        "",
-        InputMode::Hiragana,
-    );
-    skk_context_reset_rs(&mut context);
-    transition_check(
-        &mut context,
-        CompositionMode::Direct,
-        InputMode::Hiragana,
-        "S a s S",
-        "▽さっ*s",
         "",
         InputMode::Hiragana,
     );

@@ -23,13 +23,14 @@ use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
 use crate::keyevent::KeyEventSeq;
 use crate::keyevent::{CskkKeyEvent, SkkKeyModifier};
-use crate::rule::CskkRuleMetadata;
+use crate::rule::{CskkRule, CskkRuleMetadata, CskkRuleMetadataEntry};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::ascii_form_changer::AsciiFormChanger;
 use form_changer::kana_form_changer::KanaFormChanger;
 use log::debug;
 use log::warn;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -66,8 +67,7 @@ pub struct CskkContext {
     ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
-    #[allow(dead_code)]
-    rule_metadata: CskkRuleMetadata,
+    //rule: CskkRuleMetadataEntry,
 }
 
 /// C interface equivalents useful for testing? Might stop exposing at any point of update.
@@ -113,21 +113,24 @@ pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
 }
 
 ///
-/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないのでABI
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
+/// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
 }
 
 ///
-/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
+/// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_get_composition_mode_rs(context: &CskkContext) -> CompositionMode {
     context.current_state_ref().composition_mode
 }
 
 ///
-/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
+/// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_reset_rs(context: &mut CskkContext) {
     context.poll_output();
@@ -186,8 +189,8 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String 
 }
 
 ///
-/// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
-/// Rust libとしてはset_dictionariesを使用する。
+/// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
+/// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
     context.current_state_ref().candidate_list.len()
@@ -263,6 +266,14 @@ pub fn skk_context_set_period_style_rs(context: &mut CskkContext, period_style: 
 
 pub fn skk_context_set_comma_style_rs(context: &mut CskkContext, comma_style: CommaStyle) {
     context.config.set_comma_style(comma_style);
+}
+
+///
+/// 使えるruleのリストを返す。
+///
+pub fn get_available_rules() -> Result<BTreeMap<String, CskkRuleMetadataEntry>, CskkError> {
+    let rulematadata = CskkRuleMetadata::load_metadata()?;
+    Ok(rulematadata.get_rule_list())
 }
 
 impl CskkContext {
@@ -768,33 +779,95 @@ impl CskkContext {
         self.dictionaries = dicts;
     }
 
-    /// 大文字のコマンドではないキー入力をした時のモード変更を行う。
+    /// 大文字であり、かつコマンドではないキー入力をした時のモード変更を行う。
+    ///
+    /// done_transition_on_kana_build: 現在のkanabuildで既にモード変更を行っているかどうか。
+    ///
     fn transition_composition_mode_by_capital_letter(
         &mut self,
         key_event: &CskkKeyEvent,
         initial_kanainput_composition_mode: CompositionMode,
         done_transition_on_kana_build: bool,
-    ) {
+    ) -> bool {
         let is_capital =
             (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&key_event.get_symbol());
 
-        if is_capital
+        return if is_capital
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::Direct
         {
             self.set_composition_mode(CompositionMode::PreComposition);
             self.current_state().set_capital_transition(true);
+            true
         } else if is_capital
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::PreComposition
         {
             self.set_composition_mode(CompositionMode::PreCompositionOkurigana);
             self.current_state().set_capital_transition(true);
+            true
+        } else {
+            false
+        };
+    }
+
+    ///
+    /// かな変換できた時に、それを入力する。
+    ///
+    fn input_converted_kana(
+        &mut self,
+        key_event: &CskkKeyEvent,
+        current_composition_mode: CompositionMode,
+        converted: &str,
+        carry_over: Vec<Keysym>,
+        did_change_mode_by_capital: bool,
+        initial_unprocessed_vector: Vec<Keysym>,
+    ) {
+        match current_composition_mode {
+            CompositionMode::Direct => {
+                self.append_converted(converted);
+                self.set_carry_over(&carry_over);
+            }
+            CompositionMode::PreComposition => {
+                self.append_converted_to_composite(converted);
+                self.set_carry_over(&carry_over);
+                self.auto_start_henkan();
+            }
+            CompositionMode::PreCompositionOkurigana => {
+                if let Some(key_char) = key_event.get_symbol_char() {
+                    self.current_state()
+                        .try_set_okuri_first_letter(key_char.to_ascii_lowercase());
+                } else {
+                    log::debug!("Unreachable. Key event without symbol char is kana converted. Okuri will be ignored on composition.");
+                }
+                if did_change_mode_by_capital && !initial_unprocessed_vector.is_empty() {
+                    // 以前入力されていた部分はPreComposition側として処理する。
+                    // 例: "t T" の't'部分が 'っ' とかな変換される場合
+                    self.append_converted_to_composite(converted)
+                } else {
+                    self.append_converted_to_okuri(converted)
+                }
+                self.set_carry_over(&carry_over);
+
+                // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
+                if carry_over.is_empty() {
+                    // この部分TryNextCandidateと似ているが、事前条件が違うので共通にできなかった。
+                    self.update_candidate_list();
+                    if self.current_state_ref().candidate_list.is_empty() {
+                        self.enter_register_mode(current_composition_mode);
+                    } else {
+                        self.set_composition_mode(CompositionMode::CompositionSelection);
+                    }
+                }
+            }
+            _ => {
+                log::debug!("Tried to input converted kana in no kana henkan mode. Ignored.");
+            }
         }
     }
 
     /// 上から順に
-    /// 1.即rom_kana変換可能ならcommandとして実行をスキップする
+    /// 1.そのまま、あるいは小文字化すると即rom_kana変換可能ならcommandとして解釈をスキップする
     /// 2.commandとして解釈されるならcommandとして実行、
     /// 3.各モードで入力として処理
     ///
@@ -805,11 +878,19 @@ impl CskkContext {
         let initial_input_mode = self.current_state_ref().input_mode;
 
         let initial_unprocessed_vector = self.current_state_ref().pre_conversion.clone();
-        let combined_keyinputs = KanaBuilder::combine(key_event, &initial_unprocessed_vector);
-        let unchecked_kana_convert_result = self.kana_converter.convert(&combined_keyinputs);
+        let lower_combined_keyinputs =
+            KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
+        let raw_combined_keyinputs =
+            KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
+        let unchecked_lower_kana_convert_result =
+            self.kana_converter.convert(&lower_combined_keyinputs);
+        let unchecked_raw_kana_convert_result =
+            self.kana_converter.convert(&raw_combined_keyinputs);
 
-        let skip_command = has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
-            && unchecked_kana_convert_result != None;
+        let skip_command = key_event.is_modifierless_input()
+            && (has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
+                && (unchecked_lower_kana_convert_result.is_some()
+                    || unchecked_raw_kana_convert_result.is_some()));
 
         if !skip_command {
             let maybe_instructions = self.get_handler_v2().get_instruction(
@@ -817,7 +898,6 @@ impl CskkContext {
                 &initial_input_mode,
                 &initial_composition_mode,
             );
-
             if let Some(instructions) = maybe_instructions {
                 return self.process_instructions(
                     &instructions,
@@ -834,14 +914,16 @@ impl CskkContext {
         }
 
         // ここ以降がコマンドではない通常のキー入力扱い
+
         // CompositionSelectionModeで、入力っぽいと現在の選択肢で確定をしてDirectモードとして処理させる
-        let will_be_processed = (has_rom2kana_conversion(
-            &self.current_state_ref().input_mode,
-            &self.current_state_ref().composition_mode,
-        ) && (self
-            .kana_converter
-            .can_continue(key_event, &initial_unprocessed_vector)
-            || self.kana_converter.can_continue(key_event, &[])))
+        let will_be_processed = key_event.is_modifierless_input()
+            && (has_rom2kana_conversion(
+                &self.current_state_ref().input_mode,
+                &self.current_state_ref().composition_mode,
+            ) && (self
+                .kana_converter
+                .can_continue(key_event, &initial_unprocessed_vector)
+                || self.kana_converter.can_continue(key_event, &[])))
             || (!has_rom2kana_conversion(
                 &self.current_state_ref().input_mode,
                 &self.current_state_ref().composition_mode,
@@ -854,195 +936,186 @@ impl CskkContext {
         if has_rom2kana_conversion(
             &self.current_state_ref().input_mode,
             &self.current_state_ref().composition_mode,
-        ) {
-            let next_unprocessed_pre_conversion = self
-                .kana_converter
-                .next_unprocessed_state(key_event, &initial_unprocessed_vector);
-
+        ) && key_event.is_modifierless_input()
+        {
+            let combined_raw = KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
+            let combined_lower = KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
+            let converted_lower = self.kana_converter.convert(&combined_lower);
             let initial_kanainput_composition_mode = self.current_state_ref().composition_mode;
 
-            return if let Some((converted, carry_over)) = self
-                .kana_converter
-                .convert(&next_unprocessed_pre_conversion)
-            {
-                // When input made a kana conversion
-
+            if let Some((converted, carry_over)) = self.kana_converter.convert(&combined_raw) {
+                // When input made a kana conversion in raw input.
+                // Even if matched in upper case, this won't try to change the composition mode.
                 let converted = converted.clone();
                 let carry_over = carry_over.clone();
 
-                self.transition_composition_mode_by_capital_letter(
-                    key_event,
-                    initial_kanainput_composition_mode,
-                    self.current_state_ref().get_capital_transition(),
-                );
                 let current_composition_mode = self.current_state_ref().composition_mode;
-                match current_composition_mode {
-                    CompositionMode::Direct => {
-                        self.append_converted(&converted);
-                        self.set_carry_over(&carry_over);
-                        true
-                    }
-                    CompositionMode::PreComposition => {
-                        self.append_converted_to_composite(&converted);
-                        self.set_carry_over(&carry_over);
-                        self.auto_start_henkan();
-                        true
-                    }
-                    CompositionMode::PreCompositionOkurigana => {
-                        if let Some(key_char) = key_event.get_symbol_char() {
-                            self.current_state()
-                                .try_set_okuri_first_letter(key_char.to_ascii_lowercase());
-                        } else {
-                            log::debug!("Unreachable. Key event without symbol char is kana converted. Okuri will be ignored on composition.");
-                        }
-                        if initial_kanainput_composition_mode == CompositionMode::PreComposition
-                            && !initial_unprocessed_vector.is_empty()
-                        {
-                            // 以前入力されていた部分はPreComposition側として処理する。
-                            // 例: "t T" の't'部分が 'っ' とかな変換される場合
-                            self.append_converted_to_composite(&converted)
-                        } else {
-                            self.append_converted_to_okuri(&converted)
-                        }
-                        self.set_carry_over(&carry_over);
+                self.input_converted_kana(
+                    key_event,
+                    current_composition_mode,
+                    &converted,
+                    carry_over,
+                    false,
+                    initial_unprocessed_vector,
+                );
+                return true;
+            } else if key_event.is_upper() {
+                if let Some((converted, carry_over)) = converted_lower {
+                    // When input can make kana conversion in lowercase input.
+                    // Try changing the composition mode and then insert kana.
 
-                        // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
-                        if carry_over.is_empty() {
-                            // この部分TryNextCandidateと似ているが、事前条件が違うので共通にできなかった。
-                            self.update_candidate_list();
-                            if self.current_state_ref().candidate_list.is_empty() {
-                                self.enter_register_mode(current_composition_mode);
-                            } else {
-                                self.set_composition_mode(CompositionMode::CompositionSelection);
-                            }
-                        }
-                        true
-                    }
-                    _ => {
-                        log::debug!("Unreachable by having rom-kana conversion check.");
-                        false
-                    }
+                    let converted = converted.clone();
+                    let carry_over = carry_over.clone();
+
+                    let did_change_mode = self.transition_composition_mode_by_capital_letter(
+                        key_event,
+                        initial_kanainput_composition_mode,
+                        self.current_state_ref().get_capital_transition(),
+                    );
+                    let current_composition_mode = self.current_state_ref().composition_mode;
+                    let lower_key_event = key_event.to_lower();
+                    // When input made a kana conversion when tried with lower letter.
+                    self.input_converted_kana(
+                        &lower_key_event,
+                        current_composition_mode,
+                        &converted,
+                        carry_over,
+                        did_change_mode,
+                        initial_unprocessed_vector,
+                    );
+                    return true;
                 }
-            } else {
-                // character input didn't make kana conversion in this else flow.
-                let current_input_mode = self.current_state_ref().input_mode;
+            }
 
-                if let Some(key_char) = key_event.get_symbol_char() {
-                    // カンマピリオドは特殊な設定と処理がある。
-                    if let Some(converted) = self.kana_converter.convert_periods(
-                        &key_char,
-                        self.config.period_style,
-                        self.config.comma_style,
-                    ) {
-                        // カンマピリオド確定なのでcompositionmode変更は割愛。
-                        // まず他の入力があれば終わらせる。
+            // character input didn't make kana conversion in this else flow.
+            let current_input_mode = self.current_state_ref().input_mode;
+
+            if let Some(key_char) = key_event.get_symbol_char() {
+                // カンマピリオドは特殊な設定と処理がある。 TODO:
+                if let Some(converted) = self.kana_converter.convert_periods(
+                    &key_char,
+                    self.config.period_style,
+                    self.config.comma_style,
+                ) {
+                    // カンマピリオド確定なのでcompositionmode変更は割愛。
+                    // まず他の入力があれば終わらせる。
+                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.reset_unconverted();
+                    // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
+                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                        self.current_state().clear_okuri_first_letter();
+                    }
+
+                    // input_as_direct_char
+                    match &self.current_state_ref().composition_mode {
+                        CompositionMode::Direct => {
+                            self.append_converted(&converted);
+                        }
+                        CompositionMode::PreComposition => {
+                            self.append_converted_to_composite(&converted);
+                        }
+                        CompositionMode::PreCompositionOkurigana => {
+                            self.reset_unconverted();
+                            self.append_converted_to_okuri(&converted);
+                            // self.update_candidate_list();
+                            // self.set_composition_mode(
+                            //     CompositionMode::CompositionSelection,
+                            // );
+                            // return self
+                            //     .process_key_event_inner(key_event, true);
+                        }
+                        _ => {
+                            debug!("Unreachable");
+                            return false;
+                        }
+                    }
+                } else if self
+                    .kana_converter
+                    .can_continue(key_event, &initial_unprocessed_vector)
+                {
+                    // そのままでかな入力の続きとなれる入力なので、そのように処理
+                    self.input_as_continuous_kana(key_event);
+                } else if key_event.is_upper()
+                    && self
+                        .kana_converter
+                        .can_continue_lower(key_event, &initial_unprocessed_vector)
+                {
+                    // モード変更として捉えればかな入力の続きとなれる入力。
+                    self.transition_composition_mode_by_capital_letter(
+                        key_event,
+                        initial_kanainput_composition_mode,
+                        self.current_state_ref().get_capital_transition(),
+                    );
+                    let lower_key_event = key_event.to_lower();
+                    self.input_as_continuous_kana(&lower_key_event);
+                } else if self.kana_converter.can_continue(key_event, &[]) {
+                    // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
+                    // まずpre_convertedを整理してから入力として扱う。
+                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.reset_unconverted();
+                    // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
+                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                        self.current_state().clear_okuri_first_letter();
+                    }
+                    self.input_as_continuous_kana(key_event);
+                } else if self.kana_converter.can_continue_lower(key_event, &[]) {
+                    // 大文字をモード変更として捉えて小文字化すればkanabuilderで扱える入力
+                    self.transition_composition_mode_by_capital_letter(
+                        key_event,
+                        initial_kanainput_composition_mode,
+                        self.current_state_ref().get_capital_transition(),
+                    );
+                    let lower_key_event = key_event.to_lower();
+
+                    // TODO: この現在のステートのクリーンアップは上と同じであるべきなので、stateの整理ができたらメソッドにまとめる。
+                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.reset_unconverted();
+                    // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
+                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                        self.current_state().clear_okuri_first_letter();
+                    }
+                    self.input_as_continuous_kana(&lower_key_event);
+                } else {
+                    // kana builderですら扱えないキー。
+                    // スペースや記号を想定。
+                    // 他と同様のクリンアップの後、直接入力として処理する。
+                    // FIXME: key_charに依存しているので、複数文字を入れることが想定できていない。
+                    // 特殊なキーボードで変な文字を入力することになるのを防ぐため、とりあえずAscii文字に限定している。コマンドや変換同様に制限を外したい。
+                    if key_event.is_ascii_inputtable() {
                         self.output_nn_if_any(
                             current_input_mode,
                             initial_kanainput_composition_mode,
                         );
                         self.reset_unconverted();
-                        // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
                         if self.current_state_ref().converted_kana_to_okuri.is_empty() {
                             self.current_state().clear_okuri_first_letter();
                         }
 
-                        // input_as_direct_char
                         match &self.current_state_ref().composition_mode {
                             CompositionMode::Direct => {
-                                self.append_converted(&converted);
+                                self.append_confirmed_raw_char(key_char);
                             }
                             CompositionMode::PreComposition => {
-                                self.append_converted_to_composite(&converted);
+                                self.append_converted_to_composite(&key_char.to_string());
                             }
                             CompositionMode::PreCompositionOkurigana => {
-                                self.reset_unconverted();
-                                self.append_converted_to_okuri(&converted);
-                                // self.update_candidate_list();
-                                // self.set_composition_mode(
-                                //     CompositionMode::CompositionSelection,
-                                // );
-                                // return self
-                                //     .process_key_event_inner(key_event, true);
+                                self.append_converted_to_okuri(&key_char.to_string());
                             }
+
                             _ => {
                                 debug!("Unreachable");
                                 return false;
                             }
                         }
-                    } else if self
-                        .kana_converter
-                        .can_continue(key_event, &initial_unprocessed_vector)
-                    {
-                        // かな入力として成立する文字入力なので、そのように処理。
-                        self.transition_composition_mode_by_capital_letter(
-                            key_event,
-                            initial_kanainput_composition_mode,
-                            self.current_state_ref().get_capital_transition(),
-                        );
-                        self.input_as_continuous_kana(key_event);
-                    } else if self.kana_converter.can_continue(key_event, &[]) {
-                        // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
-                        // まずpre_convertedを整理してから入力として扱う。
-                        self.transition_composition_mode_by_capital_letter(
-                            key_event,
-                            initial_kanainput_composition_mode,
-                            self.current_state_ref().get_capital_transition(),
-                        );
-                        self.output_nn_if_any(
-                            current_input_mode,
-                            initial_kanainput_composition_mode,
-                        );
-                        self.reset_unconverted();
-                        // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
-                        if self.current_state_ref().converted_kana_to_okuri.is_empty() {
-                            self.current_state().clear_okuri_first_letter();
-                        }
-                        self.input_as_continuous_kana(key_event);
                     } else {
-                        // kana builderですら扱えないキー。
-                        // スペースや記号を想定。
-                        // 他と同様のクリンアップの後、直接入力として処理する。
-                        // FIXME: key_charに依存しているので、複数文字を入れることが想定できていない。
-                        // 特殊なキーボードで変な文字を入力することになるのを防ぐため、とりあえずAscii文字に限定している。コマンドや変換同様に制限を外したい。
-                        if key_event.is_ascii_inputtable() {
-                            self.output_nn_if_any(
-                                current_input_mode,
-                                initial_kanainput_composition_mode,
-                            );
-                            self.reset_unconverted();
-                            if self.current_state_ref().converted_kana_to_okuri.is_empty() {
-                                self.current_state().clear_okuri_first_letter();
-                            }
-
-                            match &self.current_state_ref().composition_mode {
-                                CompositionMode::Direct => {
-                                    self.append_confirmed_raw_char(key_char);
-                                }
-                                CompositionMode::PreComposition => {
-                                    self.append_converted_to_composite(&key_char.to_string());
-                                }
-                                CompositionMode::PreCompositionOkurigana => {
-                                    self.append_converted_to_okuri(&key_char.to_string());
-                                }
-
-                                _ => {
-                                    debug!("Unreachable");
-                                    return false;
-                                }
-                            }
-                        } else {
-                            return false;
-                        }
+                        return false;
                     }
-
-                    if self.current_state_ref().composition_mode == CompositionMode::PreComposition
-                    {
-                        self.auto_start_henkan();
-                    }
-                    return true;
                 }
 
-                false
+                if self.current_state_ref().composition_mode == CompositionMode::PreComposition {
+                    self.auto_start_henkan();
+                }
+                return true;
             };
         } else if key_event.is_ascii_inputtable() && key_event.is_modifierless_input() {
             // key was input, but not in rom-kana conversion related modes so skip rom-kana related and input as is.
@@ -1325,6 +1398,35 @@ impl CskkContext {
         true
     }
 
+    /// Set to the specified rule.
+    /// Rules will be read from XDG data directory which has libcskk/rules directory.
+    pub fn set_rule(&mut self, rule: &str) -> Result<(), CskkError> {
+        let rule_metadata = CskkRuleMetadata::load_metadata()?;
+        let new_rule = rule_metadata.load_rule(rule)?;
+        self.set_rule_inner(&new_rule)
+    }
+
+    /// Set to the specified rule from specified directory.
+    /// For testing purpose. Use [set_rule] instead.
+    pub fn set_rule_from_directory(
+        &mut self,
+        rule: &str,
+        rule_dirpath: &str,
+    ) -> Result<(), CskkError> {
+        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory(rule_dirpath)?;
+        let new_rule = rule_metadata.load_rule(rule)?;
+        self.set_rule_inner(&new_rule)
+    }
+
+    fn set_rule_inner(&mut self, new_rule: &CskkRule) -> Result<(), CskkError> {
+        let new_kana_converter = Box::new(KanaBuilder::new(new_rule));
+        let new_command_handler = ConfigurableCommandHandler::new(new_rule);
+        self.kana_converter = new_kana_converter;
+        self.command_handler = new_command_handler;
+        Ok(())
+    }
+
+    /// Create a new cskk context.
     pub fn new(
         input_mode: InputMode,
         composition_mode: CompositionMode,
@@ -1345,7 +1447,6 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
         })
     }
 
@@ -1373,7 +1474,6 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::from_file(ascii_from_changer_filepath),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
         }
     }
 }
@@ -1424,7 +1524,7 @@ mod unit_tests {
             ascii_form_changer: AsciiFormChanger::test_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
-            rule_metadata,
+            //rule_metadata,
         }
     }
 

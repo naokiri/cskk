@@ -2,7 +2,7 @@ use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::{
-    skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
+    get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
     skk_context_get_current_candidate_count_rs,
     skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
     skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
@@ -13,12 +13,44 @@ use crate::{
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
+use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_uint};
-use std::slice;
 use std::sync::Arc;
+use std::{ptr, slice};
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
+}
+
+#[repr(C)]
+pub struct CskkRulesFfi {
+    id: *mut c_char,
+    name: *mut c_char,
+    description: *mut c_char,
+}
+
+impl CskkRulesFfi {
+    #[allow(clippy::result_unit_err)]
+    pub fn new(rust_id: &str, rust_name: &str, rust_description: &str) -> Result<Self, ()> {
+        let id = CString::new(rust_id.to_string()).unwrap();
+        let name = CString::new(rust_name.to_string()).unwrap();
+        let description = CString::new(rust_description.to_string()).unwrap();
+        Ok(CskkRulesFfi {
+            id: id.into_raw(),
+            name: name.into_raw(),
+            description: description.into_raw(),
+        })
+    }
+}
+
+impl Drop for CskkRulesFfi {
+    fn drop(&mut self) {
+        unsafe {
+            drop(CString::from_raw(self.id));
+            drop(CString::from_raw(self.name));
+            drop(CString::from_raw(self.description));
+        }
+    }
 }
 
 /// Returns newly allocated CSKKContext.
@@ -125,6 +157,32 @@ pub extern "C" fn skk_context_get_composition_mode(context: &mut CskkContext) ->
     skk_context_get_composition_mode_rs(context)
 }
 
+///
+/// Sets the conversion rule to the given rule_name.
+/// Returns 0 on success, -1 on error.
+///
+/// # Safety
+/// rule_name must be a valid pointer to a C-style string with string length smaller than 2^32 - 1
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_set_rule(
+    context: &mut CskkContext,
+    rule_name: *const c_char,
+) -> c_int {
+    let any_error = (|| -> anyhow::Result<()> {
+        let rule_name_str = CStr::from_ptr(rule_name);
+        let rule_name_str = rule_name_str.to_str()?;
+        context.set_rule(rule_name_str)?;
+        Ok(())
+    })();
+
+    if any_error.is_err() {
+        return -1;
+    }
+
+    0
+}
+
 /// Only for library test purpose. Do not use.
 /// # Safety
 ///
@@ -168,6 +226,8 @@ pub unsafe extern "C" fn skk_context_process_key_event(
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_poll_output(context: &mut CskkContext) -> *mut c_char {
+    // Free時にmutである必要があるので*mut c_charで返しているが、c側で変更することを想定していない。
+    // Cではどうせ制約を付けられないので、*constで返しても意味はないが、本当は*constで返しておきながらfreeの引数としては*mutで受けたい。
     CString::new(skk_context_poll_output_rs(context))
         .unwrap()
         .into_raw()
@@ -202,8 +262,8 @@ pub unsafe extern "C" fn skk_free_string(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
-    // Get back ownership in Rust side, then do nothing.
-    CString::from_raw(ptr);
+    // Get back ownership in Rust side, then drop.
+    drop(CString::from_raw(ptr));
 }
 
 ///
@@ -226,7 +286,7 @@ pub unsafe extern "C" fn skk_free_context(context_ptr: *mut CskkContext) {
     if context_ptr.is_null() {
         return;
     }
-    Box::from_raw(context_ptr);
+    drop(Box::from_raw(context_ptr));
 }
 
 ///
@@ -241,7 +301,19 @@ pub unsafe extern "C" fn skk_free_dictionary(dictionary_ptr: *mut CskkDictionary
     if dictionary_ptr.is_null() {
         return;
     }
-    Box::from_raw(dictionary_ptr);
+    drop(Box::from_raw(dictionary_ptr));
+}
+
+///
+/// Free the rules given from [skk_context_get_rules]
+///
+/// # Safety
+/// 引数はいずれも[skk_context_get_rules]で得られるペアでなければならない。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_rules(rules_ptr: *mut CskkRulesFfi, length: c_uint) {
+    let length = length as usize;
+    drop(Vec::from_raw_parts(rules_ptr, length, length));
 }
 
 ///
@@ -480,6 +552,44 @@ pub extern "C" fn skk_library_get_version() -> *mut c_char {
 }
 
 ///
+/// returns a pointer to an Rules array. Retruns NULL in error.
+/// sets the total number of entries in the array in the given `length` parameter.
+/// The parameter is required to free the returned array later.
+///
+/// # Safety
+///
+/// the parameter `length` must be a pointer to a 32 bit unsigned int allocated in the caller side.
+/// caller must not modify any field in the returned struct in the array.
+/// caller must free the returned array by [skk_free_rules] API.
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_get_rules(length: *mut c_uint) -> *mut CskkRulesFfi {
+    let rulemap = get_available_rules().unwrap();
+
+    let mut retval_stack = vec![];
+    let count = rulemap.len();
+    for (key, metadataentry) in rulemap {
+        let rule =
+            CskkRulesFfi::new(&key, &metadataentry.name, &metadataentry.description).unwrap();
+        retval_stack.push(rule);
+    }
+    // Make Vec capacity to be equals length so that we can restore on free function.
+    retval_stack.set_len(count);
+    // FIXME: Here, if user had make more than 2^32-1 rules this will cause trouble.
+    // 2^32 rules are very unlikely. Low priority for now.
+    *length = u32::try_from(count).unwrap();
+
+    if count > 0 {
+        let mut retval = ManuallyDrop::new(retval_stack);
+        retval.as_mut_ptr()
+    } else {
+        // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
+        // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
+        ptr::null_mut()
+    }
+}
+
+///
 /// # Safety
 ///
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
@@ -499,4 +609,19 @@ unsafe fn dictionaries_from_c_repr(
         Box::into_raw(cskkdict);
     }
     dict_array
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn rulesffi() {
+        let rule = CskkRulesFfi::new("id", "name", "description").unwrap();
+        unsafe {
+            assert_eq!(b'i', *rule.id as u8);
+            assert_eq!(b'd', *rule.id.offset(1) as u8);
+            assert_eq!(b'\0', *rule.id.offset(2) as u8);
+        }
+    }
 }

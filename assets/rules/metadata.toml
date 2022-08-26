@@ -1,16 +1,22 @@
 # 全てのルールを列挙する。最初のものがデフォルトとして扱われる。
 # UTF-8 only
 # このrulesディレクトリごと $HOME/.local/share/libcskk/rules に移動してユーザー用にカスタマイズできる。
-# entry: 規定の名前なので全てのエントリは[[entry]]で始まる。
-[[entry]]
+# [default] id:defaultのメタデータ。defaultは必須。idが他のものと被ってはいけない。
+[default]
 # name: Display name
-name = "default"
+name = "Default"
 # description: Display description for users
 description = "default rule"
 # path: directory path name to search rule.toml
 path = "default"
 
-#[[entry]]
+[azik]
+name = "AZIK"
+description = "AZIKルール"
+path = "azik"
+
+# 書式は以下の通り
+# [unique_id] ([A-Za-z0-9_-]の文字列)
 #name = "UTF-8文字列"
 #description = "UTF-8文字列"
-#path = "UTF-8文字列だが、基本的にはascii文字のみ推奨"
+#path = "UTF-8文字列" ([A-Za-z0-9_-]を強く推奨する)

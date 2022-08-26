@@ -10,7 +10,7 @@ use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
     skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
-    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs,
+    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -894,6 +894,9 @@ fn allow_shift_as_part_of_capital_only() {
     );
 }
 
+///
+/// 現在surrounding_textに対応しないので、矢印キーは処理せずスルーする。
+///
 #[test]
 fn arrow() {
     init_test_logger();
@@ -906,4 +909,51 @@ fn arrow() {
     assert!(!processed);
     let processed = context.process_key_event(&CskkKeyEvent::from_str("Down").unwrap());
     assert!(!processed);
+}
+
+///
+/// 大文字をかな変換の要素に入れられる。
+///
+#[test]
+fn using_capital_letter() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
+    let mut context = CskkContext::new_from_specified_paths(
+        InputMode::Ascii,
+        CompositionMode::Direct,
+        vec![Arc::new(dict)],
+        "assets/rule/kana_form.toml",
+        "assets/rule/ascii_form.toml",
+        "tests/data/rules",
+    );
+
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "t s U",
+        "",
+        "ちいさいっ",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
+
+///
+/// 付ける の T u K e のようにせわしなくShift押したり離したりするのは失敗しやすいため、
+/// T u K E のように k e -> け という1変換の間にはShift押しっぱなしでもモード変更等として捉えない。
+///
+#[test]
+fn continuous_capital_kana_converting() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "T u K E",
+        "▼付け",
+        "",
+        InputMode::Hiragana,
+    );
 }

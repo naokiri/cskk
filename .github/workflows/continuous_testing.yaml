@@ -37,7 +37,7 @@ jobs:
     name: cargo test
     strategy:
       matrix:
-        channel: [ stable ]
+        channel: [ stable, 1.56 ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -62,6 +62,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --features capi
   library_test:
     name: library test
     strategy:
@@ -142,7 +143,7 @@ jobs:
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.0.5.2.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+        run: ln -fs libcskk.0.6.0.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
         if: matrix.os == 'macOS-latest'
         run: ls -l ./target/*

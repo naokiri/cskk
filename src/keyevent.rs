@@ -172,6 +172,19 @@ impl CskkKeyEvent {
         xkb::keysyms::KEY_A <= self.symbol && self.symbol <= xkb::keysyms::KEY_Z
     }
 
+    ///
+    /// Given that this is uppercase letter,
+    /// Return a new keyEvent with lowercase letter.
+    ///
+    pub(crate) fn to_lower(&self) -> Self {
+        let mut retval = self.clone();
+        if retval.is_upper() {
+            retval.symbol += 0x0020;
+        }
+
+        retval
+    }
+
     /// 文字入力のために使えるキーイベントならば true
     // ueno/libskkでは完全にモディファイア無しのキーのみかな変換に使っているが、
     // どうもSHIFTを許容しないといけなさそうなのでSHIFT付きキー入力も明らかにコマンドではない文字入力として扱う。

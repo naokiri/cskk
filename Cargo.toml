@@ -1,6 +1,6 @@
 [package]
 name = "cskk"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 license = "GPL-3.0-or-later"
 edition = "2018"
@@ -8,6 +8,7 @@ readme = "README.md"
 description = "C ABIから使う事を目的とした SKK(Simple Kana Kanji henkan)方式のかな漢字変換ライブラリ"
 repository = "https://github.com/naokiri/cskk"
 categories = ["internationalization", "text-processing"]
+rust-version = "1.56"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -29,7 +30,8 @@ toml = "^0.5.9"
 thiserror = "^1.0"
 regex = "^1.5"
 lazy_static = "1.4"
-xdg = { version ="^2.4" }
+xdg = { version = "^2.4" }
+anyhow = { version = "^1.0.62" }
 
 [dev-dependencies]
 env_logger = "0.8"
@@ -47,4 +49,4 @@ description = "SKK (Simple Kana Kanji) henkan library"
 
 [package.metadata.capi.install.data]
 subdirectory = "libcskk"
-asset = [{from="assets/**/*"}]
+asset = [{ from = "assets/**/*" }]
