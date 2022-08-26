@@ -957,3 +957,18 @@ fn continuous_capital_kana_converting() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn auto_start_henkan_without_kana() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "C period",
+        "▽。",
+        "",
+        InputMode::Hiragana,
+    );
+}
