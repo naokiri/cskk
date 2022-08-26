@@ -73,6 +73,7 @@ pub unsafe extern "C" fn skk_context_new(
 
 ///
 /// Creates a skk static file dict based on the path_string. Returns the pointer of it.
+/// Returns NULL on error. In error case, you don't have to free it.
 ///
 /// # Safety
 /// c_path_string and c_encoidng must be a valid c string that terminates with \0.
@@ -85,19 +86,25 @@ pub unsafe extern "C" fn skk_file_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
 ) -> *mut CskkDictionaryFfi {
-    let path = CStr::from_ptr(c_path_string);
-    let encoding = CStr::from_ptr(c_encoding);
-    let cskk_dictionary_ffi = CskkDictionaryFfi {
-        dictionary: Arc::new(skk_file_dict_new_rs(
-            path.to_str().unwrap(),
-            encoding.to_str().unwrap(),
-        )),
-    };
-    Box::into_raw(Box::new(cskk_dictionary_ffi))
+    let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
+        let path = CStr::from_ptr(c_path_string).to_str()?;
+        let encoding = CStr::from_ptr(c_encoding).to_str()?;
+
+        Ok(CskkDictionaryFfi {
+            dictionary: Arc::new(skk_file_dict_new_rs(path, encoding)),
+        })
+    })();
+
+    if let Ok(ffi_dictionary) = maybe_dictionary {
+        Box::into_raw(Box::new(ffi_dictionary))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
 /// Creates a skk read and write user dict based on the path_string. Returns the pointer of it.
+/// Returns NULL on error. In error case, you don't have to free it.
 ///
 /// # Safety
 /// c_path_string and c_encoidng must be a valid c string that terminates with \0.
@@ -110,15 +117,20 @@ pub unsafe extern "C" fn skk_user_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
 ) -> *mut CskkDictionaryFfi {
-    let path = CStr::from_ptr(c_path_string);
-    let encoding = CStr::from_ptr(c_encoding);
+    let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
+        let path = CStr::from_ptr(c_path_string).to_str()?;
+        let encoding = CStr::from_ptr(c_encoding).to_str()?;
 
-    Box::into_raw(Box::new(CskkDictionaryFfi {
-        dictionary: Arc::new(skk_user_dict_new_rs(
-            path.to_str().unwrap(),
-            encoding.to_str().unwrap(),
-        )),
-    }))
+        Ok(CskkDictionaryFfi {
+            dictionary: Arc::new(skk_user_dict_new_rs(path, encoding)),
+        })
+    })();
+
+    if let Ok(ffi_dictionary) = maybe_dictionary {
+        Box::into_raw(Box::new(ffi_dictionary))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
