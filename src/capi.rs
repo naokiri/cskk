@@ -6,12 +6,11 @@ use crate::{
     get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
     skk_context_get_current_candidate_count_rs,
     skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
-    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_new_rs,
+    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs,
     skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
     skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
     skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
-    skk_context_set_period_style_rs, skk_file_dict_new_rs, skk_user_dict_new_rs, CskkContext,
-    CskkError,
+    skk_context_set_period_style_rs, CskkContext, CskkError,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -55,11 +54,13 @@ impl Drop for CskkRulesFfi {
     }
 }
 
+///
 /// Returns newly allocated CSKKContext.
+/// On error, returns NULL.
 ///
 /// # Safety
 /// Caller have to retain the pointer returned from this function
-/// Caller must free it using skk_free_context
+/// Caller must free it using skk_free_context when non-NULL pointer is returned.
 /// dictionary_array must have at least dictionary_count number of CskkDictionary
 ///
 #[no_mangle]
@@ -68,7 +69,13 @@ pub unsafe extern "C" fn skk_context_new(
     dictionary_count: usize,
 ) -> *mut CskkContext {
     let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
-    Box::into_raw(Box::new(skk_context_new_rs(dict_array)))
+    let maybe_context = CskkContext::new(InputMode::Hiragana, CompositionMode::Direct, dict_array);
+
+    if let Ok(context) = maybe_context {
+        Box::into_raw(Box::new(context))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 ///
@@ -89,9 +96,9 @@ pub unsafe extern "C" fn skk_file_dict_new(
     let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
         let path = CStr::from_ptr(c_path_string).to_str()?;
         let encoding = CStr::from_ptr(c_encoding).to_str()?;
-
+        let dictionary = CskkDictionary::new_static_dict(path, encoding)?;
         Ok(CskkDictionaryFfi {
-            dictionary: Arc::new(skk_file_dict_new_rs(path, encoding)),
+            dictionary: Arc::new(dictionary),
         })
     })();
 
@@ -120,9 +127,9 @@ pub unsafe extern "C" fn skk_user_dict_new(
     let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
         let path = CStr::from_ptr(c_path_string).to_str()?;
         let encoding = CStr::from_ptr(c_encoding).to_str()?;
-
+        let dictionary = CskkDictionary::new_user_dict(path, encoding)?;
         Ok(CskkDictionaryFfi {
-            dictionary: Arc::new(skk_user_dict_new_rs(path, encoding)),
+            dictionary: Arc::new(dictionary),
         })
     })();
 
