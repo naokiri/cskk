@@ -19,6 +19,22 @@ fn z_slash() {
 }
 
 #[test]
+fn z_minus() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "z minus",
+        "",
+        "〜", // using U+301C wave dash
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
+
+#[test]
 fn mu() {
     init_test_logger();
     let mut context = default_test_context();
