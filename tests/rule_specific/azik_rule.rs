@@ -141,3 +141,103 @@ fn mode_switching_key() {
         InputMode::HankakuKatakana,
     );
 }
+
+#[test]
+fn hankaku_mode_changing() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "n C-at",
+        "",
+        "ん",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "n C-at",
+        "",
+        "ﾝ",
+        InputMode::Katakana,
+    );
+}
+
+#[test]
+fn hiragana_precomposition_input() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Hiragana,
+        "a at",
+        "",
+        "ア",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Hiragana,
+        "a C-at",
+        "",
+        "ｱ",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn katakana_precomposition_input() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Katakana,
+        "a at",
+        "",
+        "あ",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Katakana,
+        "a C-at",
+        "",
+        "ｱ",
+        InputMode::Katakana,
+    );
+}
+
+#[test]
+fn hankaku_precomposition_input() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::HankakuKatakana,
+        "a at",
+        "",
+        "あ",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::HankakuKatakana,
+        "a C-at",
+        "",
+        "ア",
+        InputMode::HankakuKatakana,
+    );
+}
