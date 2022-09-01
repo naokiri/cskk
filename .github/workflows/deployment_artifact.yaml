@@ -1,0 +1,53 @@
+name: Release artifact
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build_artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          ref: $GITHUB_REF
+      - name: Install cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Install cbindgen
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cbindgen
+      - name: cargo-c-exists
+        id: cargoCCheck
+        run: test -e ~/.cargo/bin/cargo-cbuild
+        continue-on-error: true
+      - name: Install cargo-c
+        if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-c --version 0.9.6
+      - name: Install required libs (Ubuntu)
+        run: sudo apt-get install libxkbcommon-dev
+      - name: Build library
+        uses: actions-rs/cargo@v1
+        with:
+          command: cbuild
+          args: --release
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/x86_64-unknown-linux-gnu/release/libcskk.so
+            target/x86_64-unknown-linux-gnu/release/libcskk.h
+            assets
+
+  upload_artifact:
+    runs-on: ubuntu-latest
+    needs: build_artifact

@@ -2,12 +2,16 @@
 
 ## deploy process
 Not automated yet.
-バージョン Cargo.toml 書き換え
-githubでReleaseからDraft a new releaseしてv0.0.1のようなタグを作ってリリース後
+Cargo.tomlおよび.github/workflows/continuous_testing.yaml内の確認するバージョンを書き換え
+githubでReleaseからDraft a new releaseしてvx.y.zのようなタグを作ってreleaseブランチからリリースする
+github workflowでartifactがアップロードされる。
 
-git checkout v0.0.1
-cargo login && cargo publish --dry-run してよさそうなら 
-cargo publish
+その後cargoにもリリースするため
+
+    git checkout vx.y.z
+    cargo login && cargo publish --dry-run 
+    # 結果を見てよさそうなら 
+    cargo publish
 
 という手順を踏む。
 
