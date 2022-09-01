@@ -163,16 +163,6 @@ fn input_mode_transition_hankakukatakana() {
         &mut context,
         CompositionMode::Direct,
         InputMode::HankakuKatakana,
-        "C-q",
-        "",
-        "",
-        InputMode::Hiragana,
-    );
-    skk_context_reset_rs(&mut context);
-    transition_check(
-        &mut context,
-        CompositionMode::Direct,
-        InputMode::HankakuKatakana,
         "l",
         "",
         "",
@@ -187,6 +177,25 @@ fn input_mode_transition_hankakukatakana() {
         "",
         "",
         InputMode::Zenkaku,
+    );
+}
+
+#[ignore]
+#[test]
+fn input_mode_transition_hankakukatakana_orig() {
+    init_test_logger();
+    let mut context = default_test_context();
+    // これはfailする。
+    // あえてlibskkから変更している箇所で、q,C-qでのモード変更やPreCompositionでの入力確定がひらがな、カタカナ、半角カナで対称になるようにした。
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "C-q",
+        "",
+        "",
+        InputMode::Hiragana,
     );
 }
 
