@@ -71,6 +71,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
+      - name: check version
+        id: versions
+        run: |
+          echo ::set-output name=version::`bin/version.sh`
+          echo ::set-output name=major-version::`bin/major_version.sh`
+      - name: version
+        run: | 
+          echo $${{ steps.versions.outputs.version }} 
+          echo $${{ steps.versions.outputs.major-version }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
@@ -125,7 +134,7 @@ jobs:
         run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
       - name: link lib versioning (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.0
+        run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.${{ steps.versions.outputs.major-version }}
       - name: Show built file
         if: matrix.os == 'ubuntu-latest'
         run: ls -l ./target/*
@@ -143,7 +152,7 @@ jobs:
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.0.6.1.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
         if: matrix.os == 'macOS-latest'
         run: ls -l ./target/*
