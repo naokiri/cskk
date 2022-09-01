@@ -141,3 +141,28 @@ fn mode_switching_key() {
         InputMode::HankakuKatakana,
     );
 }
+
+#[test]
+fn hankaku_mode_changing() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "C-at",
+        "",
+        "",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "C-at",
+        "",
+        "",
+        InputMode::Katakana,
+    );
+}

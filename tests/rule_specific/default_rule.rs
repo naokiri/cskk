@@ -49,3 +49,28 @@ fn mu() {
     );
     skk_context_reset_rs(&mut context);
 }
+
+#[test]
+fn hankaku_mode_changing() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "C-q",
+        "",
+        "",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::HankakuKatakana,
+        "C-q",
+        "",
+        "",
+        InputMode::Katakana,
+    );
+}
