@@ -74,3 +74,28 @@ fn hankaku_mode_changing() {
         InputMode::Katakana,
     );
 }
+
+#[test]
+fn hankaku_precomposition_input() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::HankakuKatakana,
+        "a q",
+        "",
+        "あ",
+        InputMode::HankakuKatakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::HankakuKatakana,
+        "a C-q",
+        "",
+        "ア",
+        InputMode::HankakuKatakana,
+    );
+}
