@@ -12,6 +12,13 @@ jobs:
         uses: actions/checkout@master
         with:
           ref: ${{ github.ref }}
+      - name: check version
+        id: versions
+        run: |
+          echo ::set-output name=version::`bin/version.sh`
+          echo ::set-output name=major-version::`bin/major_version.sh`
+      - name: Check tag matches version
+        run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:

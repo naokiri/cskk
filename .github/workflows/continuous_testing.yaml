@@ -76,10 +76,10 @@ jobs:
         run: |
           echo ::set-output name=version::`bin/version.sh`
           echo ::set-output name=major-version::`bin/major_version.sh`
-      - name: version
+      - name: output version
         run: | 
-          echo $${{ steps.versions.outputs.version }} 
-          echo $${{ steps.versions.outputs.major-version }}
+          echo Version: ${{ steps.versions.outputs.version }} 
+          echo MajorVersion: ${{ steps.versions.outputs.major-version }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
