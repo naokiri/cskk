@@ -40,11 +40,17 @@ jobs:
         with:
           command: cbuild
           args: --release
+      - name: Zip assets
+        uses: thedoctor0/zip-release@main
+        with:
+          type: 'zip'
+          filename: 'rules.zip'
+          path: assets
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
         with:
           files: |
             target/x86_64-unknown-linux-gnu/release/libcskk.so
             target/x86_64-unknown-linux-gnu/release/libcskk.h
-            assets
+            rules.zip
 
