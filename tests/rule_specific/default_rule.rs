@@ -58,9 +58,9 @@ fn hankaku_mode_changing() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "C-q",
+        "n C-q",
         "",
-        "",
+        "ん",
         InputMode::HankakuKatakana,
     );
     skk_context_reset_rs(&mut context);
@@ -68,9 +68,59 @@ fn hankaku_mode_changing() {
         &mut context,
         CompositionMode::Direct,
         InputMode::HankakuKatakana,
-        "C-q",
+        "n C-q",
         "",
+        "ﾝ",
+        InputMode::Katakana,
+    );
+}
+
+#[test]
+fn hiragana_precomposition_input() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Hiragana,
+        "a q",
         "",
+        "ア",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Hiragana,
+        "a C-q",
+        "",
+        "ｱ",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn katakana_precomposition_input() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Katakana,
+        "a q",
+        "",
+        "あ",
+        InputMode::Katakana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::PreComposition,
+        InputMode::Katakana,
+        "a C-q",
+        "",
+        "ｱ",
         InputMode::Katakana,
     );
 }
