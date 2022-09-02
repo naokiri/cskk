@@ -69,7 +69,8 @@ preserve-symlinks = true
 # x86_64 specific, depends on cargo-c now.
 assets = [["assets/**/*", "usr/local/share/", "644"],
     ["target/release/libcskk.so", "usr/local/lib/cskk", "755"],
-    ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
+    #
+    # ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk", "644"],
     ["target/x86_64-unknown-linux-gnu/release/cskk.pc", "usr/local/lib/pkgconfig", "644"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.h", "usr/local/include/cskk", "644"]]
