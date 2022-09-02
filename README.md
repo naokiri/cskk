@@ -93,7 +93,7 @@ root権限がある場合、以下を実行する。
 ## ueno/libskk の機能
 
 - [x] 句読点設定
-- [ ] AZIK rule
+- [x] AZIK rule
 - [ ] Nicola rule
 
 ### C FFI + IME plugin

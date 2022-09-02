@@ -85,7 +85,7 @@ To install to non-standard directories, append following options like this. See
 ## Simulating ueno/libskk feature
 
 - [x] 句読点設定
-- [ ] AZIK rule
+- [x] AZIK rule
 - [ ] Nicola rule
 
 ### C FFI + IME plugin
