@@ -1,4 +1,4 @@
-name: Release artifact
+name: Release x86_64 deb artifact
 on:
   release:
     types:
@@ -51,27 +51,29 @@ jobs:
         with:
           command: cbuild
           args: --release
-      - name: Zip assets
-        uses: thedoctor0/zip-release@main
-        with:
-          type: 'zip'
-          filename: 'rules.zip'
-          path: assets
+      - name: Build symbolic links
+        run: bin/generate_deb_symlinks.sh
   build_deb:
     runs-on: ubuntu-latest
     needs: [build_artifact]
     steps:
-      - name: Prepare control
-        run: cd debpack_workdir/DEBIAN && cat control.template | sed -e 's/$VERSION/${{ needs.build_artifact.outputs.version }}/ > control && cat control
+      - name: Install cargo-deb
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-deb
+      - name: Prepare deb file
+        uses: actions-rs/cargo@v1
+        with:
+          command: deb
   upload_artifact:
     runs-on: ubuntu-latest
-    needs: [build_deb]
+    needs: [build_artifact, build_deb]
     steps:
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/x86_64-unknown-linux-gnu/release/libcskk.so
-            target/x86_64-unknown-linux-gnu/release/libcskk.h
-            rules.zip
+            target/debian/libcskk_${{ needs.build_artifact.outputs.version }}_amd64.deb            
+          
 
