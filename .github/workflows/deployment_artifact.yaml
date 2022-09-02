@@ -7,6 +7,9 @@ on:
 jobs:
   build_artifact:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      major-version: ${{ steps.versions.outputs.major-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -59,7 +62,7 @@ jobs:
     needs: [build_artifact]
     steps:
       - name: Prepare control
-        run: cd debpack_workdir/DEBIAN && cat control.template | sed -e 's/$VERSION/${{ steps.versions.outputs.version }} > control && cat control
+        run: cd debpack_workdir/DEBIAN && cat control.template | sed -e 's/$VERSION/${{ needs.build_artifact.outputs.version }}/ > control && cat control
   upload_artifact:
     runs-on: ubuntu-latest
     needs: [build_deb]
