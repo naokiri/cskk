@@ -1,8 +1,9 @@
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
-use crate::form_changer::kana_form_changer::KanaFormChanger;
+use crate::form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
 use std::fmt::{Debug, Formatter};
+use std::ops::Add;
 use xkbcommon::xkb;
 use xkbcommon::xkb::{keysym_get_name, Keysym};
 
@@ -18,10 +19,12 @@ pub(crate) struct CskkState {
     pub(crate) pre_conversion: Vec<Keysym>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。
     // 送りあり変換時には'>'なども付く。Abbrebiation変換の場合kana-convertされる前の入力など
+    // 送り仮名の最初の文字は含まれない。
+    // そのまま所持せず、計算して出すようにしたいが現バージョンでは保持している。
     raw_to_composite: String,
-    // 未確定入力の漢字の読み部分。この時点ではひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
+    // 未確定入力の漢字の読み部分。ひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_composite: String,
-    // 未確定入力のおくり仮名部分。常にひらがな。convertがあるInputMode時のみ使用
+    // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名だが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外が入ることもある。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_okuri: String,
     // 未確定入力のおくり仮名の最初の文字。
     pub(crate) okuri_first_letter: Option<char>,
@@ -30,7 +33,7 @@ pub(crate) struct CskkState {
     // 入力を漢字変換した現在の選択肢の送り仮名部分。 TODO: 保持せずにconverted_kana_to_okuriで良い？
     pub(crate) composited_okuri: String,
     // 確定済み入力列。pollされた時に渡してflushされるもの。
-    pub(crate) confirmed: String,
+    confirmed: String,
     // 今のかな変換の間に大文字でモード変更をしたかどうか。このステートによってシフトを押したままキー入力をしてしまった時に連続してモード変更しないようにしている。
     capital_transition: bool,
 }
@@ -50,6 +53,75 @@ impl CskkState {
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
             capital_transition: false,
+        }
+    }
+
+    /// 現在の確定済み文字列を取得する
+    pub(crate) fn get_confirmed_string(&self) -> &str {
+        &self.confirmed
+    }
+
+    /// 現在の確定済み文字列を取得する
+    pub(crate) fn flush_confirmed_string(&mut self) {
+        self.confirmed.clear();
+    }
+
+    /// charを入力する。Directモードのみ起きうる動作である。
+    pub(crate) fn push_char(&mut self, ch: char) {
+        if self.composition_mode == CompositionMode::Direct {
+            self.confirmed.push(ch);
+        } else {
+            log::error!(
+                "Tried to append char on not direct mode. compositionmode: {:?}, ignored char: {}",
+                self.composition_mode,
+                ch
+            )
+        }
+    }
+
+    /// 現在のモードで1文字消去する。
+    pub(crate) fn delete(&mut self) {
+        match self.composition_mode {
+            CompositionMode::Direct => {
+                if !self.confirmed.is_empty() {
+                    self.confirmed.pop();
+                }
+            }
+            _ => {
+                unimplemented!();
+            }
+        }
+    }
+
+    /// 今のcompositionmodeで変換済み文字列を入力する。
+    /// composition等ではひらがな変換を想定、CompositionSelectionでは漢字変換済み文字列を想定。
+    pub(crate) fn push_letter_or_word(&mut self, letter_or_word: &str) {
+        self.push_letter_or_word_for_composition_mode(letter_or_word, self.composition_mode)
+    }
+
+    /// 指定のCompositionModeで変換済み文字列を入力する。
+    pub(crate) fn push_letter_or_word_for_composition_mode(
+        &mut self,
+        letter_or_word: &str,
+        composition_mode: CompositionMode,
+    ) {
+        match composition_mode {
+            CompositionMode::Direct => {
+                self.confirmed.push_str(letter_or_word);
+            }
+            CompositionMode::PreComposition => {}
+            CompositionMode::PreCompositionOkurigana => {}
+            CompositionMode::Abbreviation => {}
+            CompositionMode::CompositionSelection => {
+                self.confirmed.push_str(letter_or_word);
+            }
+            _ => {
+                log::error!(
+                    "Tried to enter kana in mode {:?}. This should never happen. Ignored kana input {}.",
+                    self.composition_mode,
+                    letter_or_word
+                )
+            }
         }
     }
 
@@ -115,7 +187,10 @@ impl CskkState {
         }
     }
 
-    // contextからstateへ管理を移す途上で、okuri_first_letterのみ別考慮している。
+    pub(crate) fn get_converted_kana_to_okuri(&self) -> &str {
+        &self.converted_kana_to_okuri
+    }
+
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
     pub(crate) fn get_composite_key(&self) -> String {
         if let Some(c) = self.okuri_first_letter {
@@ -123,6 +198,19 @@ impl CskkState {
             s.push(c);
             return s;
         }
+        // // ローマ字ベースではない入力規則のため、送り仮名の最初の文字は後から付ける。
+        // // if self.is_okuri_entered {
+        // // ひらがなはUnicode Scalar Valueなのでchars()で十分。
+        // if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
+        //     if let Some(okuri_first) =
+        //     KanaFormChanger::kana_to_okuri_prefix(&first_kana.to_string())
+        //     {
+        //         let string = self.raw_to_composite.to_owned().add(okuri_first);
+        //         return string;
+        //     }
+        // }
+        // // }
+
         self.raw_to_composite.to_owned()
     }
 
