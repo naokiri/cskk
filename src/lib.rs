@@ -213,7 +213,9 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
 
     if i < 0 {
         context.reset_composited();
-        context.consolidate_converted_to_to_composite();
+        context
+            .current_state()
+            .consolidate_converted_to_to_composite();
         context.set_composition_mode(CompositionMode::PreComposition);
     } else if i >= len as i32 {
         context.current_state().set_candidate_pointer_index(len - 1);
@@ -331,7 +333,7 @@ impl CskkContext {
     fn append_converted_in_input_mode(&mut self, result: &str, input_mode: InputMode) {
         let kana_form_changer = &self.kana_form_changer;
         let adjusted = kana_form_changer.adjust_kana_string(input_mode, result);
-        self.current_state().push_letter_or_word(&adjusted);
+        self.current_state().push_string(&adjusted);
     }
 
     fn set_unconverted(&mut self, unconv: Vec<Keysym>) {
@@ -349,66 +351,6 @@ impl CskkContext {
         let current_state = self.current_state();
         current_state.converted_kana_to_composite.push_str(result);
         current_state.append_raw_to_composite(result);
-    }
-
-    fn append_converted_to_okuri(&mut self, result: &str) {
-        let current_state = self.current_state();
-
-        current_state.converted_kana_to_okuri.push_str(result);
-    }
-
-    fn delete_precomposition(&mut self) {
-        let mut current_state = self.current_state();
-        if !current_state.pre_conversion.is_empty() {
-            // かな変換前の入力がある場合
-            // それを一文字消し、送り仮名が空になったらモード変更
-            current_state.pre_conversion.pop();
-            if current_state.pre_conversion.is_empty()
-                && current_state.composition_mode == CompositionMode::PreCompositionOkurigana
-            {
-                current_state.composition_mode = CompositionMode::PreComposition;
-            }
-        } else if !current_state.converted_kana_to_okuri.is_empty() {
-            // かな変換済みで、おくりがながある場合
-            // おくりがなを一文字消し送り仮名が空になったらモード変更
-            current_state.converted_kana_to_okuri.pop();
-            current_state.delete_char_from_raw_to_composite();
-            if current_state.converted_kana_to_okuri.is_empty()
-                && current_state.composition_mode == CompositionMode::PreCompositionOkurigana
-            {
-                current_state.composition_mode = CompositionMode::PreComposition;
-            }
-        } else if !current_state.converted_kana_to_composite.is_empty() {
-            // かな変換済みで、送り仮名はないが漢字変換前の文字がある場合
-            // その文字を消す。
-            current_state.converted_kana_to_composite.pop();
-            current_state.delete_char_from_raw_to_composite();
-        } else {
-            // かな変換前の文字も、漢字変換前の文字もない場合 (表示が▽のみの状態)
-            // モード変更
-            current_state.composition_mode = CompositionMode::Direct;
-        }
-    }
-
-    fn delete_direct(&mut self) -> bool {
-        let current_state = self.current_state();
-        if !current_state.pre_conversion.is_empty() {
-            current_state.pre_conversion.pop();
-            return true;
-        } else if !current_state.get_confirmed_string().is_empty() {
-            self.current_state().delete();
-            return true;
-        }
-        false
-    }
-
-    ///
-    /// かな変換済みでないものを全て消去する
-    ///
-    fn reset_unconverted(&mut self) {
-        let current_state = self.current_state();
-        current_state.pre_conversion.clear();
-        current_state.set_capital_transition(false);
     }
 
     fn set_carry_over(&mut self, unconv: &[Keysym]) {
@@ -443,6 +385,7 @@ impl CskkContext {
         self.reset_current_state();
     }
 
+    // TODO: make this internal to cskkstate state内でfieldの齟齬が起きないようにcskkstate内の関数にする
     #[allow(unused_must_use)]
     fn confirm_current_composition_candidate(&mut self) {
         let current_candidate = self
@@ -457,21 +400,15 @@ impl CskkContext {
 
         let composited_okuri = self.kana_form_changer.adjust_kana_string(
             self.current_state_ref().input_mode,
-            &self.current_state_ref().converted_kana_to_okuri,
+            self.current_state_ref().get_okuri_string(),
         );
         let composited_kanji_and_okuri = current_candidate.output + &composited_okuri;
 
         let current_state = self.current_state();
-        current_state.push_letter_or_word(&composited_kanji_and_okuri);
+        current_state.push_string(&composited_kanji_and_okuri);
         current_state.clear_raw_to_composite();
-        current_state.clear_okuri_first_letter();
-        current_state.converted_kana_to_composite.clear();
-        current_state.converted_kana_to_okuri.clear();
+        current_state.clear_kanas();
         current_state.clear_candidate_list();
-    }
-
-    fn select_composition_candidate(&mut self, i: usize) -> bool {
-        self.current_state().set_candidate_pointer_index(i)
     }
 
     // TODO: append_converted_in_input_modeと何が違う？
@@ -480,11 +417,8 @@ impl CskkContext {
 
         self.append_converted_in_input_mode(&kana, temporary_input_mode);
         let current_state = self.current_state();
-        current_state.pre_conversion.clear();
-        //current_state.confirmed.push_str(&kana);
         current_state.clear_raw_to_composite();
-        current_state.converted_kana_to_composite.clear();
-        current_state.converted_kana_to_okuri.clear();
+        current_state.clear_kanas();
     }
 
     fn reset_carry_over(&mut self) -> bool {
@@ -498,28 +432,13 @@ impl CskkContext {
     fn reset_converted_kanas(&mut self) {
         let current_state = self.current_state();
         current_state.clear_raw_to_composite();
-        current_state.converted_kana_to_composite.clear();
-        current_state.converted_kana_to_okuri.clear();
+        current_state.clear_kanas();
     }
 
     fn reset_composited(&mut self) {
         let current_state = self.current_state();
         current_state.clear_okuri_first_letter();
         current_state.clear_candidate_list();
-    }
-
-    /// 現在の漢字変換前の本体とおくりがなの文字列をまとめて漢字変換前の文字列にする
-    /// 例: ▼悲し -> ▽かなし とする時のかな文字の操作。
-    /// Abort時のみのはず。
-    fn consolidate_converted_to_to_composite(&mut self) {
-        //let current_state = self.current_state();
-        let okuri = self.current_state().converted_kana_to_okuri.clone();
-        self.current_state()
-            .converted_kana_to_composite
-            .push_str(&okuri);
-        self.current_state().append_raw_to_composite(&okuri);
-        self.current_state().converted_kana_to_okuri.clear();
-        self.current_state().clear_okuri_first_letter();
     }
 
     /// Set the current composition mode.
@@ -549,8 +468,7 @@ impl CskkContext {
         self.current_state().clear_okuri_first_letter();
         self.current_state().set_capital_transition(false);
         self.reset_carry_over();
-        self.reset_converted_kanas();
-        self.reset_unconverted();
+        self.current_state().clear_kanas();
         self.reset_composited();
     }
 
@@ -563,18 +481,12 @@ impl CskkContext {
             if self.current_state_ref().previous_composition_mode
                 == CompositionMode::PreCompositionOkurigana
             {
-                self.consolidate_converted_to_to_composite();
+                self.current_state().consolidate_converted_to_to_composite();
                 self.current_state().composition_mode = CompositionMode::PreComposition;
             } else {
                 self.current_state().composition_mode =
                     self.current_state_ref().previous_composition_mode;
             }
-            // Registerモードからの復帰時にはPrecompositionOkuriganaからPreCompositionに強制的に変えるため、入力をPrecompositionのものに扱いなおす。
-            let mut kana_to_composite =
-                self.current_state_ref().converted_kana_to_composite.clone();
-            kana_to_composite.push_str(&self.current_state_ref().converted_kana_to_okuri);
-            self.current_state().converted_kana_to_composite = kana_to_composite;
-            self.current_state().converted_kana_to_okuri.clear();
         }
     }
 
@@ -615,7 +527,7 @@ impl CskkContext {
                     for output in outputs {
                         candidates.push(Candidate::new(
                             Arc::new(dict_key.clone()),
-                            !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+                            !self.current_state_ref().get_okuri_string().is_empty(),
                             Arc::new(confirmed.to_owned()),
                             None,
                             output,
@@ -632,7 +544,7 @@ impl CskkContext {
                                 .get_current_to_composite()
                                 .to_string(),
                         ),
-                        !self.current_state_ref().converted_kana_to_okuri.is_empty(),
+                        !self.current_state_ref().get_okuri_string().is_empty(),
                         Arc::new(confirmed.to_owned()),
                         None,
                         confirmed.to_string(),
@@ -668,7 +580,7 @@ impl CskkContext {
                     let kana_form_changer = &self.kana_form_changer;
                     let adjusted = kana_form_changer.adjust_kana_string(input_mode, "ん");
                     self.current_state()
-                        .push_letter_or_word_for_composition_mode(&adjusted, composition_mode);
+                        .push_string_for_composition_mode(&adjusted, composition_mode);
                     true
                 }
                 CompositionMode::PreComposition => {
@@ -676,10 +588,11 @@ impl CskkContext {
                     true
                 }
                 CompositionMode::PreCompositionOkurigana => {
-                    self.append_converted_to_okuri("ん");
+                    //self.append_converted_to_okuri("ん");
+                    self.current_state()
+                        .push_string_for_composition_mode("ん", composition_mode);
                     self.current_state().try_set_okuri_first_letter('n');
-                    let current_state = self.current_state();
-                    current_state.pre_conversion = vec![];
+                    self.current_state().clear_preconverted_kanainputs();
                     true
                 }
                 _ => false,
@@ -807,7 +720,8 @@ impl CskkContext {
                     // 例: "t T" の't'部分が 'っ' とかな変換される場合
                     self.append_converted_to_composite(converted)
                 } else {
-                    self.append_converted_to_okuri(converted)
+                    self.current_state()
+                        .push_string_for_composition_mode(converted, current_composition_mode);
                 }
                 self.set_carry_over(&carry_over);
 
@@ -962,9 +876,9 @@ impl CskkContext {
                     // カンマピリオド確定なのでcompositionmode変更は割愛。
                     // まず他の入力があれば終わらせる。
                     self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
-                    self.reset_unconverted();
+                    self.current_state().clear_preconverted_kanainputs();
                     // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
-                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                    if self.current_state_ref().get_okuri_string().is_empty() {
                         self.current_state().clear_okuri_first_letter();
                     }
 
@@ -977,8 +891,8 @@ impl CskkContext {
                             self.append_converted_to_composite(&converted);
                         }
                         CompositionMode::PreCompositionOkurigana => {
-                            self.reset_unconverted();
-                            self.append_converted_to_okuri(&converted);
+                            self.current_state().clear_preconverted_kanainputs();
+                            self.current_state().push_string(&converted);
                         }
                         _ => {
                             debug!("Unreachable");
@@ -1008,9 +922,9 @@ impl CskkContext {
                     // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                     // まずpre_convertedを整理してから入力として扱う。
                     self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
-                    self.reset_unconverted();
+                    self.current_state().clear_preconverted_kanainputs();
                     // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
-                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                    if self.current_state_ref().get_okuri_string().is_empty() {
                         self.current_state().clear_okuri_first_letter();
                     }
                     self.input_as_continuous_kana(key_event);
@@ -1025,9 +939,9 @@ impl CskkContext {
 
                     // TODO: この現在のステートのクリーンアップは上と同じであるべきなので、stateの整理ができたらメソッドにまとめる。
                     self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
-                    self.reset_unconverted();
+                    self.current_state().clear_preconverted_kanainputs();
                     // 送り仮名の最初の文字だった時のみ、おくりの文字も消さなければならない
-                    if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                    if self.current_state_ref().get_okuri_string().is_empty() {
                         self.current_state().clear_okuri_first_letter();
                     }
                     self.input_as_continuous_kana(&lower_key_event);
@@ -1042,8 +956,8 @@ impl CskkContext {
                             current_input_mode,
                             initial_kanainput_composition_mode,
                         );
-                        self.reset_unconverted();
-                        if self.current_state_ref().converted_kana_to_okuri.is_empty() {
+                        self.current_state().clear_preconverted_kanainputs();
+                        if self.current_state_ref().get_okuri_string().is_empty() {
                             self.current_state().clear_okuri_first_letter();
                         }
 
@@ -1055,7 +969,7 @@ impl CskkContext {
                                 self.append_converted_to_composite(&key_char.to_string());
                             }
                             CompositionMode::PreCompositionOkurigana => {
-                                self.append_converted_to_okuri(&key_char.to_string());
+                                self.current_state().push_string(&key_char.to_string());
                             }
 
                             _ => {
@@ -1137,15 +1051,15 @@ impl CskkContext {
                     self.output_nn_if_any(*input_mode, initial_composition_mode);
                 }
                 Instruction::FlushPreviousCarryOver => {
-                    self.reset_unconverted();
+                    self.current_state().clear_preconverted_kanainputs();
                 }
                 Instruction::FlushConvertedKana => {
                     self.reset_converted_kanas();
                 }
                 Instruction::Abort => {
                     // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
-                    self.reset_composited();
-                    self.consolidate_converted_to_to_composite();
+                    self.current_state().consolidate_converted_to_to_composite();
+                    self.current_state().clear_candidate_list();
                     self.abort_register_mode();
                 }
                 Instruction::ConfirmComposition => {
@@ -1188,10 +1102,10 @@ impl CskkContext {
                     self.current_state().backward_candidate();
                 }
                 Instruction::DeletePrecomposition => {
-                    self.delete_precomposition();
+                    self.current_state().delete();
                 }
                 Instruction::DeleteDirect => {
-                    return self.delete_direct();
+                    return self.current_state().delete();
                 }
                 Instruction::TryNextCandidate => {
                     // if has candidate and has next, pointer to the next candidate and set to composition selection mode.
@@ -1220,8 +1134,8 @@ impl CskkContext {
                             "Trying previous candidate on not composition selection mode. Ignore."
                         )
                     } else if !self.current_state_ref().get_candidate_list().has_previous() {
-                        self.reset_composited();
-                        self.consolidate_converted_to_to_composite();
+                        self.current_state().consolidate_converted_to_to_composite();
+                        self.current_state().clear_candidate_list();
                         self.set_composition_mode(CompositionMode::PreComposition);
                     } else {
                         self.current_state().backward_candidate();
@@ -1260,7 +1174,7 @@ impl CskkContext {
                 self.current_state()
                     .converted_kana_to_composite
                     .truncate(newlen);
-                self.append_converted_to_okuri(suffix);
+                self.current_state().set_converted_to_postfix(suffix);
                 done = true;
             }
         }

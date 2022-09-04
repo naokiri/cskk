@@ -23,8 +23,8 @@ pub(crate) struct CskkState {
     raw_to_composite: String,
     // 未確定入力の漢字の読み部分。ひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_composite: String,
-    // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名だが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外が入ることもある。convertがあるInputMode時のみ使用
-    pub(crate) converted_kana_to_okuri: String,
+    // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。convertがあるInputMode時のみ使用
+    converted_kana_to_okuri: String,
     // 未確定入力のおくり仮名の最初の文字。
     okuri_first_letter: Option<char>,
     // 現在の変換候補リスト
@@ -35,6 +35,8 @@ pub(crate) struct CskkState {
     confirmed: String,
     // 今のかな変換の間に大文字でモード変更をしたかどうか。このステートによってシフトを押したままキー入力をしてしまった時に連続してモード変更しないようにしている。
     capital_transition: bool,
+    // 現在送り仮名を入力しているかどうか。postfixを送り仮名として用いるべきかどうか。
+    use_okurigana: bool,
 }
 
 impl CskkState {
@@ -52,6 +54,7 @@ impl CskkState {
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
             capital_transition: false,
+            use_okurigana: false,
         }
     }
 
@@ -79,12 +82,46 @@ impl CskkState {
     }
 
     /// 現在のモードで1文字消去する。
-    pub(crate) fn delete(&mut self) {
+    /// 1文字でも消去されたら、trueを返す。
+    /// 何も処理されなかったら、falseを返す。
+    pub(crate) fn delete(&mut self) -> bool {
         match self.composition_mode {
             CompositionMode::Direct => {
-                if !self.confirmed.is_empty() {
-                    self.confirmed.pop();
+                // かな変換前の入力を1文字消そうとする
+                let mut deleted = self.pre_conversion.pop().is_some();
+                // できなければ確定済み文字列を1文字消そうとする。
+                if !deleted {
+                    deleted = self.confirmed.pop().is_some();
                 }
+                deleted
+            }
+            CompositionMode::PreComposition => {
+                // かな変換前の入力を1文字消そうとする
+                let mut deleted = self.pre_conversion.pop().is_some();
+                // できなければ未確定かなを1文字消そうとする。
+                if !deleted {
+                    deleted = self.converted_kana_to_composite.pop().is_some();
+                    self.raw_to_composite.pop();
+                }
+                // それもできなければ初めてDirectにモード変更する。未確定文字0文字状態が許容される。
+                if !deleted {
+                    self.composition_mode = CompositionMode::Direct;
+                }
+                deleted
+            }
+            CompositionMode::PreCompositionOkurigana => {
+                // かな変換前の入力を1文字消そうとする
+                let mut deleted = self.pre_conversion.pop().is_some();
+                // できなければおくりがなを1文字消そうとする
+                if !deleted {
+                    deleted = self.converted_kana_to_okuri.pop().is_some();
+                    self.raw_to_composite.pop();
+                }
+                // 結果として送り仮名もかな変換前の入力もなくなったら、PreCompositionにモード変更する。送り0文字状態を許容しない。
+                if self.pre_conversion.is_empty() && self.converted_kana_to_okuri.is_empty() {
+                    self.composition_mode = CompositionMode::PreComposition;
+                }
+                deleted
             }
             _ => {
                 unimplemented!();
@@ -93,13 +130,13 @@ impl CskkState {
     }
 
     /// 現在のcompositionmodeで変換済み文字列を入力する。
-    /// composition等ではひらがな変換を想定、CompositionSelectionでは漢字変換済み文字列を想定。
-    pub(crate) fn push_letter_or_word(&mut self, letter_or_word: &str) {
-        self.push_letter_or_word_for_composition_mode(letter_or_word, self.composition_mode)
+    /// PreComposition等ではひらがな変換を想定、CompositionSelectionでは漢字変換済み文字列を想定。
+    pub(crate) fn push_string(&mut self, letter_or_word: &str) {
+        self.push_string_for_composition_mode(letter_or_word, self.composition_mode)
     }
 
     /// 指定のCompositionModeで変換済み文字列を入力する。
-    pub(crate) fn push_letter_or_word_for_composition_mode(
+    pub(crate) fn push_string_for_composition_mode(
         &mut self,
         letter_or_word: &str,
         composition_mode: CompositionMode,
@@ -109,7 +146,10 @@ impl CskkState {
                 self.confirmed.push_str(letter_or_word);
             }
             CompositionMode::PreComposition => {}
-            CompositionMode::PreCompositionOkurigana => {}
+            CompositionMode::PreCompositionOkurigana => {
+                self.converted_kana_to_okuri.push_str(letter_or_word);
+                self.use_okurigana = true;
+            }
             CompositionMode::Abbreviation => {}
             CompositionMode::CompositionSelection => {
                 self.confirmed.push_str(letter_or_word);
@@ -122,6 +162,46 @@ impl CskkState {
                 )
             }
         }
+    }
+
+    /// 現在の漢字変換前の本体とおくりがなの文字列をまとめて漢字変換前の文字列にする
+    /// 例: ▼悲し -> ▽かなし とする時のかな文字の操作。
+    /// Abort時のみのはず。
+    pub(crate) fn consolidate_converted_to_to_composite(&mut self) {
+        let okuri = self.converted_kana_to_okuri.to_owned();
+        // these 2 lines should be a method later
+        self.converted_kana_to_composite.push_str(&okuri);
+        self.append_raw_to_composite(&okuri);
+
+        self.converted_kana_to_okuri.clear();
+        self.clear_okuri_first_letter();
+        self.use_okurigana = false;
+    }
+
+    /// 送り仮名ではないが変換語の後につけるべき文字列を付ける。
+    pub(crate) fn set_converted_to_postfix(&mut self, letter_or_word: &str) {
+        self.converted_kana_to_okuri = letter_or_word.to_string();
+        self.use_okurigana = false;
+    }
+
+    pub(crate) fn get_okuri_string(&self) -> &str {
+        &self.converted_kana_to_okuri
+    }
+
+    /// 入力した中のかな変換前の入力を全て消す。かな変換済みのものは消えない。
+    pub(crate) fn clear_preconverted_kanainputs(&mut self) {
+        self.pre_conversion.clear();
+        self.capital_transition = false;
+    }
+
+    /// 入力した中のかなを全て消す。漢字済みのものは消えない。
+    pub(crate) fn clear_kanas(&mut self) {
+        self.clear_preconverted_kanainputs();
+        self.converted_kana_to_composite.clear();
+        self.converted_kana_to_okuri.clear();
+
+        self.okuri_first_letter = None;
+        self.use_okurigana = false;
     }
 
     pub(crate) fn preedit_string(
@@ -184,10 +264,6 @@ impl CskkState {
                 "Abbreviaton mode. detail not implemented.".to_string()
             }
         }
-    }
-
-    pub(crate) fn get_converted_kana_to_okuri(&self) -> &str {
-        &self.converted_kana_to_okuri
     }
 
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
@@ -337,6 +413,7 @@ impl CskkState {
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
             capital_transition: false,
+            use_okurigana: false,
         }
     }
 }

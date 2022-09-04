@@ -864,6 +864,32 @@ fn abort_precomposite_mode() {
 }
 
 #[test]
+fn abort_composition_by_previous_candidate() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space x",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    // Not あ*き。consolidate。
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A K i x",
+        "▽あき",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
 fn auto_start_henkan_cleanup() {
     init_test_logger();
     let mut context = default_test_context();
