@@ -3,7 +3,6 @@ use crate::dictionary::candidate::Candidate;
 use crate::form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
 use std::fmt::{Debug, Formatter};
-use std::ops::Add;
 use xkbcommon::xkb;
 use xkbcommon::xkb::{keysym_get_name, Keysym};
 
@@ -27,11 +26,11 @@ pub(crate) struct CskkState {
     // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名だが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外が入ることもある。convertがあるInputMode時のみ使用
     pub(crate) converted_kana_to_okuri: String,
     // 未確定入力のおくり仮名の最初の文字。
-    pub(crate) okuri_first_letter: Option<char>,
+    okuri_first_letter: Option<char>,
     // 現在の変換候補リスト
-    pub(crate) candidate_list: CandidateList,
+    candidate_list: CandidateList,
     // 入力を漢字変換した現在の選択肢の送り仮名部分。 TODO: 保持せずにconverted_kana_to_okuriで良い？
-    pub(crate) composited_okuri: String,
+    composited_okuri: String,
     // 確定済み入力列。pollされた時に渡してflushされるもの。
     confirmed: String,
     // 今のかな変換の間に大文字でモード変更をしたかどうか。このステートによってシフトを押したままキー入力をしてしまった時に連続してモード変更しないようにしている。
@@ -61,7 +60,7 @@ impl CskkState {
         &self.confirmed
     }
 
-    /// 現在の確定済み文字列を取得する
+    /// 現在の確定済み文字列を消去する
     pub(crate) fn flush_confirmed_string(&mut self) {
         self.confirmed.clear();
     }
@@ -93,7 +92,7 @@ impl CskkState {
         }
     }
 
-    /// 今のcompositionmodeで変換済み文字列を入力する。
+    /// 現在のcompositionmodeで変換済み文字列を入力する。
     /// composition等ではひらがな変換を想定、CompositionSelectionでは漢字変換済み文字列を想定。
     pub(crate) fn push_letter_or_word(&mut self, letter_or_word: &str) {
         self.push_letter_or_word_for_composition_mode(letter_or_word, self.composition_mode)
@@ -247,6 +246,48 @@ impl CskkState {
 
     pub(crate) fn get_capital_transition(&self) -> bool {
         self.capital_transition
+    }
+}
+
+// candidate_lists
+impl CskkState {
+    pub(crate) fn get_candidate_list(&self) -> &CandidateList {
+        &self.candidate_list
+    }
+
+    pub(crate) fn forward_candidate(&mut self) -> bool {
+        self.candidate_list.forward_candidate()
+    }
+
+    pub(crate) fn backward_candidate(&mut self) -> bool {
+        self.candidate_list.backward_candidate()
+    }
+
+    /// iが範囲内ならばポインタをその位置にしてtrueを返す。範囲外ならばなにもせずfalseを返す。
+    pub(crate) fn set_candidate_pointer_index(&mut self, i: usize) -> bool {
+        self.candidate_list.set_selection_pointer(i)
+    }
+
+    /// 現在の変換に候補を追加し、追加したうちの最初の候補を選択した状態にする。
+    /// candidate_listにすでにto_compositeが存在することが暗黙の前提
+    pub(crate) fn add_new_candidates_for_existing_string_to_composite(
+        &mut self,
+        candidates: Vec<Candidate>,
+    ) {
+        self.candidate_list.add_new_candidates(candidates);
+        self.composited_okuri = self.converted_kana_to_okuri.to_string();
+    }
+
+    pub(crate) fn clear_candidate_list(&mut self) {
+        self.candidate_list.clear();
+        self.composited_okuri.clear();
+    }
+
+    /// 現在の変換候補を設定し、最初の候補を指す
+    pub(crate) fn set_new_candidate_list(&mut self, candidates: Vec<Candidate>) {
+        let raw_to_composite = self.get_composite_key();
+        self.candidate_list.set(raw_to_composite, candidates);
+        self.composited_okuri = self.converted_kana_to_okuri.to_string();
     }
 }
 

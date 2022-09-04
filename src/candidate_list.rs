@@ -61,7 +61,7 @@ impl CandidateList {
         ))
     }
 
-    pub(crate) fn set_new_candidates(&mut self, candidates: Vec<Candidate>) {
+    pub(crate) fn add_new_candidates(&mut self, candidates: Vec<Candidate>) {
         let added_candidate_count = candidates.len();
         for candidate in candidates {
             self.composition_candidates.push(candidate);

@@ -783,8 +783,24 @@ fn register_number() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "Q 1 k a i space",
-        "▼１かい",
+        "Q 2 k a i space",
+        "▼２かい",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn numeric_type_4() {
+    init_test_logger();
+    let dict = CskkDictionary::new_user_dict("tests/data/number_jisyo.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 n i t i space",
+        "▼初日",
         "",
         InputMode::Hiragana,
     );
@@ -968,6 +984,62 @@ fn auto_start_henkan_without_kana() {
         InputMode::Hiragana,
         "C period",
         "▽。",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn register_more_for_existing_candidate() {
+    init_test_logger();
+    let dict = CskkDictionary::new_user_dict("tests/data/register_test_dict.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space",
+        "▼候補",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space",
+        "▼あ【】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space i Return",
+        "",
+        "い",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space",
+        "▼い",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space",
+        "▼候補",
         "",
         InputMode::Hiragana,
     );

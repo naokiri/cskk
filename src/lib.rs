@@ -173,7 +173,7 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String 
 /// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
-    context.current_state_ref().candidate_list.len()
+    context.current_state_ref().get_candidate_list().len()
 }
 
 ///
@@ -182,21 +182,21 @@ pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usiz
 pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Candidate> {
     context
         .current_state_ref()
-        .candidate_list
+        .get_candidate_list()
         .get_all_candidates()
 }
 
 pub fn skk_context_get_current_candidate_cursor_position_rs(
     context: &mut CskkContext,
 ) -> Result<usize, CskkError> {
-    if context.current_state_ref().candidate_list.is_empty() {
+    if context.current_state_ref().get_candidate_list().is_empty() {
         Err(CskkError::Error(
             "Likely not in candidate selection".to_string(),
         ))
     } else {
         Ok(context
             .current_state_ref()
-            .candidate_list
+            .get_candidate_list()
             .get_selection_pointer())
     }
 }
@@ -204,7 +204,7 @@ pub fn skk_context_get_current_candidate_cursor_position_rs(
 pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> bool {
     let len = context
         .current_state_ref()
-        .candidate_list
+        .get_candidate_list()
         .get_all_candidates()
         .len();
     if len == 0 {
@@ -216,16 +216,18 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
         context.consolidate_converted_to_to_composite();
         context.set_composition_mode(CompositionMode::PreComposition);
     } else if i >= len as i32 {
-        context.select_composition_candidate(len - 1);
+        context.current_state().set_candidate_pointer_index(len - 1);
         context.enter_register_mode(CompositionMode::CompositionSelection);
     } else {
-        context.select_composition_candidate(i as usize);
+        context
+            .current_state()
+            .set_candidate_pointer_index(i as usize);
     }
     true
 }
 
 pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
-    if context.select_composition_candidate(i) {
+    if context.current_state().set_candidate_pointer_index(i) {
         context.confirm_current_composition_candidate();
         context.set_composition_mode(CompositionMode::Direct);
         return true;
@@ -417,41 +419,20 @@ impl CskkContext {
         }
     }
 
-    fn next_candidate(&mut self) {
-        let current_state = self.current_state();
-        current_state.candidate_list.forward_candidate();
-    }
-
-    fn previous_candidate(&mut self) {
-        let current_state = self.current_state();
-        current_state.candidate_list.backward_candidate();
-    }
-
-    fn set_new_candidates(&mut self, candidates: Vec<Candidate>) {
-        let current_state = self.current_state();
-        let okuri = current_state.converted_kana_to_okuri.to_owned();
-        current_state.candidate_list.set_new_candidates(candidates);
-        current_state.composited_okuri = okuri;
-    }
-
     ///
     /// 現在のraw_to_compositeから変換候補をリストにして、変換候補を指すポインタを0に戻す。
     ///
     fn update_candidate_list(&mut self) {
         let raw_to_composite = self.current_state_ref().get_composite_key();
-        let okuri = self.current_state_ref().converted_kana_to_okuri.to_owned();
         let candidates = get_all_candidates(&self.dictionaries, &raw_to_composite);
-        self.current_state()
-            .candidate_list
-            .set(raw_to_composite, candidates);
-        self.current_state().composited_okuri = okuri;
+        self.current_state().set_new_candidate_list(candidates);
     }
 
     #[allow(unused_must_use)]
     fn purge_current_composition_candidate(&mut self) {
         let current_candidate = self
             .current_state_ref()
-            .candidate_list
+            .get_candidate_list()
             .get_current_candidate()
             .unwrap()
             .clone();
@@ -466,7 +447,7 @@ impl CskkContext {
     fn confirm_current_composition_candidate(&mut self) {
         let current_candidate = self
             .current_state_ref()
-            .candidate_list
+            .get_candidate_list()
             .get_current_candidate()
             .unwrap()
             .clone();
@@ -482,19 +463,15 @@ impl CskkContext {
 
         let current_state = self.current_state();
         current_state.push_letter_or_word(&composited_kanji_and_okuri);
-        current_state.composited_okuri.clear();
         current_state.clear_raw_to_composite();
         current_state.clear_okuri_first_letter();
         current_state.converted_kana_to_composite.clear();
         current_state.converted_kana_to_okuri.clear();
-        current_state.candidate_list.clear();
+        current_state.clear_candidate_list();
     }
 
     fn select_composition_candidate(&mut self, i: usize) -> bool {
-        if self.current_state_ref().candidate_list.is_empty() {
-            return false;
-        }
-        self.current_state().candidate_list.set_selection_pointer(i)
+        self.current_state().set_candidate_pointer_index(i)
     }
 
     // TODO: append_converted_in_input_modeと何が違う？
@@ -527,9 +504,8 @@ impl CskkContext {
 
     fn reset_composited(&mut self) {
         let current_state = self.current_state();
-        current_state.composited_okuri.clear();
         current_state.clear_okuri_first_letter();
-        current_state.candidate_list.clear();
+        current_state.clear_candidate_list();
     }
 
     /// 現在の漢字変換前の本体とおくりがなの文字列をまとめて漢字変換前の文字列にする
@@ -619,12 +595,18 @@ impl CskkContext {
                 if numeric_count != 0
                     && numeric_count
                         == numeric_string_count(
-                            current_state.candidate_list.get_current_to_composite(),
+                            current_state
+                                .get_candidate_list()
+                                .get_current_to_composite(),
                         )
                 {
+                    // 変換する文字列の数字が確定文字列の数字代理と同数含まれる場合(numeric entry)を辞書登録する。
+                    // to_composite:"1かい" confirmed:"#3回" 等。
                     // FIXME: destructuring-bind is unstable yet in current Rust. Fix in future Rust.
                     let pair = to_composite_to_numeric_dict_key(
-                        current_state.candidate_list.get_current_to_composite(),
+                        current_state
+                            .get_candidate_list()
+                            .get_current_to_composite(),
                     );
                     let dict_key = pair.0;
                     let numbers = pair.1;
@@ -639,12 +621,14 @@ impl CskkContext {
                             output,
                         ));
                     }
-                    self.set_new_candidates(candidates);
+                    self.current_state()
+                        .add_new_candidates_for_existing_string_to_composite(candidates);
                 } else {
+                    // numeric entryではない普通の変換候補としてconfirmedを追加する。
                     let candidates = vec![Candidate::new(
                         Arc::new(
                             current_state
-                                .candidate_list
+                                .get_candidate_list()
                                 .get_current_to_composite()
                                 .to_string(),
                         ),
@@ -653,7 +637,8 @@ impl CskkContext {
                         None,
                         confirmed.to_string(),
                     )];
-                    self.set_new_candidates(candidates);
+                    self.current_state()
+                        .add_new_candidates_for_existing_string_to_composite(candidates);
                 }
 
                 self.confirm_current_composition_candidate();
@@ -830,7 +815,7 @@ impl CskkContext {
                 if carry_over.is_empty() {
                     // この部分TryNextCandidateと似ているが、事前条件が違うので共通にできなかった。
                     self.update_candidate_list();
-                    if self.current_state_ref().candidate_list.is_empty() {
+                    if self.current_state_ref().get_candidate_list().is_empty() {
                         self.enter_register_mode(current_composition_mode);
                     } else {
                         self.set_composition_mode(CompositionMode::CompositionSelection);
@@ -1197,10 +1182,10 @@ impl CskkContext {
                     self.purge_current_composition_candidate();
                 }
                 Instruction::NextCandidatePointer => {
-                    self.next_candidate();
+                    self.current_state().forward_candidate();
                 }
                 Instruction::PreviousCandidatePointer => {
-                    self.previous_candidate();
+                    self.current_state().backward_candidate();
                 }
                 Instruction::DeletePrecomposition => {
                     self.delete_precomposition();
@@ -1215,15 +1200,15 @@ impl CskkContext {
                     if initial_composition_mode != CompositionMode::CompositionSelection {
                         self.output_nn_if_any(initial_input_mode, initial_composition_mode);
                         self.update_candidate_list();
-                        if self.current_state_ref().candidate_list.is_empty() {
+                        if self.current_state_ref().get_candidate_list().is_empty() {
                             self.enter_register_mode(initial_composition_mode);
                         } else {
                             self.set_composition_mode(CompositionMode::CompositionSelection);
                         }
-                    } else if !self.current_state_ref().candidate_list.has_next() {
+                    } else if !self.current_state_ref().get_candidate_list().has_next() {
                         self.enter_register_mode(initial_composition_mode);
                     } else {
-                        self.next_candidate();
+                        self.current_state().forward_candidate();
                         self.set_composition_mode(CompositionMode::CompositionSelection);
                     }
                 }
@@ -1234,12 +1219,12 @@ impl CskkContext {
                         log::debug!(
                             "Trying previous candidate on not composition selection mode. Ignore."
                         )
-                    } else if !self.current_state_ref().candidate_list.has_previous() {
+                    } else if !self.current_state_ref().get_candidate_list().has_previous() {
                         self.reset_composited();
                         self.consolidate_converted_to_to_composite();
                         self.set_composition_mode(CompositionMode::PreComposition);
                     } else {
-                        self.previous_candidate();
+                        self.current_state().backward_candidate();
                     }
                 }
                 #[allow(unreachable_patterns)]

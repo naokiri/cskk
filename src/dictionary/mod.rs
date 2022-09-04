@@ -198,14 +198,28 @@ pub(crate) fn to_composite_to_numeric_dict_key(to_composite: &str) -> (String, V
 }
 
 /// Return how many numeric string is in string to composite
+///
+/// compile_fail example for private fn
+/// ```compile_fail
+/// use cskk::dictionary::numeric_string_count;
+/// assert_eq!(numeric_string_count("2かい"), 1);
+/// assert_eq!(numeric_string_count("2がつ13にち"), 2);
+/// ```
 pub(crate) fn numeric_string_count(to_composite: &str) -> usize {
     NUM_REGEX.find_iter(to_composite).count()
 }
 
 /// Return how many numeric special string is in kouho string
+///
+/// compile_fail example for private fn
+/// ```compile_fail
+/// assert_eq!(numeric_entry_count("#1回"), 1);
+/// assert_eq!(numeric_entry_count("#3日"), 1);
+/// ```
+///
 pub(crate) fn numeric_entry_count(entry: &str) -> usize {
     lazy_static! {
-        static ref NUM_ENTRY_REGEX: Regex = Regex::new(r"#[012345]").unwrap();
+        static ref NUM_ENTRY_REGEX: Regex = Regex::new(r"#[0123458]").unwrap();
     }
     NUM_ENTRY_REGEX.find_iter(entry).count()
 }
@@ -370,5 +384,16 @@ pub(crate) trait Dictionary {
     /// Safe to call to read_only dictionary
     fn purge_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
         Ok(false)
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_numeric_string_count() {
+        assert_eq!(numeric_string_count("123つぶ"), 1);
+        assert_eq!(numeric_string_count("1にち1かい"), 2);
+        assert_eq!(numeric_string_count("1じつせんしゅう"), 1);
     }
 }
