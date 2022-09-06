@@ -22,11 +22,11 @@ pub(crate) struct CskkState {
     // そのまま所持せず、計算して出すようにしたいが現バージョンでは保持している。
     raw_to_composite: String,
     // 未確定入力の漢字の読み部分。ひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
-    pub(crate) converted_kana_to_composite: String,
+    converted_kana_to_composite: String,
     // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。convertがあるInputMode時のみ使用
     converted_kana_to_okuri: String,
-    // 未確定入力のおくり仮名の最初の文字。
-    okuri_first_letter: Option<char>,
+    // // 未確定入力のおくり仮名の最初の文字。
+    // okuri_first_letter: Option<char>,
     // 現在の変換候補リスト
     candidate_list: CandidateList,
     // 入力を漢字変換した現在の選択肢の送り仮名部分。 TODO: 保持せずにconverted_kana_to_okuriで良い？
@@ -49,7 +49,7 @@ impl CskkState {
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
             converted_kana_to_okuri: "".to_string(),
-            okuri_first_letter: None,
+            //            okuri_first_letter: None,
             composited_okuri: "".to_string(),
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
@@ -63,22 +63,19 @@ impl CskkState {
         &self.confirmed
     }
 
+    /// 現在の変換前文字列を取得する
+    pub(crate) fn get_to_composite_string(&self) -> &str {
+        &self.converted_kana_to_composite
+    }
+
+    /// 現在の送り文字列を取得する。
+    pub(crate) fn get_okuri_string(&self) -> &str {
+        &self.converted_kana_to_okuri
+    }
+
     /// 現在の確定済み文字列を消去する
     pub(crate) fn flush_confirmed_string(&mut self) {
         self.confirmed.clear();
-    }
-
-    /// charを入力する。Directモードのみ起きうる動作である。
-    pub(crate) fn push_char(&mut self, ch: char) {
-        if self.composition_mode == CompositionMode::Direct {
-            self.confirmed.push(ch);
-        } else {
-            log::error!(
-                "Tried to append char on not direct mode. compositionmode: {:?}, ignored char: {}",
-                self.composition_mode,
-                ch
-            )
-        }
     }
 
     /// 現在のモードで1文字消去する。
@@ -145,7 +142,10 @@ impl CskkState {
             CompositionMode::Direct => {
                 self.confirmed.push_str(letter_or_word);
             }
-            CompositionMode::PreComposition => {}
+            CompositionMode::PreComposition => {
+                self.converted_kana_to_composite.push_str(letter_or_word);
+                self.raw_to_composite.push_str(letter_or_word);
+            }
             CompositionMode::PreCompositionOkurigana => {
                 self.converted_kana_to_okuri.push_str(letter_or_word);
                 self.use_okurigana = true;
@@ -171,21 +171,16 @@ impl CskkState {
         let okuri = self.converted_kana_to_okuri.to_owned();
         // these 2 lines should be a method later
         self.converted_kana_to_composite.push_str(&okuri);
-        self.append_raw_to_composite(&okuri);
+        self.raw_to_composite.push_str(&okuri);
 
         self.converted_kana_to_okuri.clear();
-        self.clear_okuri_first_letter();
         self.use_okurigana = false;
     }
 
-    /// 送り仮名ではないが変換語の後につけるべき文字列を付ける。
+    /// 送り仮名ではないが変換語の後につけるべき文字列を設定する。
     pub(crate) fn set_converted_to_postfix(&mut self, letter_or_word: &str) {
         self.converted_kana_to_okuri = letter_or_word.to_string();
         self.use_okurigana = false;
-    }
-
-    pub(crate) fn get_okuri_string(&self) -> &str {
-        &self.converted_kana_to_okuri
     }
 
     /// 入力した中のかな変換前の入力を全て消す。かな変換済みのものは消えない。
@@ -200,7 +195,7 @@ impl CskkState {
         self.converted_kana_to_composite.clear();
         self.converted_kana_to_okuri.clear();
 
-        self.okuri_first_letter = None;
+        //self.okuri_first_letter = None;
         self.use_okurigana = false;
     }
 
@@ -268,51 +263,26 @@ impl CskkState {
 
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
     pub(crate) fn get_composite_key(&self) -> String {
-        if let Some(c) = self.okuri_first_letter {
-            let mut s = self.raw_to_composite.to_owned();
-            s.push(c);
-            return s;
+        // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字は後から付ける。
+        if self.use_okurigana {
+            // ひらがなはUnicode Scalar Valueなのでchars()で十分。
+            if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
+                if let Some(okuri_first) =
+                    KanaFormChanger::kana_to_okuri_prefix(&first_kana.to_string())
+                {
+                    let mut string = self.raw_to_composite.to_owned();
+                    string.push_str(okuri_first);
+                    return string;
+                }
+            }
         }
-        // // ローマ字ベースではない入力規則のため、送り仮名の最初の文字は後から付ける。
-        // // if self.is_okuri_entered {
-        // // ひらがなはUnicode Scalar Valueなのでchars()で十分。
-        // if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
-        //     if let Some(okuri_first) =
-        //     KanaFormChanger::kana_to_okuri_prefix(&first_kana.to_string())
-        //     {
-        //         let string = self.raw_to_composite.to_owned().add(okuri_first);
-        //         return string;
-        //     }
-        // }
-        // // }
 
         self.raw_to_composite.to_owned()
-    }
-
-    // FIXME: 本来はstate内での齟齬を防ぐために、これをpub(crate)ではなくして個別で操作できないように他の内容を操作するメソッドで同時管理したい。
-    pub(crate) fn append_raw_to_composite(&mut self, str: &str) {
-        self.raw_to_composite.push_str(str);
-    }
-
-    // FIXME: 本来は他の状態を変更するメソッドのみで、composite_keyは計算して出す値にしたい。
-    /// delete 1 letter from raw_to_composite
-    pub(crate) fn delete_char_from_raw_to_composite(&mut self) {
-        self.raw_to_composite.pop();
     }
 
     // FIXME: 本来は他の状態を変更するメソッドのみで、composite_keyは計算して出す値にしたい。
     pub(crate) fn clear_raw_to_composite(&mut self) {
         self.raw_to_composite.clear();
-    }
-
-    pub(crate) fn try_set_okuri_first_letter(&mut self, c: char) {
-        if self.okuri_first_letter == None {
-            self.okuri_first_letter = Some(c);
-        }
-    }
-
-    pub(crate) fn clear_okuri_first_letter(&mut self) {
-        self.okuri_first_letter = None;
     }
 
     // FIXME: 本来はおくりがな等のセットで自動的にセットしたい
@@ -384,7 +354,7 @@ impl Debug for CskkState {
                 &self.converted_kana_to_composite,
             )
             .field("converted_kana_to_okuri", &self.converted_kana_to_okuri)
-            .field("okuri_first_letter", &self.okuri_first_letter)
+            //            .field("okuri_first_letter", &self.okuri_first_letter)
             .field("composited_okuri", &self.composited_okuri)
             .field("confirmed", &self.confirmed)
             .field("capital_transition", &self.capital_transition)
@@ -408,7 +378,6 @@ impl CskkState {
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
             converted_kana_to_okuri: "".to_string(),
-            okuri_first_letter: None,
             composited_okuri: "".to_string(),
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),

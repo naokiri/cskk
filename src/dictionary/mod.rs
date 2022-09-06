@@ -387,6 +387,7 @@ pub(crate) trait Dictionary {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 

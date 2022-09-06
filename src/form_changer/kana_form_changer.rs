@@ -236,7 +236,7 @@ impl KanaFormChanger {
     /// ddskkのskk-rom-kana-vectorの対応。
     ///
     pub(crate) fn kana_to_okuri_prefix(kana: &str) -> Option<&str> {
-        KANA_ROM_MAP.get(kana).map(|x| *x)
+        KANA_ROM_MAP.get(kana).copied()
     }
 }
 
