@@ -25,8 +25,6 @@ pub(crate) struct CskkState {
     converted_kana_to_composite: String,
     // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。convertがあるInputMode時のみ使用
     converted_kana_to_okuri: String,
-    // // 未確定入力のおくり仮名の最初の文字。
-    // okuri_first_letter: Option<char>,
     // 現在の変換候補リスト
     candidate_list: CandidateList,
     // 入力を漢字変換した現在の選択肢の送り仮名部分。 TODO: 保持せずにconverted_kana_to_okuriで良い？
@@ -49,7 +47,6 @@ impl CskkState {
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
             converted_kana_to_okuri: "".to_string(),
-            //            okuri_first_letter: None,
             composited_okuri: "".to_string(),
             confirmed: "".to_string(),
             candidate_list: CandidateList::new(),
@@ -195,7 +192,6 @@ impl CskkState {
         self.converted_kana_to_composite.clear();
         self.converted_kana_to_okuri.clear();
 
-        //self.okuri_first_letter = None;
         self.use_okurigana = false;
     }
 
@@ -354,7 +350,7 @@ impl Debug for CskkState {
                 &self.converted_kana_to_composite,
             )
             .field("converted_kana_to_okuri", &self.converted_kana_to_okuri)
-            //            .field("okuri_first_letter", &self.okuri_first_letter)
+            .field("use_okurigana", &self.use_okurigana)
             .field("composited_okuri", &self.composited_okuri)
             .field("confirmed", &self.confirmed)
             .field("capital_transition", &self.capital_transition)

@@ -1128,14 +1128,9 @@ impl CskkContext {
         // If composite_key ends with auto_start_henkan keywords and also the composite_key is not empty,
         // remove that from key and enter composition selection mode.
         let mut done = false;
+        let composite_key = self.current_state_ref().get_composite_key();
         for suffix in &self.config.auto_start_henkan_keywords.clone() {
-            if !done
-                && !self.current_state_ref().get_composite_key().eq(suffix)
-                && self
-                    .current_state_ref()
-                    .get_composite_key()
-                    .ends_with(suffix)
-            {
+            if !done && !composite_key.eq(suffix) && composite_key.ends_with(suffix) {
                 // suffix matched the current composite_key's end
                 // Now remove suffix from composite_key and put it to postfix.
                 for _ in 0..suffix.chars().count() {

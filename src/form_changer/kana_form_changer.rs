@@ -69,6 +69,11 @@ lazy_static! {
         ["や", "y"],
         ["ゆ", "y"],
         ["よ", "y"],
+        ["ら", "r"],
+        ["り", "r"],
+        ["る", "r"],
+        ["れ", "r"],
+        ["ろ", "r"],
         ["わ", "w"],
         ["ゐ", "x"],
         ["ゑ", "x"],
@@ -284,5 +289,12 @@ mod tests {
         let changer = KanaFormChanger::test_kana_form_changer();
         let actual = changer.adjust_kana_string(InputMode::Hiragana, "っ");
         assert_eq!("っ", actual);
+    }
+
+    #[test]
+    fn kana_to_okuri_prefix() {
+        assert_eq!(Some("r"), KanaFormChanger::kana_to_okuri_prefix("り"));
+        assert_eq!(Some("s"), KanaFormChanger::kana_to_okuri_prefix("す"));
+        assert_eq!(Some("w"), KanaFormChanger::kana_to_okuri_prefix("わ"));
     }
 }

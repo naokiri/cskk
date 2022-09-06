@@ -9,8 +9,8 @@ use cskk::dictionary::CskkDictionary;
 use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
-    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
+    skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
+    skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -1066,6 +1066,21 @@ fn register_more_for_existing_candidate() {
         InputMode::Hiragana,
         "A space space",
         "▼候補",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn basic_okuri_ari() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "T u k u R i",
+        "▼作り",
         "",
         InputMode::Hiragana,
     );
