@@ -1101,3 +1101,19 @@ fn okuri_more_than_2_hiragana() {
         InputMode::Hiragana,
     );
 }
+
+#[ignore]
+fn basic_abbreviation_mode() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/abbreviation.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h a l a z a space",
+        "▼カラザ",
+        "",
+        InputMode::Hiragana,
+    );
+}

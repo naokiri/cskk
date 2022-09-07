@@ -147,7 +147,9 @@ impl CskkState {
                 self.converted_kana_to_okuri.push_str(letter_or_word);
                 self.use_okurigana = true;
             }
-            CompositionMode::Abbreviation => {}
+            CompositionMode::Abbreviation => {
+                // TODO: Abbreviationモード実装
+            }
             CompositionMode::CompositionSelection => {
                 self.confirmed.push_str(letter_or_word);
             }
