@@ -1085,3 +1085,19 @@ fn basic_okuri_ari() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn okuri_more_than_2_hiragana() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/2letter_okuri.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "I T t e",
+        "▼言って",
+        "",
+        InputMode::Hiragana,
+    );
+}
