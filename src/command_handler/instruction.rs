@@ -1,5 +1,4 @@
 use crate::{CompositionMode, CskkError, InputMode};
-use regex::internal::Inst;
 use regex::Regex;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer};
