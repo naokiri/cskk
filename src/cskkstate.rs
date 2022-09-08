@@ -291,7 +291,6 @@ impl CskkState {
         self.raw_to_composite.to_owned()
     }
 
-    // FIXME: 本来はおくりがな等のセットで自動的にセットしたい
     pub(crate) fn set_capital_transition(&mut self, has_transitioned: bool) {
         self.capital_transition = has_transitioned;
     }
@@ -370,25 +369,4 @@ impl Debug for CskkState {
 }
 
 #[cfg(test)]
-impl CskkState {
-    pub fn new_test_state(
-        input_mode: InputMode,
-        composition_mode: CompositionMode,
-        pre_conversion: Vec<Keysym>,
-    ) -> Self {
-        Self {
-            input_mode,
-            composition_mode,
-            previous_composition_mode: composition_mode,
-            pre_conversion,
-            raw_to_composite: "".to_string(),
-            converted_kana_to_composite: "".to_string(),
-            converted_kana_to_okuri: "".to_string(),
-            composited_okuri: "".to_string(),
-            confirmed: "".to_string(),
-            candidate_list: CandidateList::new(),
-            capital_transition: false,
-            use_okurigana: false,
-        }
-    }
-}
+impl CskkState {}
