@@ -70,7 +70,35 @@ impl CskkState {
         &self.converted_kana_to_okuri
     }
 
-    /// 現在の確定済み文字列を消去する
+    /// 入力した中のかな変換前の入力を全て消す。かな変換済みのものは消えない。
+    pub(crate) fn clear_preconverted_kanainputs(&mut self) {
+        self.pre_conversion.clear();
+        self.capital_transition = false;
+    }
+
+    /// 入力した中のかな入力を全て消す。漢字変換済みのものは消えない。
+    pub(crate) fn clear_kanas(&mut self) {
+        self.clear_preconverted_kanainputs();
+        self.converted_kana_to_composite.clear();
+        self.converted_kana_to_okuri.clear();
+
+        self.use_okurigana = false;
+    }
+
+    /// 確定済みではない入力を全て消す。
+    pub(crate) fn clear_unconfirmed(&mut self) {
+        self.raw_to_composite.clear();
+        self.clear_candidate_list();
+        self.clear_kanas();
+    }
+
+    /// 確定済みのものも含めて入力を全て消す
+    pub(crate) fn clear_all(&mut self) {
+        self.confirmed.clear();
+        self.clear_unconfirmed();
+    }
+
+    /// 現在の確定済み文字列のみを消去する
     pub(crate) fn flush_confirmed_string(&mut self) {
         self.confirmed.clear();
     }
@@ -182,21 +210,6 @@ impl CskkState {
         self.use_okurigana = false;
     }
 
-    /// 入力した中のかな変換前の入力を全て消す。かな変換済みのものは消えない。
-    pub(crate) fn clear_preconverted_kanainputs(&mut self) {
-        self.pre_conversion.clear();
-        self.capital_transition = false;
-    }
-
-    /// 入力した中のかなを全て消す。漢字済みのものは消えない。
-    pub(crate) fn clear_kanas(&mut self) {
-        self.clear_preconverted_kanainputs();
-        self.converted_kana_to_composite.clear();
-        self.converted_kana_to_okuri.clear();
-
-        self.use_okurigana = false;
-    }
-
     pub(crate) fn preedit_string(
         &self,
         kana_form_changer: &KanaFormChanger,
@@ -261,7 +274,7 @@ impl CskkState {
 
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
     pub(crate) fn get_composite_key(&self) -> String {
-        // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字は後から付ける。
+        // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字はひらがなから対応表を引く。
         if self.use_okurigana {
             // ひらがなはUnicode Scalar Valueなのでchars()で十分。
             if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
@@ -276,11 +289,6 @@ impl CskkState {
         }
 
         self.raw_to_composite.to_owned()
-    }
-
-    // FIXME: 本来は他の状態を変更するメソッドのみで、composite_keyは計算して出す値にしたい。
-    pub(crate) fn clear_raw_to_composite(&mut self) {
-        self.raw_to_composite.clear();
     }
 
     // FIXME: 本来はおくりがな等のセットで自動的にセットしたい

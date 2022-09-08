@@ -1,4 +1,5 @@
 use crate::{CompositionMode, CskkError, InputMode};
+use regex::internal::Inst;
 use regex::Regex;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer};
@@ -18,6 +19,7 @@ pub(crate) enum Instruction {
     OutputNNIfAny(InputMode),
     FlushPreviousCarryOver,
     FlushConvertedKana,
+    ClearUnconfirmedInputs,
     ChangeCompositionMode(CompositionMode),
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
     FinishKeyEvent,
@@ -63,6 +65,7 @@ impl FromStr for Instruction {
             "Abort" => Some(Instruction::Abort),
             "FlushPreviousCarryOver" => Some(Instruction::FlushPreviousCarryOver),
             "FlushConvertedKana" => Some(Instruction::FlushConvertedKana),
+            "ClearUnconfirmedInputs" => Some(Instruction::ClearUnconfirmedInputs),
             "FinishKeyEvent" => Some(Instruction::FinishKeyEvent),
             "UpdateCandidateList" => Some(Instruction::UpdateCandidateList),
             "NextCandidatePointer" => Some(Instruction::NextCandidatePointer),

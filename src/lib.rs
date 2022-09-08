@@ -376,7 +376,7 @@ impl CskkContext {
             purge_candidate(cskkdict, &current_candidate);
         }
 
-        self.reset_current_state();
+        self.current_state().clear_all();
     }
 
     // TODO: make this internal to cskkstate state内でfieldの齟齬が起きないようにcskkstate内の関数にする
@@ -400,9 +400,7 @@ impl CskkContext {
 
         let current_state = self.current_state();
         current_state.push_string(&composited_kanji_and_okuri);
-        current_state.clear_raw_to_composite();
-        current_state.clear_kanas();
-        current_state.clear_candidate_list();
+        current_state.clear_unconfirmed();
     }
 
     fn confirm_current_kana_to_composite(&mut self, temporary_input_mode: InputMode) {
@@ -412,23 +410,7 @@ impl CskkContext {
             .to_owned();
 
         self.append_converted_in_input_mode(&kana, temporary_input_mode);
-        let current_state = self.current_state();
-        current_state.clear_raw_to_composite();
-        current_state.clear_kanas();
-    }
-
-    fn reset_carry_over(&mut self) -> bool {
-        let current_state = self.current_state();
-        let do_reset = !current_state.pre_conversion.is_empty();
-        current_state.pre_conversion.clear();
-        current_state.set_capital_transition(false);
-        do_reset
-    }
-
-    fn reset_converted_kanas(&mut self) {
-        let current_state = self.current_state();
-        current_state.clear_raw_to_composite();
-        current_state.clear_kanas();
+        self.current_state().clear_unconfirmed();
     }
 
     /// Set the current composition mode.
@@ -450,15 +432,7 @@ impl CskkContext {
         while self.state_stack.len() > 1 {
             self.state_stack.pop();
         }
-        self.reset_current_state();
-    }
-
-    fn reset_current_state(&mut self) {
-        self.current_state().clear_raw_to_composite();
-        self.current_state().set_capital_transition(false);
-        self.reset_carry_over();
-        self.current_state().clear_kanas();
-        self.current_state().clear_candidate_list();
+        self.current_state().clear_all();
     }
 
     /// Register modeの時のみRegister用のスタックをpopして以前の状態に復帰させる。
@@ -1022,7 +996,10 @@ impl CskkContext {
                     self.current_state().clear_preconverted_kanainputs();
                 }
                 Instruction::FlushConvertedKana => {
-                    self.reset_converted_kanas();
+                    self.current_state().clear_kanas();
+                }
+                Instruction::ClearUnconfirmedInputs => {
+                    self.current_state().clear_unconfirmed();
                 }
                 Instruction::Abort => {
                     // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
