@@ -9,8 +9,8 @@ use cskk::dictionary::CskkDictionary;
 use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_process_key_events_rs, skk_context_reload_dictionary, skk_context_reset_rs,
-    skk_context_save_dictionaries_rs, skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
+    skk_context_reload_dictionary, skk_context_reset_rs, skk_context_save_dictionaries_rs,
+    skk_context_set_auto_start_henkan_keywords_rs, CskkContext,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -783,8 +783,24 @@ fn register_number() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "Q 1 k a i space",
-        "▼１かい",
+        "Q 2 k a i space",
+        "▼２かい",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn numeric_type_4() {
+    init_test_logger();
+    let dict = CskkDictionary::new_user_dict("tests/data/number_jisyo.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "Q 1 n i t i space",
+        "▼初日",
         "",
         InputMode::Hiragana,
     );
@@ -842,6 +858,32 @@ fn abort_precomposite_mode() {
         InputMode::Hiragana,
         "A K C-g A K i space",
         "▼開き",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn abort_composition_by_previous_candidate() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A i space x",
+        "▽あい",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    // Not あ*き。consolidate。
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A K i x",
+        "▽あき",
         "",
         InputMode::Hiragana,
     );
@@ -968,6 +1010,109 @@ fn auto_start_henkan_without_kana() {
         InputMode::Hiragana,
         "C period",
         "▽。",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn register_more_for_existing_candidate() {
+    init_test_logger();
+    let dict = CskkDictionary::new_user_dict("tests/data/register_test_dict.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space",
+        "▼候補",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space",
+        "▼あ【】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space i Return",
+        "",
+        "い",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space",
+        "▼い",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space space",
+        "▼候補",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn basic_okuri_ari() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "T u k u R i",
+        "▼作り",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn okuri_more_than_2_hiragana() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/2letter_okuri.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "I T t e",
+        "▼言って",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[ignore]
+fn basic_abbreviation_mode() {
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict("tests/data/abbreviation.dat", "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h a l a z a space",
+        "▼カラザ",
         "",
         InputMode::Hiragana,
     );
