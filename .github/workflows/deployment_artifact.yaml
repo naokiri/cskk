@@ -65,6 +65,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/debian/libcskk_${{ needs.build_artifact.outputs.version }}_amd64.deb            
+            target/debian/libcskk_${{ steps.versions.outputs.version }}_amd64.deb            
           
 
