@@ -70,25 +70,6 @@ pub struct CskkContext {
     //rule: CskkRuleMetadataEntry,
 }
 
-/// C interface equivalents useful for testing? Might stop exposing at any point of update.
-/// Dictionary are exposed to library user directly, so use CskkDictionary::new_static_dict instead.
-pub fn skk_file_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::new_static_dict(path_string, encoding).expect("Load static dict")
-}
-
-/// C interface equivalents useful for testing? Might stop exposing at any point of update.
-/// Dictionary are exposed to library user directly, so use CskkDictionary::new_user_dict instead.
-pub fn skk_user_dict_new_rs(path_string: &str, encoding: &str) -> CskkDictionary {
-    CskkDictionary::new_user_dict(path_string, encoding).expect("Load user dict")
-}
-
-/// Testing purpose? Use CskkContext::new instead. This interface might be deleted at any update.
-///
-pub fn skk_context_new_rs(dictionaries: Vec<Arc<CskkDictionary>>) -> CskkContext {
-    CskkContext::new(InputMode::Hiragana, CompositionMode::Direct, dictionaries)
-        .expect("Failed to create cskk context")
-}
-
 /// Test purpose only.
 pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
     context.process_key_events_string(keyevents)
@@ -1507,7 +1488,8 @@ mod unit_tests {
     use crate::testhelper::init_test_logger;
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
-        let dict = Arc::new(skk_file_dict_new_rs("tests/data/SKK-JISYO.S", "euc-jp"));
+        let dict =
+            Arc::new(CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap());
         let dictionaries = vec![dict];
 
         let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("assets/rules")
