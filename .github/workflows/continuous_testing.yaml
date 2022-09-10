@@ -112,7 +112,7 @@ jobs:
         with:
           toolchain: stable
           command: install
-          args: cargo-c --version 0.9.6
+          args: cargo-c --version 0.9.12
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
