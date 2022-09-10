@@ -1,6 +1,6 @@
 [package]
 name = "cskk"
-version = "0.7.0"
+version = "0.8.1"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 license = "GPL-3.0-or-later"
 edition = "2018"
@@ -8,7 +8,7 @@ readme = "README.md"
 description = "C ABIから使う事を目的とした SKK(Simple Kana Kanji henkan)方式のかな漢字変換ライブラリ"
 repository = "https://github.com/naokiri/cskk"
 categories = ["internationalization", "text-processing"]
-rust-version = "1.56"
+rust-version = "1.59"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -18,7 +18,7 @@ capi = []
 
 [dependencies]
 log = "^0.4.17"
-xkbcommon = "^0.4.0"
+xkbcommon = "^0.5.0"
 bitflags = "1.0.4"
 enum-display-derive = "^0.1.0"
 serde = "^1.0"
@@ -34,10 +34,16 @@ xdg = { version = "^2.4" }
 anyhow = { version = "^1.0.62" }
 
 [dev-dependencies]
-env_logger = "0.8"
+env_logger = "^0.9.0"
+
+[profile.release]
+strip = "debuginfo"
 
 [package.metadata.capi]
 min_version = "0.9.6"
+
+[package.metadata.capi.library]
+install_subdir = "cskk"
 
 [package.metadata.capi.header]
 name = "libcskk"
@@ -50,3 +56,21 @@ description = "SKK (Simple Kana Kanji) henkan library"
 [package.metadata.capi.install.data]
 subdirectory = "libcskk"
 asset = [{ from = "assets/**/*" }]
+
+[package.metadata.deb]
+name = "libcskk"
+features = ["capi"]
+section = "libdevel"
+extended-description = """\
+Library to deal with Japanese input method.
+SKK stands for 'Simple Kana to Kanji conversion'.
+"""
+preserve-symlinks = true
+# x86_64 specific, depends on cargo-c too.
+# Includes development assets too.
+assets = [["assets/**/*", "usr/local/share/", "644"],
+    ["target/release/libcskk.so", "usr/local/lib/cskk", "755"],
+    # ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
+    ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk", "644"],
+    ["target/x86_64-unknown-linux-gnu/release/cskk.pc", "usr/local/lib/pkgconfig", "644"],
+    ["target/x86_64-unknown-linux-gnu/release/libcskk.h", "usr/local/include/cskk", "644"]]

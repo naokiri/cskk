@@ -37,7 +37,7 @@ jobs:
     name: cargo test
     strategy:
       matrix:
-        channel: [ stable, 1.56 ]
+        channel: [ stable, 1.59 ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -71,11 +71,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
+      - name: check version
+        id: versions
+        run: |
+          echo ::set-output name=version::`bin/version.sh`
+          echo ::set-output name=major-version::`bin/major_version.sh`
+      - name: output version
+        run: | 
+          echo Version: ${{ steps.versions.outputs.version }} 
+          echo MajorVersion: ${{ steps.versions.outputs.major-version }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
           override: true
       - uses: actions/cache@v3
         with:
@@ -86,9 +94,12 @@ jobs:
             ~/.cargo/git/db/
             target
           key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
+      - name: Check rustup toolchain
+        run: rustup default
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
+          toolchain: stable
           command: install
           args: cbindgen
       - name: cargo-c-exists
@@ -99,8 +110,9 @@ jobs:
         if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
         uses: actions-rs/cargo@v1
         with:
+          toolchain: stable
           command: install
-          args: cargo-c --version 0.9.6
+          args: cargo-c --version 0.9.12
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
@@ -112,6 +124,7 @@ jobs:
       - name: Build library
         uses: actions-rs/cargo@v1
         with:
+          toolchain: stable
           command: cbuild
 #      - name: Install library
 #        uses: actions-rs/cargo@v1
@@ -125,7 +138,7 @@ jobs:
         run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
       - name: link lib versioning (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.0
+        run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.${{ steps.versions.outputs.major-version }}
       - name: Show built file
         if: matrix.os == 'ubuntu-latest'
         run: ls -l ./target/*
@@ -143,7 +156,7 @@ jobs:
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
         if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.0.7.0.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
         if: matrix.os == 'macOS-latest'
         run: ls -l ./target/*

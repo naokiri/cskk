@@ -1,0 +1,78 @@
+name: Release x86_64 deb artifact that includes so file, a file and headers
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build_artifact:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      major-version: ${{ steps.versions.outputs.major-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          ref: ${{ github.ref }}
+      - name: check version
+        id: versions
+        run: |
+          echo ::set-output name=version::`bin/version.sh`
+          echo ::set-output name=major-version::`bin/major_version.sh`
+      - name: Check tag matches version
+        run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
+      - name: Install cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Install cbindgen
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cbindgen
+      - name: cargo-c-exists
+        id: cargoCCheck
+        run: test -e ~/.cargo/bin/cargo-cbuild
+        continue-on-error: true
+      - name: Install cargo-c
+        if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-c --version 0.9.6
+      - name: Install required libs (Ubuntu)
+        run: sudo apt-get install libxkbcommon-dev
+      - name: Build library
+        uses: actions-rs/cargo@v1
+        with:
+          command: cbuild
+          args: --release
+#      - name: Build symbolic links
+#        run: bin/generate_deb_symlinks.sh
+  build_deb:
+    runs-on: ubuntu-latest
+    needs: [build_artifact]
+    steps:
+      - name: Install cargo-deb
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-deb
+      - name: Prepare deb file
+        uses: actions-rs/cargo@v1
+        with:
+          command: deb
+  upload_artifact:
+    runs-on: ubuntu-latest
+    needs: [build_artifact, build_deb]
+    steps:
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/debian/libcskk_${{ needs.build_artifact.outputs.version }}_amd64.deb            
+          
+
