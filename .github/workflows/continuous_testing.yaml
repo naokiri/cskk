@@ -97,6 +97,7 @@ jobs:
       - name: Install cbindgen
         uses: actions-rs/cargo@v1
         with:
+          toolchain: stable
           command: install
           args: cbindgen
       - name: cargo-c-exists
@@ -107,6 +108,7 @@ jobs:
         if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
         uses: actions-rs/cargo@v1
         with:
+          toolchain: stable
           command: install
           args: cargo-c --version 0.9.6
       - name: Install required libs (Ubuntu)
