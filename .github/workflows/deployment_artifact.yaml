@@ -1,4 +1,4 @@
-name: Release x86_64 deb artifact
+name: Release x86_64 deb artifact that includes so file, a file and headers
 on:
   release:
     types:
@@ -21,8 +21,7 @@ jobs:
           echo ::set-output name=version::`bin/version.sh`
           echo ::set-output name=major-version::`bin/major_version.sh`
       - name: Check tag matches version
-#        run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
-        run: echo pass
+        run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
@@ -51,8 +50,8 @@ jobs:
         with:
           command: cbuild
           args: --release
-      - name: Build symbolic links
-        run: bin/generate_deb_symlinks.sh
+#      - name: Build symbolic links
+#        run: bin/generate_deb_symlinks.sh
   build_deb:
     runs-on: ubuntu-latest
     needs: [build_artifact]
