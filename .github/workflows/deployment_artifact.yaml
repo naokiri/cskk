@@ -42,7 +42,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-c 
+          args: cargo-c
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Build library
@@ -52,10 +52,6 @@ jobs:
           args: --release
 #      - name: Build symbolic links
 #        run: bin/generate_deb_symlinks.sh
-  build_deb:
-    runs-on: ubuntu-latest
-    needs: [build_artifact]
-    steps:
       - name: Install cargo-deb
         uses: actions-rs/cargo@v1
         with:
@@ -65,10 +61,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: deb
-  upload_artifact:
-    runs-on: ubuntu-latest
-    needs: [build_artifact, build_deb]
-    steps:
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
         with:
