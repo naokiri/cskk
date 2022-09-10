@@ -17,6 +17,105 @@ struct KanaFormMap {
     jisx0201: BTreeMap<String, String>,
 }
 
+macro_rules! btreemap {
+        ($([$key:expr,$val:expr]),*) => {
+            {
+            let mut map = BTreeMap::new();
+            $(
+                map.insert($key,$val);
+            )*
+
+            map
+            }
+        };
+    }
+lazy_static! {
+    static ref KANA_ROM_MAP: BTreeMap<&'static str, &'static str> = btreemap![
+        ["あ", "a"],
+        ["い", "i"],
+        ["う", "u"],
+        ["え", "e"],
+        ["お", "o"],
+        ["か", "k"],
+        ["き", "k"],
+        ["く", "k"],
+        ["け", "k"],
+        ["こ", "k"],
+        ["さ", "s"],
+        ["し", "s"],
+        ["す", "s"],
+        ["せ", "s"],
+        ["そ", "s"],
+        ["た", "t"],
+        ["ち", "t"],
+        ["つ", "t"],
+        ["て", "t"],
+        ["と", "t"],
+        ["な", "n"],
+        ["に", "n"],
+        ["ぬ", "n"],
+        ["ね", "n"],
+        ["の", "n"],
+        ["は", "h"],
+        ["ひ", "h"],
+        ["ふ", "h"],
+        ["へ", "h"],
+        ["ほ", "h"],
+        ["ま", "m"],
+        ["み", "m"],
+        ["む", "m"],
+        ["め", "m"],
+        ["も", "m"],
+        ["や", "y"],
+        ["ゆ", "y"],
+        ["よ", "y"],
+        ["ら", "r"],
+        ["り", "r"],
+        ["る", "r"],
+        ["れ", "r"],
+        ["ろ", "r"],
+        ["わ", "w"],
+        ["ゐ", "x"],
+        ["ゑ", "x"],
+        ["を", "w"],
+        ["ん", "n"],
+        ["が", "g"],
+        ["ぎ", "g"],
+        ["ぐ", "g"],
+        ["げ", "g"],
+        ["ご", "g"],
+        ["ざ", "z"],
+        ["じ", "z"], // ddskkでは"じ"が送り仮名の場合"j"として処理するのがデフォルト値だが、SKK-JISYO.S等ではzの送り仮名を用いることが多いのでこちらを用いる。
+        ["ず", "z"],
+        ["ぜ", "z"],
+        ["ぞ", "z"],
+        ["だ", "d"],
+        ["ぢ", "d"],
+        ["づ", "d"],
+        ["で", "d"],
+        ["ど", "d"],
+        ["ば", "b"],
+        ["び", "b"],
+        ["ぶ", "b"],
+        ["べ", "b"],
+        ["ぼ", "b"],
+        ["ぱ", "p"],
+        ["ぴ", "p"],
+        ["ぷ", "p"],
+        ["ぺ", "p"],
+        ["ぽ", "p"],
+        ["ぁ", "x"],
+        ["ぃ", "x"],
+        ["ぅ", "x"],
+        ["ぇ", "x"],
+        ["ぉ", "x"],
+        ["っ", "t"], // ddskk 16.2ではxがデフォルトだが、SKK-JISYO.Lなどでは撥音便の用語はtで収録されているため。'いt'等。
+        ["ゃ", "x"],
+        ["ゅ", "x"],
+        ["ょ", "x"],
+        ["ゎ", "x"]
+    ];
+}
 impl KanaFormChanger {
     pub fn default_kanaform_changer() -> Self {
         let filepath = filepath_from_xdg_data_dir("libcskk/rule/kana_form.toml");
@@ -136,6 +235,14 @@ impl KanaFormChanger {
             adjusted,
         )
     }
+
+    ///
+    /// ひらがな一文字からローマ字の最初のアルファベット一文字を返す。
+    /// ddskkのskk-rom-kana-vectorの対応。
+    ///
+    pub(crate) fn kana_to_okuri_prefix(kana: &str) -> Option<&str> {
+        KANA_ROM_MAP.get(kana).copied()
+    }
 }
 
 #[cfg(test)]
@@ -182,5 +289,12 @@ mod tests {
         let changer = KanaFormChanger::test_kana_form_changer();
         let actual = changer.adjust_kana_string(InputMode::Hiragana, "っ");
         assert_eq!("っ", actual);
+    }
+
+    #[test]
+    fn kana_to_okuri_prefix() {
+        assert_eq!(Some("r"), KanaFormChanger::kana_to_okuri_prefix("り"));
+        assert_eq!(Some("s"), KanaFormChanger::kana_to_okuri_prefix("す"));
+        assert_eq!(Some("w"), KanaFormChanger::kana_to_okuri_prefix("わ"));
     }
 }
