@@ -50,8 +50,8 @@ jobs:
         with:
           command: cbuild
           args: --release
-#      - name: Build symbolic links
-#        run: bin/generate_deb_symlinks.sh
+      - name: Build symbolic links
+        run: bin/generate_deb_symlinks.sh
       - name: Install cargo-deb
         uses: actions-rs/cargo@v1
         with:

@@ -6,4 +6,4 @@ major_version=`./bin/major_version.sh`
 
 (cd deb_assets &&
 ln -sf libcskk.so.$version libcskk.so.$major_version &&
-ln -sf libcskk.so.$version libcskk.so)
+ln -sf libcskk.so.$major_version libcskk.so)
