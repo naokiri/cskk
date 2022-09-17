@@ -68,8 +68,8 @@ SKK stands for 'Simple Kana to Kanji conversion'.
 """
 preserve-symlinks = true
 # x86_64 specific, depends on cargo-c too.
-# Includes development assets too.
-assets = [["assets/**/*", "usr/local/share/", "644"],
+# Includes development things like static link lib and header files too.
+assets = [["assets/**/*", "usr/local/share/libcskk", "644"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.0.8.2", "755"],
     ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk/", "644"],

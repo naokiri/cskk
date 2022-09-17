@@ -41,7 +41,8 @@ In Ubuntu e.g.
 ## Install
 
 When you have root priviledge, run the following.
-This will run `cargo cbuild --release` and install the files generated under target/{arch}/release and the data under assets/ to proper directories.
+`cargo cbuild --release` 
+This installs the files generated under target/{arch}/release to proper system directories and the data under assets/ to proper proper data directory's libcskk/ direcotry.
 
 ```shell
     cargo cinstall --release
