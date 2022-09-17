@@ -1,6 +1,7 @@
 [package]
 name = "cskk"
-version = "0.8.1"
+# Have to also change the deb package destination filename below
+version = "0.8.2"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 license = "GPL-3.0-or-later"
 edition = "2018"
@@ -69,8 +70,8 @@ preserve-symlinks = true
 # x86_64 specific, depends on cargo-c too.
 # Includes development assets too.
 assets = [["assets/**/*", "usr/local/share/", "644"],
-    ["target/x86_64-unknown-linux-gnu/release/libcskk.so", "usr/local/lib/cskk/libcskk.so", "755"],
-    # ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
+    ["target/x86_64-unknown-linux-gnu/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.0.8.2", "755"],
+    ["deb_assets/lib*", "usr/local/lib/cskk", "777"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk/", "644"],
     ["target/x86_64-unknown-linux-gnu/release/cskk.pc", "usr/local/lib/pkgconfig/", "644"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.h", "usr/local/include/cskk/", "644"]]

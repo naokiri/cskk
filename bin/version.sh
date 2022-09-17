@@ -3,4 +3,4 @@
 # Helper for release automation
 
 set -e
-grep ^version Cargo.toml | cut -d' ' -f3 | sed -e 's/"//g'
+grep "^version =" Cargo.toml | cut -d' ' -f3 | sed -e 's/"//g'
