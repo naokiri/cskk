@@ -49,7 +49,7 @@ Ubuntu等では以下のコマンドでインストール
 ## インストール方法
 
 root権限がある場合、以下を実行する。
-これは`cargo cbuild --release`でtarget/{arch}/release/以下に生成されたファイルとassets/以下のファイルを適切なディレクトリにインストールする。
+これは`cargo cbuild --release`でtarget/{arch}/release/以下に生成されたファイルを適切なシステムのディレクトリに、そしてassets/以下のファイルを適切なデータディレクトリのlibcskk/以下にインストールする。
 
 ```shell
     cargo cinstall --release
