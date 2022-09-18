@@ -35,7 +35,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysyms, Keysym};
+use xkbcommon::xkb::Keysym;
 
 mod candidate_list;
 #[cfg(feature = "capi")]
@@ -544,6 +544,7 @@ impl CskkContext {
 
         if let Some((converted_kana, carry_over)) = greedy_kana_convert_result {
             let converted_kana = converted_kana.to_owned();
+            let carry_over = carry_over.to_owned();
             return match composition_mode {
                 CompositionMode::Direct => {
                     let kana_form_changer = &self.kana_form_changer;
@@ -551,6 +552,8 @@ impl CskkContext {
                         kana_form_changer.adjust_kana_string(input_mode, &converted_kana);
                     self.current_state()
                         .push_string_for_composition_mode(&adjusted, composition_mode);
+                    self.current_state().clear_preconverted_kanainputs();
+                    self.set_carry_over(&carry_over);
                     true
                 }
                 CompositionMode::PreComposition => {
@@ -559,6 +562,7 @@ impl CskkContext {
                         CompositionMode::PreComposition,
                     );
                     self.current_state().clear_preconverted_kanainputs();
+                    self.set_carry_over(&carry_over);
                     true
                 }
                 CompositionMode::PreCompositionOkurigana => {
@@ -566,6 +570,7 @@ impl CskkContext {
                     self.current_state()
                         .push_string_for_composition_mode(&converted_kana, composition_mode);
                     self.current_state().clear_preconverted_kanainputs();
+                    self.set_carry_over(&carry_over);
                     true
                 }
                 _ => false,
@@ -1336,6 +1341,7 @@ impl Display for CskkState {
 mod unit_tests {
     use super::*;
     use crate::testhelper::init_test_logger;
+    use xkbcommon::xkb::keysyms;
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
         let dict =
