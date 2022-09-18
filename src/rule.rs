@@ -136,28 +136,22 @@ impl CskkRuleMetadata {
     pub(crate) fn load_metadata() -> Result<Self, CskkError> {
         let base_directory = xdg::BaseDirectories::new()?;
         if let Some(rule_directory) = base_directory.find_data_file("libcskk/rules") {
-            let mut metadata_file = rule_directory.clone();
-            metadata_file.push("metadata.toml");
-            let mut file = File::open(metadata_file)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
-            //let result = toml::from_str::<CskkRuleDirectoryMetadata>(&contents)?;
-            let result = toml::from_str::<BTreeMap<String, CskkRuleMetadataEntry>>(&contents)?;
-
-            Ok(CskkRuleMetadata {
-                base_dir: rule_directory,
-                rules: result,
-            })
+            Self::load_metadata_from_path(&rule_directory)
         } else {
             Err(CskkError::RuleError("No rule metadata file".to_string()))
         }
     }
 
     /// ignore xdg directory spec and load metadata from specified directory
-    /// This method is for integration test purpose.
+    /// This method is exposed for integration test purpose.
     /// Use [load_metadata] for your usecase.
     pub(crate) fn load_metadata_from_directory(file: &str) -> Result<Self, CskkError> {
         let rule_directory = PathBuf::from_str(file)?;
+        Self::load_metadata_from_path(&rule_directory)
+    }
+
+    fn load_metadata_from_path(rule_directory: &PathBuf) -> Result<Self, CskkError> {
+        let rule_directory = rule_directory.to_owned();
         let mut metadata_file = rule_directory.clone();
         metadata_file.push("metadata.toml");
         let mut file = File::open(metadata_file)?;
