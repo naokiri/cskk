@@ -13,7 +13,9 @@ pub(crate) struct KanaFormChanger {
 
 #[derive(Deserialize)]
 struct KanaFormMap {
+    #[serde(default)]
     katakana: BTreeMap<String, String>,
+    #[serde(default)]
     jisx0201: BTreeMap<String, String>,
 }
 
@@ -143,13 +145,13 @@ impl KanaFormChanger {
             .keys()
             .map(|x| x.chars().count())
             .max()
-            .unwrap();
+            .unwrap_or(0);
         let jisx0201_key_maxlen = kana_form_map
             .jisx0201
             .keys()
             .map(|x| x.chars().count())
             .max()
-            .unwrap();
+            .unwrap_or(0);
         KanaFormChanger {
             maps: kana_form_map,
             katakana_key_maxlen,
@@ -296,5 +298,10 @@ mod tests {
         assert_eq!(Some("r"), KanaFormChanger::kana_to_okuri_prefix("り"));
         assert_eq!(Some("s"), KanaFormChanger::kana_to_okuri_prefix("す"));
         assert_eq!(Some("w"), KanaFormChanger::kana_to_okuri_prefix("わ"));
+    }
+
+    #[test]
+    fn test_empty_kanaform_changer() {
+        KanaFormChanger::from_string("");
     }
 }
