@@ -149,3 +149,38 @@ fn hankaku_precomposition_input() {
         InputMode::HankakuKatakana,
     );
 }
+
+#[test]
+fn ambiguous_kana() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "n",
+        "n",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "n a",
+        "",
+        "な",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "n d a",
+        "",
+        "んだ",
+        InputMode::Hiragana,
+    );
+}

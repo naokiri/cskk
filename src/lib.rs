@@ -699,9 +699,13 @@ impl CskkContext {
                 self.auto_start_henkan();
             }
             CompositionMode::PreCompositionOkurigana => {
-                if did_change_mode_by_capital && !initial_unprocessed_vector.is_empty() {
+                if did_change_mode_by_capital
+                    && !initial_unprocessed_vector.is_empty()
+                    && !carry_over.is_empty()
+                {
                     // 以前入力されていた部分はPreComposition側として処理する。
                     // 例: "t T" の't'部分が 'っ' とかな変換される場合
+                    // '察する'等 carry_over以降が送り仮名となる
                     self.current_state().push_string_for_composition_mode(
                         converted,
                         CompositionMode::PreComposition,
