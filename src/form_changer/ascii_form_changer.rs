@@ -10,7 +10,9 @@ pub(crate) struct AsciiFormChanger {
 
 #[derive(Deserialize)]
 struct AsciiFormMap {
+    #[serde(default)]
     hankaku: Vec<String>,
+    #[serde(default)]
     zenkaku: Vec<String>,
 }
 
@@ -94,5 +96,10 @@ mod test {
         assert_eq!(changer.adjust_ascii_char('a'), "ａ");
         assert_eq!(changer.adjust_ascii_char('1'), "１");
         assert_eq!(changer.adjust_ascii_char('!'), "！");
+    }
+
+    #[test]
+    fn empty_ascii_form_changer() {
+        AsciiFormChanger::from_string("");
     }
 }

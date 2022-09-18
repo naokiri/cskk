@@ -79,6 +79,33 @@ pub unsafe extern "C" fn skk_context_new(
 }
 
 ///
+/// Returns newly allocated CSKKContext.
+/// On error, still tries to return an empty context that can convert nothing.
+///
+/// Try to use skk_context_new when possible.
+/// This interface is for IMEs that cannot fail on creating context.
+///
+/// # Safety
+/// Caller have to retain the pointer returned from this function
+/// Caller must free it using skk_free_context.
+/// dictionary_array must have at least dictionary_count number of CskkDictionary
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_new_with_empty_fallback(
+    dictionary_array: &*mut CskkDictionaryFfi,
+    dictionary_count: usize,
+) -> *mut CskkContext {
+    let dict_array = dictionaries_from_c_repr(dictionary_array, dictionary_count);
+    let context = CskkContext::new_with_empty_fallback(
+        InputMode::Hiragana,
+        CompositionMode::Direct,
+        dict_array,
+    );
+
+    Box::into_raw(Box::new(context))
+}
+
+///
 /// Creates a skk static file dict based on the path_string. Returns the pointer of it.
 /// Returns NULL on error. In error case, you don't have to free it.
 ///

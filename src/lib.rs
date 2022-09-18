@@ -54,7 +54,11 @@ pub mod skk_modes;
 #[cfg(test)]
 mod testhelper;
 
-/// Rough design prototype yet
+///
+/// CSKK のメインの構造体。このcontextをに対しキー入力を行って変換された状態を得る。
+/// 元々C向けAPIを作ることを想定していた多くの関数が*_rsとして公開されている。
+///
+/// FIXME: Rustのインタフェースとしてあまり直感的ではないので*_rsのものはCSKKContextの関数にする。
 ///
 /// TODO: Rustのstructまわりの一部分mutに変更があったら非mutでstateアクセスしているところを直す
 ///
@@ -186,6 +190,9 @@ pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Cand
         .get_all_candidates()
 }
 
+///
+/// Get candidate cursor position.
+///
 pub fn skk_context_get_current_candidate_cursor_position_rs(
     context: &mut CskkContext,
 ) -> Result<usize, CskkError> {
@@ -201,6 +208,9 @@ pub fn skk_context_get_current_candidate_cursor_position_rs(
     }
 }
 
+///
+/// Set candidate cursor position.
+///
 pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> bool {
     let len = context
         .current_state_ref()
@@ -228,6 +238,9 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
     true
 }
 
+///
+/// Confirm candidate at the cursor position.
+///
 pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
     if context.current_state().set_candidate_pointer_index(i) {
         context.confirm_current_composition_candidate();
@@ -1255,6 +1268,47 @@ impl CskkContext {
             dictionaries,
             config: CskkConfig::default(),
         })
+    }
+
+    /// Create a new cskk context.
+    /// When setup fails, still returns an context that can convert nothing.
+    /// This is for IMEs that cannot fail gracefully on creating a context.
+    pub fn new_with_empty_fallback(
+        input_mode: InputMode,
+        composition_mode: CompositionMode,
+        dictionaries: Vec<Arc<CskkDictionary>>,
+    ) -> Self {
+        if let Ok(result) = Self::new(input_mode, composition_mode, dictionaries.clone()) {
+            result
+        } else {
+            Self::new_empty(input_mode, composition_mode, dictionaries)
+        }
+    }
+
+    ///
+    /// Creates a context that can convert nothing.
+    /// Exposed only for test purpose. Users may not use this method.
+    ///
+    /// Use [new] or [new_with_empty_fallback] instead.
+    ///
+    pub fn new_empty(
+        input_mode: InputMode,
+        composition_mode: CompositionMode,
+        dictionaries: Vec<Arc<CskkDictionary>>,
+    ) -> Self {
+        let kana_converter = Box::new(KanaBuilder::new_empty());
+        let command_handler = ConfigurableCommandHandler::new_empty();
+        let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
+
+        Self {
+            state_stack: initial_stack,
+            kana_converter,
+            command_handler,
+            kana_form_changer: KanaFormChanger::default_kanaform_changer(),
+            ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
+            dictionaries,
+            config: CskkConfig::default(),
+        }
     }
 
     /// This method is for e2e test purpose.
