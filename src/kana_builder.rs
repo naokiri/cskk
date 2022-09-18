@@ -173,6 +173,15 @@ impl KanaBuilder {
     pub(crate) fn new(rule: &CskkRule) -> Self {
         KanaBuilder::converter_from_hashmap(rule.get_conversion_rule())
     }
+
+    ///
+    /// Returns KanaBuilder that can convert nothing.
+    ///
+    pub(crate) fn new_empty() -> Self {
+        Self {
+            process_map: SequenceTrie::new(),
+        }
+    }
 }
 
 #[cfg(test)]

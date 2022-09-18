@@ -12,6 +12,15 @@ impl ConfigurableCommandHandler {
         }
     }
 
+    ///
+    /// Returns command handler of empty command.
+    ///
+    pub(crate) fn new_empty() -> Self {
+        Self {
+            command_rule: CskkCommandRule::new_empty(),
+        }
+    }
+
     /// コマンドとして処理し、文字入力として処理しない場合にinstructionを返す。
     pub(crate) fn get_instruction(
         &self,

@@ -42,6 +42,16 @@ pub(crate) struct CskkCommandRule {
 }
 
 impl CskkCommandRule {
+    pub(crate) fn new_empty() -> Self {
+        Self {
+            direct: CskkCommandRuleInner::new_empty(),
+            pre_composition: CskkCommandRuleInner::new_empty(),
+            pre_compisition_okurigana: CskkCommandRuleInner::new_empty(),
+            composition_selection: CskkCommandRuleInner::new_empty(),
+            abbreviation: CskkCommandRuleInner::new_empty(),
+        }
+    }
+
     pub(crate) fn get_inner_ruleset(
         &self,
         composition_mode: &CompositionMode,
@@ -73,6 +83,16 @@ pub(crate) struct CskkCommandRuleInner {
 }
 
 impl CskkCommandRuleInner {
+    pub(crate) fn new_empty() -> Self {
+        Self {
+            hiragana: HashMap::new(),
+            katakana: HashMap::new(),
+            hankakukatakana: HashMap::new(),
+            zenkaku: HashMap::new(),
+            ascii: HashMap::new(),
+        }
+    }
+
     pub(crate) fn get_command_map(
         &self,
         input_mode: &InputMode,
