@@ -526,48 +526,52 @@ impl CskkContext {
         current_state.input_mode = input_mode
     }
 
-    // TODO: ローマ字入力特化の仕様なので、ddskkやlibskkの先行仕様から離れてかな変換木としてn=['','ん']とna=['','な']等が共存できるようにして
-    // 継続した入力を受けいれられるかな変換をかな変換せず、こういったメソッドで強制変換可能にしたほうが一般化できて良い。
     ///
-    /// 'n'が以前の入力だった場合に'ん'を入力する。
-    /// return true if output ん
-    /// 特に別の状態に切り替わる時に以前の状態のnを入力することが多いので、'ん'を入力する際のmodeを引数の取る。
-    /// On Direct, ん style is defined by given inputmode。 (ん,ン,...)
+    /// 他の変換規則の部分列となっている規則でも変換し、入力する。
+    /// return true if output such converted input.
     ///
+    /// ローマ字ベースの入力規則の例ではnが残っている時に別の状態に切り替わる時に以前の状態の'ん'を入力することが多いので、'ん'を入力する際のmodeを引数に取る。
+    /// On Direct, output style is defined by given inputmode。 (ん,ン,...)
     ///
-    fn output_nn_if_any(
+    fn output_converted_kana_if_any(
         &mut self,
         input_mode: InputMode,
         composition_mode: CompositionMode,
     ) -> bool {
-        // I cannot think of other case than single 'n' being orphaned. This implementation would be enough for it.
         let current_state = self.current_state_ref();
         let unprocessed = current_state.pre_conversion.clone();
-        if unprocessed.len() == 1 && unprocessed[0] == keysyms::KEY_n {
+        let greedy_kana_convert_result = self.kana_converter.convert_greedy(&unprocessed);
+
+        if let Some((converted_kana, carry_over)) = greedy_kana_convert_result {
+            let converted_kana = converted_kana.to_owned();
             return match composition_mode {
                 CompositionMode::Direct => {
                     let kana_form_changer = &self.kana_form_changer;
-                    let adjusted = kana_form_changer.adjust_kana_string(input_mode, "ん");
+                    let adjusted =
+                        kana_form_changer.adjust_kana_string(input_mode, &converted_kana);
                     self.current_state()
                         .push_string_for_composition_mode(&adjusted, composition_mode);
                     true
                 }
                 CompositionMode::PreComposition => {
-                    self.current_state()
-                        .push_string_for_composition_mode("ん", CompositionMode::PreComposition);
+                    self.current_state().push_string_for_composition_mode(
+                        &converted_kana,
+                        CompositionMode::PreComposition,
+                    );
                     self.current_state().clear_preconverted_kanainputs();
                     true
                 }
                 CompositionMode::PreCompositionOkurigana => {
                     //self.append_converted_to_okuri("ん");
                     self.current_state()
-                        .push_string_for_composition_mode("ん", composition_mode);
+                        .push_string_for_composition_mode(&converted_kana, composition_mode);
                     self.current_state().clear_preconverted_kanainputs();
                     true
                 }
                 _ => false,
             };
         }
+
         false
     }
 
@@ -708,7 +712,7 @@ impl CskkContext {
     }
 
     /// 上から順に
-    /// 1.そのまま、あるいは小文字化すると即rom_kana変換可能ならcommandとして解釈をスキップする
+    /// 1.そのまま、あるいは小文字化するとrom_kana変換決定可能ならcommandとして解釈をスキップする
     /// 2.commandとして解釈されるならcommandとして実行、
     /// 3.各モードで入力として処理
     ///
@@ -723,10 +727,12 @@ impl CskkContext {
             KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
         let raw_combined_keyinputs =
             KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
-        let unchecked_lower_kana_convert_result =
-            self.kana_converter.convert(&lower_combined_keyinputs);
-        let unchecked_raw_kana_convert_result =
-            self.kana_converter.convert(&raw_combined_keyinputs);
+        let unchecked_lower_kana_convert_result = self
+            .kana_converter
+            .convert_non_partial(&lower_combined_keyinputs);
+        let unchecked_raw_kana_convert_result = self
+            .kana_converter
+            .convert_non_partial(&raw_combined_keyinputs);
 
         let skip_command = key_event.is_modifierless_input()
             && (has_rom2kana_conversion(&initial_input_mode, &initial_composition_mode)
@@ -781,10 +787,16 @@ impl CskkContext {
         {
             let combined_raw = KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
             let combined_lower = KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
-            let converted_lower = self.kana_converter.convert(&combined_lower);
+
+            // 上の間の処理で所有権を失っているので再度convert_non_partialを呼ぶ。
+            // FIXME: RustのバージョンがあがってSome内部のrefを上手くto_ownedみたいな扱いが簡単に書けるようになったら
+            // immutable borrowから切り離したunchecked_lower_kana_convert_resultを再利用する。
+            let converted_lower = self.kana_converter.convert_non_partial(&combined_lower);
             let initial_kanainput_composition_mode = self.current_state_ref().composition_mode;
 
-            if let Some((converted, carry_over)) = self.kana_converter.convert(&combined_raw) {
+            if let Some((converted, carry_over)) =
+                self.kana_converter.convert_non_partial(&combined_raw)
+            {
                 // When input made a kana conversion in raw input.
                 // Even if matched in upper case, this won't try to change the composition mode.
                 let converted = converted.clone();
@@ -833,7 +845,10 @@ impl CskkContext {
                 ) {
                     // カンマピリオド確定なのでcompositionmode変更は割愛。
                     // まず他の入力があれば終わらせる。
-                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.output_converted_kana_if_any(
+                        current_input_mode,
+                        initial_kanainput_composition_mode,
+                    );
                     self.current_state().clear_preconverted_kanainputs();
 
                     // input_as_direct_char
@@ -876,7 +891,10 @@ impl CskkContext {
                 } else if self.kana_converter.can_continue(key_event, &[]) {
                     // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                     // まずpre_convertedを整理してから入力として扱う。
-                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.output_converted_kana_if_any(
+                        current_input_mode,
+                        initial_kanainput_composition_mode,
+                    );
                     self.current_state().clear_preconverted_kanainputs();
 
                     self.input_as_continuous_kana(key_event);
@@ -890,7 +908,10 @@ impl CskkContext {
                     let lower_key_event = key_event.to_lower();
 
                     // TODO: この現在のステートのクリーンアップは上と同じであるべきなので、stateの整理ができたらメソッドにまとめる。
-                    self.output_nn_if_any(current_input_mode, initial_kanainput_composition_mode);
+                    self.output_converted_kana_if_any(
+                        current_input_mode,
+                        initial_kanainput_composition_mode,
+                    );
                     self.current_state().clear_preconverted_kanainputs();
 
                     self.input_as_continuous_kana(&lower_key_event);
@@ -901,7 +922,7 @@ impl CskkContext {
                     // FIXME: key_charに依存しているので、複数文字を入れることが想定できていない。
                     // 特殊なキーボードで変な文字を入力することになるのを防ぐため、とりあえずAscii文字に限定している。コマンドや変換同様に制限を外したい。
                     if key_event.is_ascii_inputtable() {
-                        self.output_nn_if_any(
+                        self.output_converted_kana_if_any(
                             current_input_mode,
                             initial_kanainput_composition_mode,
                         );
@@ -990,7 +1011,7 @@ impl CskkContext {
                     self.set_input_mode(*input_mode);
                 }
                 Instruction::OutputNNIfAny(input_mode) => {
-                    self.output_nn_if_any(*input_mode, initial_composition_mode);
+                    self.output_converted_kana_if_any(*input_mode, initial_composition_mode);
                 }
                 Instruction::FlushPreviousCarryOver => {
                     self.current_state().clear_preconverted_kanainputs();
@@ -1057,7 +1078,10 @@ impl CskkContext {
                     // if not, go to registeration mode.
 
                     if initial_composition_mode != CompositionMode::CompositionSelection {
-                        self.output_nn_if_any(initial_input_mode, initial_composition_mode);
+                        self.output_converted_kana_if_any(
+                            initial_input_mode,
+                            initial_composition_mode,
+                        );
                         self.update_candidate_list();
                         if self.current_state_ref().get_candidate_list().is_empty() {
                             self.enter_register_mode(initial_composition_mode);

@@ -58,8 +58,18 @@ impl KanaBuilder {
     }
 
     /// convert the unprocessed vector into String and the remaining carryover if matching String exists
-    pub(crate) fn convert(&self, kana: &[Keysym]) -> Option<&(Converted, CarryOver)> {
+    pub(crate) fn convert_greedy(&self, kana: &[Keysym]) -> Option<&(Converted, CarryOver)> {
         self.process_map.get(kana)
+    }
+
+    /// convert the unprocessed vector into String and the remaining carryover if matching String exists and also it is not a partial match for more longer match
+    pub(crate) fn convert_non_partial(&self, kana: &[Keysym]) -> Option<&(Converted, CarryOver)> {
+        if let Some(node) = self.process_map.get_node(kana) {
+            if node.is_leaf() {
+                return node.value();
+            }
+        }
+        None
     }
 
     ///
@@ -266,17 +276,17 @@ mod tests {
     fn convert() {
         let converter = KanaBuilder::test_converter();
 
-        let result = converter.convert(&[KEY_k]);
+        let result = converter.convert_greedy(&[KEY_k]);
         assert_eq!(result, None);
     }
 
     #[test]
     fn ant_tree_convert() {
         let converter = KanaBuilder::test_ant_converter();
-        let result = converter.convert(&[KEY_t]);
+        let result = converter.convert_greedy(&[KEY_t]);
         assert_eq!(result, None);
 
-        let (kana, carry_over) = converter.convert(&[KEY_t, KEY_t]).unwrap();
+        let (kana, carry_over) = converter.convert_greedy(&[KEY_t, KEY_t]).unwrap();
         assert_eq!("っ", kana);
         assert_eq!(*carry_over, vec![KEY_t])
     }
