@@ -45,15 +45,15 @@ fn simple_composition() {
     );
 }
 
-/// 参照時のueno/skklib と ddskkで動作が違う例。
+/// 参照時のueno/libskk と ddskkで動作が違う例。
 /// ddskk式の方が現実的な打ち間違え時になってほしい状態なので採用
 ///
-/// ueno/skklib
+/// ueno/libskk
 /// "k A" -> ▽あ
 /// ddskk
 /// "k A" -> ▽か
 #[test]
-fn composition_mode_from_middle() {
+fn precomposition_mode_from_middle() {
     let mut context = default_test_context();
     transition_check(
         &mut context,
@@ -61,6 +61,27 @@ fn composition_mode_from_middle() {
         InputMode::Hiragana,
         "k I",
         "▽き",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+///
+/// ddskk -> きん*う
+/// ueno/libskk -> ▽きぬ
+///
+/// どちらとも違うが上記precomposition_mode_from_middleと整合性を取り ▽き*ぬ
+///
+#[test]
+fn okuri_mode_from_middle() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "k I n U",
+        "▼き*ぬ【】",
         "",
         InputMode::Hiragana,
     );
