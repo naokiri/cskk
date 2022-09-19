@@ -5,6 +5,8 @@ use cskk::{
     skk_context_process_key_events_rs, skk_context_set_composition_mode,
     skk_context_set_input_mode_rs, CskkContext,
 };
+use std::fs::File;
+use std::io;
 use std::sync::Arc;
 
 pub fn transition_check(
@@ -39,8 +41,15 @@ pub fn transition_check(
     );
 }
 
+/// Make file_path as a empty dict, erase content if any.
+pub fn make_empty_dict(file_path: &str) -> io::Result<()> {
+    let file = File::create(file_path)?;
+    file.sync_data()
+}
+
 pub fn default_test_context() -> CskkContext {
-    let dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
+    let dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
     test_context_with_dictionaries(vec![Arc::new(dict)])
 }
 

@@ -1,3 +1,4 @@
+use crate::dictionary::dictentry::DictEntry;
 use crate::error::CskkError;
 use log::*;
 use std::fmt::Write;
@@ -54,11 +55,13 @@ impl Candidate {
         }
     }
 
-    pub(crate) fn from_skk_jisyo_string(midashi: &str, entry: &str) -> Result<Self, CskkError> {
-        let mut chunk = entry.split(';');
+    pub(crate) fn from_skk_jisyo_string(midashi: &str, raw_entry: &str) -> Result<Self, CskkError> {
+        let mut chunk = raw_entry.split(';');
         if let Some(text) = chunk.next() {
-            let kouho = text;
-            let annotation = chunk.next().map(|entry| Arc::new(entry.to_string()));
+            let kouho = DictEntry::process_lisp_fun(text);
+            let annotation = chunk
+                .next()
+                .map(|entry| Arc::new(DictEntry::process_lisp_fun(entry)));
             Ok(Candidate::new(
                 Arc::new(midashi.to_string()),
                 false,
@@ -67,7 +70,7 @@ impl Candidate {
                 kouho.to_string(),
             ))
         } else {
-            debug!("Failed to parse candidate from: {:?}", entry);
+            debug!("Failed to parse candidate from: {:?}", raw_entry);
             Err(CskkError::Error("No candidate".to_string()))
         }
     }
@@ -78,10 +81,16 @@ impl Candidate {
     // TODO: 将来的には [{優先送り仮名}/{候補}] のような優先送り仮名エントリも扱えると嬉しい
     pub(crate) fn to_skk_jisyo_string(&self) -> String {
         let mut result = String::new();
-        result.push_str(self.kouho_text.as_str());
+        result.push_str(&DictEntry::escape_dictionary_string(
+            self.kouho_text.as_str(),
+        ));
         if let Some(annotation) = &self.annotation {
-            write!(result, ";{}", annotation.as_str())
-                .expect("Failed to allocate jisyo string for candidate.");
+            write!(
+                result,
+                ";{}",
+                &DictEntry::escape_dictionary_string(annotation.as_str())
+            )
+            .expect("Failed to allocate jisyo string for candidate.");
         }
         result
     }
