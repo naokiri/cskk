@@ -333,6 +333,11 @@ impl CskkContext {
         }
     }
 
+    fn convert_kana_in_input_mode(&self, input: &str, input_mode: InputMode) -> String {
+        let kana_form_changer = &self.kana_form_changer;
+        kana_form_changer.adjust_kana_string(input_mode, input)
+    }
+
     pub fn get_version() -> String {
         env!("CARGO_PKG_VERSION").to_string()
     }
@@ -340,13 +345,8 @@ impl CskkContext {
     fn append_converted(&mut self, result: &str) {
         let current_state = self.current_state();
         let current_input_mode = current_state.input_mode;
-        self.append_converted_in_input_mode(result, current_input_mode)
-    }
-
-    fn append_converted_in_input_mode(&mut self, result: &str, input_mode: InputMode) {
-        let kana_form_changer = &self.kana_form_changer;
-        let adjusted = kana_form_changer.adjust_kana_string(input_mode, result);
-        self.current_state().push_string(&adjusted);
+        let kana = self.convert_kana_in_input_mode(result, current_input_mode);
+        self.current_state().push_string(&kana);
     }
 
     fn set_unconverted(&mut self, unconv: Vec<Keysym>) {
@@ -422,7 +422,9 @@ impl CskkContext {
             .get_to_composite_string()
             .to_owned();
 
-        self.append_converted_in_input_mode(&kana, temporary_input_mode);
+        let kana = self.convert_kana_in_input_mode(&kana, temporary_input_mode);
+        self.current_state()
+            .push_string_for_composition_mode(&kana, CompositionMode::Direct);
         self.current_state().clear_unconfirmed();
     }
 
@@ -1032,7 +1034,7 @@ impl CskkContext {
                 Instruction::ChangeInputMode(input_mode) => {
                     self.set_input_mode(*input_mode);
                 }
-                Instruction::OutputNNIfAny(input_mode) => {
+                Instruction::ForceKanaConvert(input_mode) => {
                     self.output_converted_kana_if_any(*input_mode, initial_composition_mode);
                 }
                 Instruction::FlushPreviousCarryOver => {
@@ -1053,23 +1055,11 @@ impl CskkContext {
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
                 }
-                Instruction::FinishKeyEvent => {
-                    return true;
-                }
                 Instruction::PassthroughKeyEvent => {
                     return false;
                 }
-                Instruction::ConfirmAsKatakana => {
-                    self.set_composition_mode(CompositionMode::Direct);
-                    self.confirm_current_kana_to_composite(InputMode::Katakana);
-                }
-                Instruction::ConfirmAsHiragana => {
-                    self.set_composition_mode(CompositionMode::Direct);
-                    self.confirm_current_kana_to_composite(InputMode::Hiragana);
-                }
-                Instruction::ConfirmAsJISX0201 => {
-                    self.set_composition_mode(CompositionMode::Direct);
-                    self.confirm_current_kana_to_composite(InputMode::HankakuKatakana);
+                Instruction::ConfirmAs(input_mode) => {
+                    self.confirm_current_kana_to_composite(*input_mode);
                 }
                 Instruction::ConfirmDirect => {
                     return if self.state_stack.len() > 1 {
@@ -1139,7 +1129,7 @@ impl CskkContext {
             }
         }
 
-        false
+        !instructions.is_empty()
     }
 
     /// check and attempt to start auto_start_henkan.

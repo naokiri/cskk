@@ -802,8 +802,8 @@ fn multiple_number_composition() {
 #[test]
 fn register_number() {
     init_test_logger();
-    make_empty_dict("tests/data/empty.dat").unwrap();
-    let dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
+    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
+    let dict = CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,

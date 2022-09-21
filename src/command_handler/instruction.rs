@@ -14,8 +14,7 @@ pub(crate) enum Instruction {
     ChangeInputMode(InputMode),
     // Try to convert preconversion if in input mode which has conversion. Mostly (or only?) just for single 'n' conversion.
     // (ctrl q)コマンドのように現在のinput_modeに依らない変換が必要なのでinputmodeも指定しなければならない。
-    #[allow(clippy::upper_case_acronyms)]
-    OutputNNIfAny(InputMode),
+    ForceKanaConvert(InputMode),
     FlushPreviousCarryOver,
     FlushConvertedKana,
     ClearUnconfirmedInputs,
@@ -23,7 +22,6 @@ pub(crate) enum Instruction {
     // モード変更などで入力を処理し、入力モードの入力としての処理をしない命令
     FinishKeyEvent,
     // keyeventを処理しなかったとして処理を終了する。ueno/libskkでの"*-unhandled"系命令用?
-    #[allow(dead_code)]
     PassthroughKeyEvent,
     // 次の候補を指そうとする。候補があればポインタを進めるが、無い場合はRegisterモードへ移行する。
     TryNextCandidate,
@@ -39,11 +37,8 @@ pub(crate) enum Instruction {
     ConfirmComposition,
     // 現在の変換前文字列を漢字変換せずに確定する。 Hiragana/Katakana/HankakuKatakana のみ
     ConfirmPreComposition(InputMode),
-    // TODO: ConfirmAs(InputMode)
-    ConfirmAsHiragana,
-    ConfirmAsKatakana,
-    #[allow(clippy::upper_case_acronyms)]
-    ConfirmAsJISX0201,
+    ConfirmAs(InputMode),
+
     // Direct時に確定する。辞書編集時は動作があるのでEnterをイベント消費するが、そうでない場合はcskkでイベントを消費しない。
     ConfirmDirect,
     // 現在の候補を辞書から消す
@@ -70,9 +65,6 @@ impl FromStr for Instruction {
             "NextCandidatePointer" => Some(Instruction::NextCandidatePointer),
             "PreviousCandidatePointer" => Some(Instruction::PreviousCandidatePointer),
             "ConfirmComposition" => Some(Instruction::ConfirmComposition),
-            "ConfirmAsHiragana" => Some(Instruction::ConfirmAsHiragana),
-            "ConfirmAsKatakana" => Some(Instruction::ConfirmAsKatakana),
-            "ConfirmAsJISX0201" => Some(Instruction::ConfirmAsJISX0201),
             "ConfirmDirect" => Some(Instruction::ConfirmDirect),
             "Purge" => Some(Instruction::Purge),
             "DeletePrecomposition" => Some(Instruction::DeletePrecomposition),
@@ -80,6 +72,10 @@ impl FromStr for Instruction {
             "TryNextCandidate" => Some(Instruction::TryNextCandidate),
             "TryPreviousCandidate" => Some(Instruction::TryPreviousCandidate),
             "PassthroughKeyEvent" => Some(Instruction::PassthroughKeyEvent),
+            // 旧版の互換性維持のため
+            "ConfirmAsHiragana" => Some(Instruction::ConfirmAs(InputMode::Hiragana)),
+            "ConfirmAsKatakana" => Some(Instruction::ConfirmAs(InputMode::Katakana)),
+            "ConfirmAsJISX0201" => Some(Instruction::ConfirmAs(InputMode::HankakuKatakana)),
             _ => None,
         } {
             return Ok(simple_instruction);
@@ -96,11 +92,14 @@ impl FromStr for Instruction {
             let input_mode = InputMode::from_str(&capture[2])
                 .expect("Regex code is wrong in deserealizing input mode instruction");
             match &capture[1] {
-                "OutputNNIfAny" => return Ok(Instruction::OutputNNIfAny(input_mode)),
                 "ChangeInputMode" => return Ok(Instruction::ChangeInputMode(input_mode)),
                 "ConfirmPreComposition" => {
                     return Ok(Instruction::ConfirmPreComposition(input_mode))
                 }
+                "ForceKanaConvert" => return Ok(Instruction::ForceKanaConvert(input_mode)),
+                "ConfirmAs" => return Ok(Instruction::ConfirmAs(input_mode)),
+                // 旧版の互換性維持のため
+                "OutputNNIfAny" => return Ok(Instruction::ForceKanaConvert(input_mode)),
                 _ => {}
             }
         }
