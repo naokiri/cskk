@@ -66,6 +66,6 @@ mod test {
                 &CompositionMode::Direct,
             )
             .unwrap();
-        assert_eq!(Instruction::DeleteDirect, result[0]);
+        assert_eq!(Instruction::Delete, result[0]);
     }
 }

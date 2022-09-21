@@ -379,14 +379,15 @@ impl CskkContext {
 
     #[allow(unused_must_use)]
     fn purge_current_composition_candidate(&mut self) {
-        let current_candidate = self
+        if let Ok(current_candidate) = self
             .current_state_ref()
             .get_candidate_list()
             .get_current_candidate()
-            .unwrap()
-            .clone();
-        for cskkdict in self.dictionaries.iter_mut() {
-            purge_candidate(cskkdict, &current_candidate);
+        {
+            let current_candidate = current_candidate.to_owned();
+            for cskkdict in self.dictionaries.iter_mut() {
+                purge_candidate(cskkdict, &current_candidate);
+            }
         }
 
         self.current_state().clear_all();
@@ -1037,17 +1038,17 @@ impl CskkContext {
                 Instruction::ForceKanaConvert(input_mode) => {
                     self.output_converted_kana_if_any(*input_mode, initial_composition_mode);
                 }
-                Instruction::FlushPreviousCarryOver => {
+                Instruction::ClearUnconvertedInputs => {
                     self.current_state().clear_preconverted_kanainputs();
                 }
-                Instruction::FlushConvertedKana => {
+                Instruction::ClearKanaConvertedInputs => {
                     self.current_state().clear_kanas();
                 }
                 Instruction::ClearUnconfirmedInputs => {
                     self.current_state().clear_unconfirmed();
                 }
                 Instruction::Abort => {
-                    // CompositionSelectionのAbortを想定している。他のAbortでも共通？ 各々instruction変える？
+                    self.current_state().clear_preconverted_kanainputs();
                     self.current_state().consolidate_converted_to_to_composite();
                     self.current_state().clear_candidate_list();
                     self.abort_register_mode();
@@ -1079,10 +1080,7 @@ impl CskkContext {
                 Instruction::PreviousCandidatePointer => {
                     self.current_state().backward_candidate();
                 }
-                Instruction::DeletePrecomposition => {
-                    self.current_state().delete();
-                }
-                Instruction::DeleteDirect => {
+                Instruction::Delete => {
                     return self.current_state().delete();
                 }
                 Instruction::TryNextCandidate => {

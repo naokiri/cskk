@@ -1178,7 +1178,6 @@ fn concat_dict_entry_read() {
     );
 }
 
-#[ignore]
 #[test]
 fn slash_entry() {
     init_test_logger();
