@@ -3,7 +3,8 @@
 //!
 
 use crate::utils::{
-    default_test_context, init_test_logger, test_context_with_dictionaries, transition_check,
+    default_test_context, init_test_logger, make_empty_dict, test_context_with_dictionaries,
+    transition_check,
 };
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_context_reset_rs;
@@ -97,8 +98,11 @@ fn register_mode_dont_register_empty() {
 
 #[test]
 fn register_mode_transitions_composition() {
-    let static_dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
+    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
+    let static_dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
+    let user_dict =
+        CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     init_test_logger();
@@ -146,8 +150,11 @@ fn register_mode_transitions_composition() {
 
 #[test]
 fn register_mode_purge_candidate() {
-    let static_dict = CskkDictionary::new_static_dict("tests/data/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict("tests/data/empty.dat", "utf-8").unwrap();
+    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
+    let static_dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
+    let user_dict =
+        CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
 

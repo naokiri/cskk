@@ -3,7 +3,9 @@ use thiserror::Error;
 
 // General error that haven't determined what this is.
 // This might be an internal error, or might be something that should be exposed out of library in Rust interface.
-// TODO: Proper error structure when needed. Exposed ones and internal ones might have to be different
+// TODO: Proper error structure when needed.
+// Exposed ones and internal ones might have to be different.
+// Internal ones can be anyhow, but exposed one should be this Error.
 #[derive(Error, Debug)]
 pub enum CskkError {
     #[error("Some kind of error: {0}")]

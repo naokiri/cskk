@@ -12,7 +12,7 @@ use std::sync::Arc;
 fn numeric_transitions() {
     init_test_logger();
     let static_dict =
-        CskkDictionary::new_user_dict("tests/data/number_jisyo.dat", "UTF-8").unwrap();
+        CskkDictionary::new_user_dict("tests/data/dictionaries/number_jisyo.dat", "UTF-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
         &mut context,
