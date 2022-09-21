@@ -156,6 +156,7 @@ mod test {
 
     #[test]
     fn userdict() -> Result<(), CskkError> {
+        File::create("tests/data/dictionaries/empty.dat")?;
         let mut user_dictionary =
             UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
         let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
