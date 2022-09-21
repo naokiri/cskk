@@ -67,7 +67,7 @@ impl Candidate {
                 false,
                 Arc::new(kouho.to_string()),
                 annotation,
-                kouho.to_string(),
+                kouho,
             ))
         } else {
             debug!("Failed to parse candidate from: {:?}", raw_entry);
