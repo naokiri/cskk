@@ -129,7 +129,8 @@ impl CskkState {
                 if !deleted {
                     self.composition_mode = CompositionMode::Direct;
                 }
-                deleted
+                // Mode change でキーを消費するので常にtrueで良い。
+                true
             }
             CompositionMode::PreCompositionOkurigana => {
                 // かな変換前の入力を1文字消そうとする
