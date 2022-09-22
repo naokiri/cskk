@@ -396,25 +396,31 @@ impl CskkContext {
     // TODO: make this internal to cskkstate state内でfieldの齟齬が起きないようにcskkstate内の関数にする
     #[allow(unused_must_use)]
     fn confirm_current_composition_candidate(&mut self) {
-        let current_candidate = self
+        if let Ok(current_candidate) = self
             .current_state_ref()
             .get_candidate_list()
             .get_current_candidate()
-            .unwrap()
-            .clone();
-        for cskkdict in self.dictionaries.iter_mut() {
-            confirm_candidate(cskkdict, &current_candidate);
+        {
+            let current_candidate = current_candidate.to_owned();
+
+            for cskkdict in self.dictionaries.iter_mut() {
+                confirm_candidate(cskkdict, &current_candidate);
+            }
+
+            let composited_okuri = self.kana_form_changer.adjust_kana_string(
+                self.current_state_ref().input_mode,
+                self.current_state_ref().get_okuri_string(),
+            );
+            let composited_kanji_and_okuri = current_candidate.output + &composited_okuri;
+
+            let current_state = self.current_state();
+            current_state.push_string(&composited_kanji_and_okuri);
+            current_state.clear_unconfirmed();
+        } else {
+            log::warn!(
+                "Tried to confirm candidate when current candidate is not available. Skipping."
+            )
         }
-
-        let composited_okuri = self.kana_form_changer.adjust_kana_string(
-            self.current_state_ref().input_mode,
-            self.current_state_ref().get_okuri_string(),
-        );
-        let composited_kanji_and_okuri = current_candidate.output + &composited_okuri;
-
-        let current_state = self.current_state();
-        current_state.push_string(&composited_kanji_and_okuri);
-        current_state.clear_unconfirmed();
     }
 
     fn confirm_current_kana_to_composite(&mut self, temporary_input_mode: InputMode) {

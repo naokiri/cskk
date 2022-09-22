@@ -285,13 +285,13 @@ zz = ["z", "っ"]
 # ConfirmAs(InputMode) - かな変換のあるInputModeを指定し、漢字変換前のかなをそのモードで入力する.
 # ForceKanaConvert(InputMode) - 未変換の入力を強制的にかな変換して入力する。 (`n`を`ん`,`ン`に入力する)
 # ConfirmDirect - 辞書登録モードの時、現在の入力を確定して入力処理を終える。そうでない場合、cskkでは何もせず、入力処理も終えない。
-# ConfirmComposition -
 #
 # ClearUnconvertedInputs - かな変換前の入力を全て消す。
 # ClearKanaConvertedInputs - 漢字変換前の入力を全て消す。
 # ClearUnconfirmedInputs - 未確定入力を全て消す。
 # Delete - 一文字消す。消せた場合のみ入力処理を終える。
 #
+# ConfirmComposition - 現在の変換候補で確定する。
 # TryNextCandidate - 次の変換候補を選択する。候補がないと辞書登録モードに移る。
 # TryPreviousCandidate - 前の変換候補を選択する。候補がないと変換前モードに戻る。
 # NextCandidatePointer - 次の変換候補を選択する。候補がないと何もしない。
