@@ -388,6 +388,10 @@ impl CskkContext {
             for cskkdict in self.dictionaries.iter_mut() {
                 purge_candidate(cskkdict, &current_candidate);
             }
+        } else {
+            log::warn!(
+                "Tried to purge candidate when current candidate is not available. Skipping."
+            )
         }
 
         self.current_state().clear_all();
