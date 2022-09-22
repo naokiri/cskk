@@ -17,7 +17,7 @@ impl DictEntry {
             .iter()
             .position(|it| *(it.kouho_text) == *candidate.kouho_text);
         if let Some(index) = index {
-            (*self).candidates.remove(index);
+            self.candidates.remove(index);
         }
     }
 
@@ -142,7 +142,7 @@ impl DictEntry {
             }
             concat_match_replace_string = ESCAPE_REGEX
                 .replace_all(&concat_match_replace_string, |cap: &Captures| {
-                    (&cap[1]).to_string()
+                    cap[1].to_string()
                 })
                 .to_string();
             concat_replacing.push((concat_match.as_str(), concat_match_replace_string));
