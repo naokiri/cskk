@@ -1521,4 +1521,16 @@ mod unit_tests {
             .process_key_event(&CskkKeyEvent::from_string_representation("Return").unwrap());
         assert!(!actual);
     }
+
+    #[test]
+    fn consume_key_on_delete_on_0_letter_precomposition() {
+        init_test_logger();
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("A").unwrap());
+        cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
+        let actual = cskkcontext
+            .process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
+        assert!(actual);
+    }
 }

@@ -1216,3 +1216,19 @@ fn slash_entry() {
         assert_eq!(line.chars().filter(|x| x.eq(&'/')).count(), 2);
     }
 }
+
+#[test]
+fn backspace_to_abort() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A BackSpace BackSpace",
+        "",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+}
