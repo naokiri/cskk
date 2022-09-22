@@ -15,7 +15,7 @@ description = "default typing rule"
 # 名称は https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h による。
 # ascii文字(0x20..=0x7E)の範囲のみ変換する。
 # 例:
-# "space 無視" -> KEY_space
+# "space 無視" -> KEY_space ('無視'はascii文字ではないため)
 # "lk Shift_L" -> KEY_l, KEY_k, KEY_Shift_L
 # "ab" -> KEY_a, KEY_b
 # "a t" -> KEY_a, KEY_t
@@ -24,8 +24,8 @@ description = "default typing rule"
 # 2文字の"Up", "ch", "at", "mu", "AE", "ae", "OE", "oe", "ht", "ff", "cr", "lf", "nl", "vt", "IO"には特に注意が必要
 #
 # Valueは2要素の配列
-# 最初の要素はまたkeysym列、carryoverとして使われる。
-# 2つ目の要素が変換先文字列
+# 最初の要素はkeysym列、かな変換後に残る入力(carryover)として使われる。
+# 2つ目の要素が変換先文字列。
 #
 # 例として kk = ["k", "っ"] と定義がある場合、k kと入力した際に"っ"が入力され、"k"が入力待ちの状態で残る。
 [conversion]
@@ -275,9 +275,7 @@ zz = ["z", "っ"]
 # 本体は上記conversionと同じKeysym
 #
 # valueはコマンドの配列。
-# バージョン0の間は以下の例内のものが処理できる。
 # コマンドが未整理でlibskkより煩雑なため、メジャーバージョンアップデートで変える可能性がある。
-#
 #
 # ChangeInputMode(InputMode) - 入力モードを変更する
 # ChangeCompositionMode(CompositionMode) - 変換モードを変更する。
