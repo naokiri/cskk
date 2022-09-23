@@ -1144,7 +1144,7 @@ fn okuri_more_than_2_hiragana() {
     );
 }
 
-#[ignore]
+#[test]
 fn basic_abbreviation_mode() {
     init_test_logger();
     let dict = CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8")
@@ -1154,9 +1154,59 @@ fn basic_abbreviation_mode() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
+        "slash c h a l a z a",
+        "▽chalaza",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
         "slash c h a l a z a space",
         "▼カラザ",
         "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h a l a z a space Return",
+        "",
+        "カラザ",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn confirm_on_abbreviation_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h C-j",
+        "",
+        "ch",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn confirm_as_zenkaku_on_abbreviation_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash C h C-q",
+        "",
+        "Ｃｈ",
         InputMode::Hiragana,
     );
 }
@@ -1179,7 +1229,7 @@ fn concat_dict_entry_read() {
 }
 
 #[test]
-fn slash_entry() {
+fn semicolon_entry() {
     init_test_logger();
     let dictpath = "tests/data/dictionaries/empty.dat";
     make_empty_dict(dictpath).unwrap();
@@ -1189,9 +1239,9 @@ fn slash_entry() {
         &mut context,
         CompositionMode::Direct,
         InputMode::Hiragana,
-        "Z o u g o space slash a Return",
+        "Z o u g o space l semicolon C-j a l semicolon Return",
         "",
-        "/あ",
+        ";あ;",
         InputMode::Hiragana,
     );
     skk_context_reset_rs(&mut context);
@@ -1201,7 +1251,7 @@ fn slash_entry() {
         InputMode::Hiragana,
         "Z o u g o space Return",
         "",
-        "/あ",
+        ";あ;",
         InputMode::Hiragana,
     );
     context.save_dictionary();
@@ -1213,7 +1263,7 @@ fn slash_entry() {
         .build(dict_file);
     let reader = BufReader::new(decoder);
     for line in reader.lines().flatten() {
-        assert_eq!(line.chars().filter(|x| x.eq(&'/')).count(), 2);
+        assert_eq!(line.chars().filter(|x| x.eq(&';')).count(), 0);
     }
 }
 
