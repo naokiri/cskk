@@ -60,7 +60,6 @@ impl AsciiFormChanger {
         }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn adjust_ascii_string(&self, ascii_string: &str) -> String {
         let mut result = String::new();
         for c in ascii_string.chars() {

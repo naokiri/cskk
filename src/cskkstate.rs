@@ -177,7 +177,8 @@ impl CskkState {
                 self.use_okurigana = true;
             }
             CompositionMode::Abbreviation => {
-                // TODO: Abbreviationモード実装
+                self.converted_kana_to_composite.push_str(letter_or_word);
+                self.raw_to_composite.push_str(letter_or_word);
             }
             CompositionMode::CompositionSelection => {
                 self.confirmed.push_str(letter_or_word);
@@ -237,12 +238,15 @@ impl CskkState {
                         .collect::<Vec<_>>()
                         .join("")
             }
-            CompositionMode::PreComposition => {
+            CompositionMode::PreComposition | CompositionMode::Abbreviation => {
                 "▽".to_owned()
                     + converted
                     + &kana_to_composite
-                    //+ &unconverted.iter().collect::<String>()
-                + &unconverted.iter().map(|keysym| xkb::keysym_get_name(*keysym)).collect::<Vec<_>>().join("")
+                    + &unconverted
+                        .iter()
+                        .map(|keysym| xkb::keysym_get_name(*keysym))
+                        .collect::<Vec<_>>()
+                        .join("")
             }
             CompositionMode::PreCompositionOkurigana => {
                 "▽".to_owned()
@@ -266,9 +270,6 @@ impl CskkState {
                 } else {
                     "▼".to_string() + &kana_to_composite + "*" + &kana_to_okuri
                 }
-            }
-            CompositionMode::Abbreviation => {
-                "Abbreviaton mode. detail not implemented.".to_string()
             }
         }
     }

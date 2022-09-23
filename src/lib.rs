@@ -428,14 +428,17 @@ impl CskkContext {
     }
 
     fn confirm_current_kana_to_composite(&mut self, temporary_input_mode: InputMode) {
-        let kana = self
+        let kana_like = self
             .current_state_ref()
             .get_to_composite_string()
             .to_owned();
-
-        let kana = self.convert_kana_in_input_mode(&kana, temporary_input_mode);
+        let adjusted = if temporary_input_mode == InputMode::Zenkaku {
+            self.ascii_form_changer.adjust_ascii_string(&kana_like)
+        } else {
+            self.convert_kana_in_input_mode(&kana_like, temporary_input_mode)
+        };
         self.current_state()
-            .push_string_for_composition_mode(&kana, CompositionMode::Direct);
+            .push_string_for_composition_mode(&adjusted, CompositionMode::Direct);
         self.current_state().clear_unconfirmed();
     }
 
@@ -987,40 +990,77 @@ impl CskkContext {
             };
         } else if key_event.is_ascii_inputtable() && key_event.is_modifierless_input() {
             // key was input, but not in rom-kana conversion related modes so skip rom-kana related and input as is.
-            match &self.current_state_ref().input_mode {
-                InputMode::Ascii => {
+            match &self.current_state_ref().composition_mode {
+                CompositionMode::Direct => {
                     if let Some(key_char) = key_event.get_symbol_char() {
-                        match &self.current_state_ref().composition_mode {
-                            CompositionMode::Direct => {
+                        match &self.current_state_ref().input_mode {
+                            InputMode::Ascii => {
                                 self.current_state().push_string(&key_char.to_string());
                                 return true;
                             }
-                            _ => {
-                                log::debug!("Unreachable. Ascii should be always in Direct mode.");
-                            }
-                        }
-                    }
-                }
-                InputMode::Zenkaku => {
-                    if let Some(key_char) = key_event.get_symbol_char() {
-                        let zenkaku = self.ascii_form_changer.adjust_ascii_char(key_char);
-                        match &self.current_state_ref().composition_mode {
-                            CompositionMode::Direct => {
+                            InputMode::Zenkaku => {
+                                let zenkaku = self.ascii_form_changer.adjust_ascii_char(key_char);
                                 self.append_converted(&zenkaku);
                                 return true;
                             }
                             _ => {
                                 log::debug!(
-                                    "Unreachable. ZenkakuAscii should be always in Direct mode."
+                                    "Unreachable. Ascii or Zenkaku only should be in Direct mode can reach here. Ignoring key event: {:?}", key_event
                                 );
                             }
                         }
                     }
                 }
+                CompositionMode::Abbreviation => {
+                    if let Some(key_char) = key_event.get_symbol_char() {
+                        self.current_state().push_string(&key_char.to_string());
+                    }
+                }
                 _ => {
-                    log::debug!("Unreachable by rom2kana check. Ignoring.")
+                    log::debug!(
+                        "Unreachable by rom2kana check. Ignoring key event: {:?}",
+                        key_event
+                    )
                 }
             }
+            //
+            // match &self.current_state_ref().input_mode {
+            //     InputMode::Ascii => {
+            //         if let Some(key_char) = key_event.get_symbol_char() {
+            //             match &self.current_state_ref().composition_mode {
+            //                 CompositionMode::Direct => {
+            //                     self.current_state().push_string(&key_char.to_string());
+            //                     return true;
+            //                 }
+            //                 _ => {
+            //                     log::debug!("Unreachable. Ascii should be always in Direct mode.");
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     InputMode::Zenkaku => {
+            //         if let Some(key_char) = key_event.get_symbol_char() {
+            //             let zenkaku = self.ascii_form_changer.adjust_ascii_char(key_char);
+            //             match &self.current_state_ref().composition_mode {
+            //                 CompositionMode::Direct => {
+            //                     self.append_converted(&zenkaku);
+            //                     return true;
+            //                 }
+            //                 _ => {
+            //                     log::debug!(
+            //                         "Unreachable. ZenkakuAscii should be always in Direct mode."
+            //                     );
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     _ => {
+            //         match &self.current_state_ref().composition_mode {
+            //             CompositionMode::Abbreviation => {}
+            //         }
+            //         log::debug!("Unreachable by rom2kana check. Ignoring.")
+            //     }
+            // }
         }
 
         //
