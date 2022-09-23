@@ -1014,6 +1014,7 @@ impl CskkContext {
                 CompositionMode::Abbreviation => {
                     if let Some(key_char) = key_event.get_symbol_char() {
                         self.current_state().push_string(&key_char.to_string());
+                        return true;
                     }
                 }
                 _ => {
@@ -1023,47 +1024,7 @@ impl CskkContext {
                     )
                 }
             }
-            //
-            // match &self.current_state_ref().input_mode {
-            //     InputMode::Ascii => {
-            //         if let Some(key_char) = key_event.get_symbol_char() {
-            //             match &self.current_state_ref().composition_mode {
-            //                 CompositionMode::Direct => {
-            //                     self.current_state().push_string(&key_char.to_string());
-            //                     return true;
-            //                 }
-            //                 _ => {
-            //                     log::debug!("Unreachable. Ascii should be always in Direct mode.");
-            //                 }
-            //             }
-            //         }
-            //     }
-            //     InputMode::Zenkaku => {
-            //         if let Some(key_char) = key_event.get_symbol_char() {
-            //             let zenkaku = self.ascii_form_changer.adjust_ascii_char(key_char);
-            //             match &self.current_state_ref().composition_mode {
-            //                 CompositionMode::Direct => {
-            //                     self.append_converted(&zenkaku);
-            //                     return true;
-            //                 }
-            //                 _ => {
-            //                     log::debug!(
-            //                         "Unreachable. ZenkakuAscii should be always in Direct mode."
-            //                     );
-            //                 }
-            //             }
-            //         }
-            //     }
-            //     _ => {
-            //         match &self.current_state_ref().composition_mode {
-            //             CompositionMode::Abbreviation => {}
-            //         }
-            //         log::debug!("Unreachable by rom2kana check. Ignoring.")
-            //     }
-            // }
         }
-
-        //
 
         false
     }
