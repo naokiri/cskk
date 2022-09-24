@@ -21,7 +21,7 @@ pub(crate) struct CskkState {
     // 送り仮名の最初の文字は含まれない。
     // そのまま所持せず、計算して出すようにしたいが現バージョンでは保持している。
     raw_to_composite: String,
-    // 未確定入力の漢字の読み部分。ひらがな。出力時にInputModeにあわせて変換される。convertがあるInputMode時のみ使用
+    // 未確定入力の漢字の読み部分。主にひらがな、Abbrev等の時は英字もありうる。出力時にInputModeにあわせて変換される。
     converted_kana_to_composite: String,
     // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。convertがあるInputMode時のみ使用
     converted_kana_to_okuri: String,
@@ -117,7 +117,7 @@ impl CskkState {
                 }
                 deleted
             }
-            CompositionMode::PreComposition => {
+            CompositionMode::PreComposition | CompositionMode::Abbreviation => {
                 // かな変換前の入力を1文字消そうとする
                 let mut deleted = self.pre_conversion.pop().is_some();
                 // できなければ未確定かなを1文字消そうとする。
@@ -147,7 +147,8 @@ impl CskkState {
                 deleted
             }
             _ => {
-                unimplemented!();
+                log::warn!("Unimplemented delete. Should not call in this mode.");
+                false
             }
         }
     }
