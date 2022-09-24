@@ -34,7 +34,6 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use xkbcommon::xkb;
 use xkbcommon::xkb::Keysym;
 
 mod candidate_list;
@@ -672,8 +671,11 @@ impl CskkContext {
         initial_kanainput_composition_mode: CompositionMode,
         done_transition_on_kana_build: bool,
     ) -> bool {
-        let is_capital =
-            (xkb::keysyms::KEY_A..=xkb::keysyms::KEY_Z).contains(&key_event.get_symbol());
+        let is_capital = key_event.is_upper();
+        let is_empty = self
+            .current_state_ref()
+            .get_to_composite_string()
+            .is_empty();
 
         return if is_capital
             && !done_transition_on_kana_build
@@ -683,6 +685,7 @@ impl CskkContext {
             self.current_state().set_capital_transition(true);
             true
         } else if is_capital
+            && !is_empty
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::PreComposition
         {
@@ -732,7 +735,12 @@ impl CskkContext {
                 self.set_carry_over(&carry_over);
 
                 // 入力単独によらない特殊な遷移で、かな変換の結果によって▽モードから▼モードへ移行する。
-                if carry_over.is_empty() {
+                if carry_over.is_empty()
+                    && !self
+                        .current_state_ref()
+                        .get_to_composite_string()
+                        .is_empty()
+                {
                     // この部分TryNextCandidateと似ているが、事前条件が違うので共通にできなかった。
                     self.update_candidate_list();
                     if self.current_state_ref().get_candidate_list().is_empty() {
@@ -1104,9 +1112,14 @@ impl CskkContext {
                             initial_composition_mode,
                         );
                         self.update_candidate_list();
-                        if self.current_state_ref().get_candidate_list().is_empty() {
+                        if !self
+                            .current_state_ref()
+                            .get_to_composite_string()
+                            .is_empty()
+                            && self.current_state_ref().get_candidate_list().is_empty()
+                        {
                             self.enter_register_mode(initial_composition_mode);
-                        } else {
+                        } else if !self.current_state_ref().get_candidate_list().is_empty() {
                             self.set_composition_mode(CompositionMode::CompositionSelection);
                         }
                     } else if !self.current_state_ref().get_candidate_list().has_next() {

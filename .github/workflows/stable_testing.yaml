@@ -1,8 +1,8 @@
-name: Nightly
-# On every Sunday at 03:03
+name: Stable
+# On every Sunday at 02:03
 on:
   schedule:
-    - cron: '3 3 * * 0'
+    - cron: '3 2 * * 0'
   workflow_dispatch:
 
 jobs:
@@ -19,11 +19,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-nightly
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-beta
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
           profile: minimal
           components: rustfmt, clippy
           override: true
@@ -50,13 +49,13 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-nightly
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-beta
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: beta
           profile: minimal
           override: true
       - name: Run rust test
