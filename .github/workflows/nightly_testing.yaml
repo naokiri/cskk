@@ -1,8 +1,8 @@
 name: Nightly
-# On every Sunday at 02:03
+# On every Sunday at 03:03
 on:
   schedule:
-    - cron: '3 2 * * 0'
+    - cron: '3 3 * * 0'
   workflow_dispatch:
 
 jobs:
