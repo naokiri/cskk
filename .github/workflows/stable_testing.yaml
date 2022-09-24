@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '3 2 * * 0'
   workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   lint:
@@ -23,6 +26,7 @@ jobs:
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
           components: rustfmt, clippy
           override: true
