@@ -23,6 +23,7 @@ jobs:
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
           components: rustfmt, clippy
           override: true
