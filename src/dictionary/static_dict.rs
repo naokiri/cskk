@@ -25,8 +25,12 @@ impl StaticFileDict {
 }
 
 impl Dictionary for StaticFileDict {
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(&midashi.chars().collect::<Vec<char>>())
+    fn lookup(&self, midashi: &str, okuri: bool) -> Option<&DictEntry> {
+        FileDictionary::lookup(self, midashi, okuri)
+    }
+
+    fn complement(&self, midashi: &str) -> Result<Vec<&DictEntry>, CskkError> {
+        FileDictionary::complement(self, midashi)
     }
 }
 
@@ -41,5 +45,9 @@ impl FileDictionary for StaticFileDict {
 
     fn set_dictionary(&mut self, dictionary: SequenceTrie<char, DictEntry>) {
         self.dictionary = dictionary
+    }
+
+    fn get_dictionary(&self) -> &SequenceTrie<char, DictEntry> {
+        &self.dictionary
     }
 }

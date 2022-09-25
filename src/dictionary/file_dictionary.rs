@@ -15,10 +15,35 @@ pub(crate) trait FileDictionary: Dictionary {
 
     fn set_dictionary(&mut self, dictionary: SequenceTrie<char, DictEntry>);
 
+    fn get_dictionary(&self) -> &SequenceTrie<char, DictEntry>;
+
     fn reload(&mut self) -> Result<(), CskkError> {
         let dictionary = load_dictionary(self.file_path(), self.encode().as_bytes())?;
         self.set_dictionary(dictionary);
         Ok(())
+    }
+
+    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
+        self.get_dictionary()
+            .get(&midashi.chars().collect::<Vec<char>>())
+    }
+
+    fn complement(&self, midashi: &str) -> Result<Vec<&DictEntry>, CskkError> {
+        return if let Some(entry) = self
+            .get_dictionary()
+            .get_node(&midashi.chars().collect::<Vec<char>>())
+        {
+            let mut entries = entry.children_with_keys();
+            entries.sort_unstable_by(|(key_a, _node_a), (key_b, _node_b)| key_a.cmp(key_b));
+            let result = entries
+                .iter()
+                .filter(|(_key, node)| node.value().is_some())
+                .map(|(_key, node)| node.value().unwrap())
+                .collect();
+            Ok(result)
+        } else {
+            Ok(vec![])
+        };
     }
 }
 

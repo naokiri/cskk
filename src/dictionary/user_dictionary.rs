@@ -38,11 +38,15 @@ impl UserDictionary {
 
 impl Dictionary for UserDictionary {
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(&midashi.chars().collect::<Vec<char>>())
+        FileDictionary::lookup(self, midashi, _okuri)
     }
 
     fn is_read_only(&self) -> bool {
         false
+    }
+
+    fn complement(&self, midashi: &str) -> Result<Vec<&DictEntry>, CskkError> {
+        FileDictionary::complement(self, midashi)
     }
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
@@ -119,6 +123,10 @@ impl FileDictionary for UserDictionary {
 
     fn set_dictionary(&mut self, dictionary: SequenceTrie<char, DictEntry>) {
         self.dictionary = dictionary;
+    }
+
+    fn get_dictionary(&self) -> &SequenceTrie<char, DictEntry> {
+        &self.dictionary
     }
 }
 

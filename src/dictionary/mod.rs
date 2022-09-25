@@ -1,25 +1,23 @@
-use static_dict::StaticFileDict;
-
-use crate::dictionary::candidate::Candidate;
-use crate::error::CskkError;
-use dictentry::DictEntry;
-use empty_dict::EmptyDictionary;
-use std::sync::{Arc, Mutex};
-use user_dictionary::UserDictionary;
-
 pub(crate) mod candidate;
 pub(crate) mod dictentry;
 pub mod empty_dict;
 pub(crate) mod file_dictionary;
 pub mod static_dict;
 pub mod user_dictionary;
+use static_dict::StaticFileDict;
 
+use crate::dictionary::candidate::Candidate;
+use crate::error::CskkError;
 use crate::form_changer::numeric_form_changer::{
     numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
     numeric_to_thousand_separator, numeric_to_zenkaku,
 };
+use dictentry::DictEntry;
+use empty_dict::EmptyDictionary;
 use log::*;
 use regex::Regex;
+use std::sync::{Arc, Mutex};
+use user_dictionary::UserDictionary;
 
 // C側に出す関係でSizedである必要があり、dyn Traitではなくenumでラップする。
 #[derive(Debug)]
@@ -356,8 +354,7 @@ pub(crate) fn get_nth_candidate(
 }
 
 pub(crate) trait Dictionary {
-    /// 今のところ数値変換等がないので、raw_to_compositeではなくmidashiとして完全一致を探す。
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry>;
+    fn lookup(&self, midashi: &str, okuri: bool) -> Option<&DictEntry>;
 
     fn is_read_only(&self) -> bool {
         true
@@ -365,9 +362,10 @@ pub(crate) trait Dictionary {
     //
     // TODO: midashi から始まるエントリを全て返す。i.e. skkserv 4 command
     // e.g.
-    // complete('あ') -> ["あい", "あいさつ"]
+    // complement('あ') -> ["あい", "あいさつ"]
     //
-    // fn complete(&self, _midashi: &str) /* -> Option<&Vec<&str>>?*/
+    fn complement(&self, midashi: &str) -> Result<Vec<&DictEntry>, CskkError>;
+
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
