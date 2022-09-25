@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
-
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
 use crate::dictionary::{DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
-use log::*;
+use sequence_trie::SequenceTrie;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 
@@ -19,7 +17,7 @@ pub(crate) struct UserDictionary {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    dictionary: BTreeMap<String, DictEntry>,
+    dictionary: SequenceTrie<char, DictEntry>,
     // Just bool, because we know this is under mutex.
     has_change: bool,
 }
@@ -40,7 +38,7 @@ impl UserDictionary {
 
 impl Dictionary for UserDictionary {
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(midashi)
+        self.dictionary.get(&midashi.chars().collect::<Vec<char>>())
     }
 
     fn is_read_only(&self) -> bool {
@@ -75,8 +73,9 @@ impl Dictionary for UserDictionary {
 
     fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
-        debug!("Select midashi: {:?}", midashi);
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        log::debug!("Select midashi: {:?}", midashi);
+        let midashi_chars = midashi.chars().collect::<Vec<char>>();
+        let entry = self.dictionary.get_mut(&midashi_chars);
         match entry {
             Some(dict_entry) => {
                 dict_entry.remove_matching_candidate(candidate);
@@ -84,7 +83,7 @@ impl Dictionary for UserDictionary {
             }
             None => {
                 self.dictionary.insert(
-                    (*candidate.midashi).clone(),
+                    &midashi_chars,
                     DictEntry {
                         midashi: (*candidate.midashi).clone(),
                         candidates: vec![(*candidate).clone()],
@@ -98,7 +97,9 @@ impl Dictionary for UserDictionary {
 
     fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        let entry = self
+            .dictionary
+            .get_mut(&midashi.chars().collect::<Vec<char>>());
         if let Some(dict_entry) = entry {
             dict_entry.remove_matching_candidate(candidate);
         }
@@ -116,7 +117,7 @@ impl FileDictionary for UserDictionary {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>) {
+    fn set_dictionary(&mut self, dictionary: SequenceTrie<char, DictEntry>) {
         self.dictionary = dictionary;
     }
 }

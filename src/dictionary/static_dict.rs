@@ -1,15 +1,14 @@
-use crate::CskkError;
-use std::collections::BTreeMap;
-
 use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
 use crate::dictionary::{DictEntry, Dictionary};
+use crate::CskkError;
+use sequence_trie::SequenceTrie;
 
 #[derive(Debug)]
 pub(crate) struct StaticFileDict {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    dictionary: BTreeMap<String, DictEntry>,
+    dictionary: SequenceTrie<char, DictEntry>,
 }
 
 impl StaticFileDict {
@@ -27,7 +26,7 @@ impl StaticFileDict {
 
 impl Dictionary for StaticFileDict {
     fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(midashi)
+        self.dictionary.get(&midashi.chars().collect::<Vec<char>>())
     }
 }
 
@@ -40,7 +39,7 @@ impl FileDictionary for StaticFileDict {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>) {
+    fn set_dictionary(&mut self, dictionary: SequenceTrie<char, DictEntry>) {
         self.dictionary = dictionary
     }
 }

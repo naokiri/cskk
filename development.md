@@ -1,6 +1,7 @@
 # Development note
 
-## deploy process
+## CSKK
+### deploy process
 Not automated yet.
 Cargo.tomlおよび.github/workflows/continuous_testing.yaml内の確認するバージョンを書き換え
 githubでReleaseからDraft a new releaseしてvx.y.zのようなタグを作ってreleaseブランチからリリースする
@@ -14,6 +15,10 @@ github workflowでartifactがアップロードされる。
     cargo publish
 
 という手順を踏む。
+
+### HashMap, BTreeMap
+選択理由としては初期に手癖で各々使ってしまったから以外ない。
+どちらがいいかは検討の余地ありだが、一応Rust interfaceとして外部に出ているものもあるので変更や統一をするとC APIに影響がなくとも互換性のないバージョンアップ扱いになりうる。
 
 ## libskk
 
@@ -91,10 +96,7 @@ Composition
 - delegated時のみ候補が空ならRegisterモードへ再度送っている。
 - candidate_listが正しい状態かをチェックして、candidtate_listを更新するか、次の候補へ移動するか、Registerモードへ送るかを決めている。これをnext_candidate、previous_candidateとしてハンドラ内では判断しないようにして、コマンド処理側でcandidate_listの何番目を指しているかによって動作を変える。
 
-### 
-まず上記next/previous candidateの変更だけでリファクタリング後、Instructionの不要部分を消してからマージしたい。
-
-## bug or feature?
+## bug or feature of libskk?
 ### Shift 押しっぱなしの送り仮名
 cskk current: S i N I -> ▼死に
 libskk: S i N I -> ▼死んい
