@@ -3,7 +3,6 @@ use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair,
 use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
-use chrono;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
 use log::*;
 use std::collections::BTreeMap;
@@ -61,14 +60,15 @@ impl Dictionary for UserDictionary {
                 .expect("It should be same as encoding name succeeded when loading file.")
                 .new_encoder();
 
-            let encoded = encode_string(
-                &mut enc,
-                &format!(
-                    ";; Save on {} \n",
-                    chrono::offset::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
-                ),
-            )?;
-            stream.write_all(encoded.as_slice())?;
+            // Not using. Can't compile on mac.
+            // let encoded = encode_string(
+            //     &mut enc,
+            //     &format!(
+            //         ";; Save on {} \n",
+            //         chrono::offset::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
+            //     ),
+            // )?;
+            // stream.write_all(encoded.as_slice())?;
 
             let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
             stream.write_all(encoded.as_slice())?;
