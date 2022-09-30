@@ -833,6 +833,8 @@ impl CskkContext {
         {
             let combined_raw = KanaBuilder::combine_raw(key_event, &initial_unprocessed_vector);
             let combined_lower = KanaBuilder::combine_lower(key_event, &initial_unprocessed_vector);
+            let alone_raw = KanaBuilder::combine_raw(key_event, &[]);
+            let alone_lower = KanaBuilder::combine_lower(key_event, &[]);
 
             // 上の間の処理で所有権を失っているので再度convert_non_partialを呼ぶ。
             // FIXME: RustのバージョンがあがってSome内部のrefを上手くto_ownedみたいな扱いが簡単に書けるようになったら
@@ -883,7 +885,7 @@ impl CskkContext {
             let current_input_mode = self.current_state_ref().input_mode;
 
             if let Some(key_char) = key_event.get_symbol_char() {
-                // カンマピリオドは特殊な設定と処理がある。 TODO:
+                // カンマピリオドは特殊な設定と処理がある。 TODO: これも一般化したい。
                 if let Some(converted) = self.kana_converter.convert_periods(
                     &key_char,
                     self.config.period_style,
@@ -934,6 +936,40 @@ impl CskkContext {
                     );
                     let lower_key_event = key_event.to_lower();
                     self.input_as_continuous_kana(&lower_key_event);
+                } else if let Some((converted, carry_over)) =
+                    self.kana_converter.convert_non_partial(&alone_raw)
+                {
+                    // かな入力として成立しないが単純変換のある入力。続けて入力はできないがかな変換はできる文字。
+                    let converted = converted.to_owned();
+                    let carry_over = carry_over.clone();
+                    self.input_converted_kana(
+                        &converted,
+                        carry_over,
+                        false,
+                        initial_unprocessed_vector,
+                    );
+                    return true;
+                } else if let Some((converted, carry_over)) =
+                    self.kana_converter.convert_non_partial(&alone_lower)
+                {
+                    // かな入力として成立しないがモード変更と捉えればかな単純変換の入力となる文字
+                    if key_event.is_upper() {
+                        let converted = converted.to_owned();
+                        let carry_over = carry_over.clone();
+                        let did_change_mode = self.transition_composition_mode_by_capital_letter(
+                            key_event,
+                            initial_kanainput_composition_mode,
+                            false,
+                        );
+
+                        self.input_converted_kana(
+                            &converted,
+                            carry_over,
+                            did_change_mode,
+                            initial_unprocessed_vector,
+                        );
+                        return true;
+                    }
                 } else if self.kana_converter.can_continue(key_event, &[]) {
                     // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                     // まずpre_convertedを整理してから入力として扱う。
