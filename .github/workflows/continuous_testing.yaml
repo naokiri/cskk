@@ -71,7 +71,7 @@ jobs:
     name: library test
     strategy:
       matrix:
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, macos-12 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
