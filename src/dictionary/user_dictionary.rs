@@ -1,12 +1,12 @@
-use std::collections::BTreeMap;
-
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair, FileDictionary};
 use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
+use chrono;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
 use log::*;
+use std::collections::BTreeMap;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 
@@ -60,6 +60,15 @@ impl Dictionary for UserDictionary {
             let mut enc = Encoding::for_label(self.encode.as_bytes())
                 .expect("It should be same as encoding name succeeded when loading file.")
                 .new_encoder();
+
+            let encoded = encode_string(
+                &mut enc,
+                &format!(
+                    ";; Save on {} \n",
+                    chrono::offset::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
+                ),
+            )?;
+            stream.write_all(encoded.as_slice())?;
 
             let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
             stream.write_all(encoded.as_slice())?;

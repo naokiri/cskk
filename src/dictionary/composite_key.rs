@@ -1,4 +1,3 @@
-use crate::dictionary::dictentry::DictEntry;
 use crate::KanaFormChanger;
 
 #[derive(Clone, Debug)]
