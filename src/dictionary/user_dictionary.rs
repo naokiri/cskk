@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::dictionary::candidate::Candidate;
-use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
-use crate::dictionary::{DictEntry, Dictionary};
+use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair, FileDictionary};
+use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
@@ -19,7 +19,8 @@ pub(crate) struct UserDictionary {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    dictionary: BTreeMap<String, DictEntry>,
+    okuri_ari_dictionary: BTreeMap<String, DictEntry>,
+    okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
     // Just bool, because we know this is under mutex.
     has_change: bool,
 }
@@ -32,15 +33,16 @@ impl UserDictionary {
         Ok(UserDictionary {
             file_path: String::from(file_path),
             encode: encode.to_string(),
-            dictionary,
+            okuri_ari_dictionary: dictionary.okuri_ari,
+            okuri_nashi_dictionary: dictionary.okuri_nashi,
             has_change: false,
         })
     }
 }
 
 impl Dictionary for UserDictionary {
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(midashi)
+    fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
+        FileDictionary::lookup(self, composite_key)
     }
 
     fn is_read_only(&self) -> bool {
@@ -48,7 +50,7 @@ impl Dictionary for UserDictionary {
     }
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
-    /// TODO: 現在は他の辞書と互換性がないただのエントリの羅列なので、okuri-ari entriesとokuri-nasi entriesに分けてddskkのようにファイル上で走査する辞書互換にする。
+    /// 辞書ファイルのフォーマットは SKK 16.2 user manual 5.10.7 辞書の書式 に依る
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
         if self.has_change {
             rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
@@ -58,7 +60,19 @@ impl Dictionary for UserDictionary {
             let mut enc = Encoding::for_label(self.encode.as_bytes())
                 .expect("It should be same as encoding name succeeded when loading file.")
                 .new_encoder();
-            for dictentry in self.dictionary.values() {
+
+            let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
+            stream.write_all(encoded.as_slice())?;
+            for dictentry in self.okuri_ari_dictionary.values() {
+                let mut source = dictentry.to_skk_jisyo_string();
+                source += "\n";
+                if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
+                    stream.write_all(encoded.as_slice())?;
+                }
+            }
+            let encoded = encode_string(&mut enc, ";; okuri-nasi entries.\n")?;
+            stream.write_all(encoded.as_slice())?;
+            for dictentry in self.okuri_nashi_dictionary.values() {
                 let mut source = dictentry.to_skk_jisyo_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
@@ -76,19 +90,26 @@ impl Dictionary for UserDictionary {
     fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
         debug!("Select midashi: {:?}", midashi);
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        let dictionary = if candidate.okuri {
+            &mut self.okuri_ari_dictionary
+        } else {
+            &mut self.okuri_nashi_dictionary
+        };
+
+        let entry = dictionary.get_mut(midashi.as_str());
         match entry {
             Some(dict_entry) => {
                 dict_entry.remove_matching_candidate(candidate);
                 dict_entry.insert_as_first_candidate(candidate.clone());
             }
             None => {
-                self.dictionary.insert(
-                    (*candidate.midashi).clone(),
-                    DictEntry {
-                        midashi: (*candidate.midashi).clone(),
-                        candidates: vec![(*candidate).clone()],
-                    },
+                dictionary.insert(
+                    candidate.midashi.to_owned(),
+                    DictEntry::new(
+                        &candidate.midashi,
+                        vec![candidate.to_owned()],
+                        candidate.okuri,
+                    ),
                 );
             }
         }
@@ -97,13 +118,22 @@ impl Dictionary for UserDictionary {
     }
 
     fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+        let dictionary = if candidate.okuri {
+            &mut self.okuri_ari_dictionary
+        } else {
+            &mut self.okuri_nashi_dictionary
+        };
         let midashi = &candidate.midashi;
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        let entry = dictionary.get_mut(midashi.as_str());
         if let Some(dict_entry) = entry {
             dict_entry.remove_matching_candidate(candidate);
         }
         self.has_change = true;
         Ok(true)
+    }
+
+    fn reload(&mut self) -> Result<(), CskkError> {
+        FileDictionary::reload(self)
     }
 }
 
@@ -116,8 +146,16 @@ impl FileDictionary for UserDictionary {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>) {
-        self.dictionary = dictionary;
+    fn set_dictionary(&mut self, dictionary: DictionaryEntriesPair) {
+        self.okuri_ari_dictionary = dictionary.okuri_ari;
+        self.okuri_nashi_dictionary = dictionary.okuri_nashi;
+    }
+    fn get_okuri_ari_dictionary(&self) -> &BTreeMap<String, DictEntry> {
+        &self.okuri_ari_dictionary
+    }
+
+    fn get_okuri_nashi_dictionary(&self) -> &BTreeMap<String, DictEntry> {
+        &self.okuri_nashi_dictionary
     }
 }
 
@@ -159,7 +197,7 @@ mod test {
         File::create("tests/data/dictionaries/empty.dat")?;
         let mut user_dictionary =
             UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
-        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
+        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow", false).unwrap();
         user_dictionary.select_candidate(&candidate)?;
         user_dictionary.save_dictionary()?;
         user_dictionary.purge_candidate(&candidate)?;

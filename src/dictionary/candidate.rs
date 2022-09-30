@@ -1,18 +1,15 @@
 use crate::dictionary::dictentry::DictEntry;
 use crate::error::CskkError;
-use log::*;
 use std::fmt::Write;
-use std::sync::Arc;
 
 // Blind copy of libskk vala Candidate class
 #[derive(Debug, Clone)]
 pub struct Candidate {
-    pub(crate) midashi: Arc<String>,
-    #[allow(dead_code)]
+    pub(crate) midashi: String,
     pub(crate) okuri: bool,
     // Raw kouho_text that might include "#0回" etc
-    pub(crate) kouho_text: Arc<String>,
-    pub(crate) annotation: Option<Arc<String>>,
+    pub(crate) kouho_text: String,
+    pub(crate) annotation: Option<String>,
     // Output to show the candidate.
     pub(crate) output: String,
 }
@@ -20,9 +17,9 @@ pub struct Candidate {
 impl Default for Candidate {
     fn default() -> Self {
         Candidate {
-            midashi: Arc::new("エラー".to_owned()),
+            midashi: "エラー".to_string(),
             okuri: false,
-            kouho_text: Arc::new("エラー".to_owned()),
+            kouho_text: "エラー".to_string(),
             annotation: None,
             output: "エラー".to_string(),
         }
@@ -40,10 +37,10 @@ impl PartialEq for Candidate {
 
 impl Candidate {
     pub(crate) fn new(
-        midashi: Arc<String>,
+        midashi: String,
         okuri: bool,
-        kouho_text: Arc<String>,
-        annotation: Option<Arc<String>>,
+        kouho_text: String,
+        annotation: Option<String>,
         output: String,
     ) -> Self {
         Candidate {
@@ -55,22 +52,24 @@ impl Candidate {
         }
     }
 
-    pub(crate) fn from_skk_jisyo_string(midashi: &str, raw_entry: &str) -> Result<Self, CskkError> {
+    pub(crate) fn from_skk_jisyo_string(
+        midashi: &str,
+        raw_entry: &str,
+        has_okuri: bool,
+    ) -> Result<Self, CskkError> {
         let mut chunk = raw_entry.split(';');
         if let Some(text) = chunk.next() {
             let kouho = DictEntry::process_lisp_fun(text);
-            let annotation = chunk
-                .next()
-                .map(|entry| Arc::new(DictEntry::process_lisp_fun(entry)));
+            let annotation = chunk.next().map(|entry| DictEntry::process_lisp_fun(entry));
             Ok(Candidate::new(
-                Arc::new(midashi.to_string()),
-                false,
-                Arc::new(kouho.to_string()),
+                midashi.to_string(),
+                has_okuri,
+                kouho.to_string(),
                 annotation,
                 kouho,
             ))
         } else {
-            debug!("Failed to parse candidate from: {:?}", raw_entry);
+            log::debug!("Failed to parse candidate from: {:?}", raw_entry);
             Err(CskkError::Error("No candidate".to_string()))
         }
     }
@@ -103,9 +102,9 @@ mod test {
     #[test]
     fn skk_jisyo_string_no_annotation() {
         let candidate = Candidate::new(
-            Arc::new("みだし".to_string()),
+            "みだし".to_string(),
             false,
-            Arc::new("候補".to_string()),
+            "候補".to_string(),
             None,
             "候補".to_string(),
         );

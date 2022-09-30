@@ -1,15 +1,16 @@
 use crate::CskkError;
 use std::collections::BTreeMap;
 
-use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
-use crate::dictionary::{DictEntry, Dictionary};
+use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair, FileDictionary};
+use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 
 #[derive(Debug)]
 pub(crate) struct StaticFileDict {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    dictionary: BTreeMap<String, DictEntry>,
+    okuri_ari_dictionary: BTreeMap<String, DictEntry>,
+    okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
 }
 
 impl StaticFileDict {
@@ -20,14 +21,19 @@ impl StaticFileDict {
         Ok(StaticFileDict {
             file_path: String::from(file_path),
             encode: encode.to_string(),
-            dictionary,
+            okuri_ari_dictionary: dictionary.okuri_ari,
+            okuri_nashi_dictionary: dictionary.okuri_nashi,
         })
     }
 }
 
 impl Dictionary for StaticFileDict {
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(midashi)
+    fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
+        FileDictionary::lookup(self, composite_key)
+    }
+
+    fn reload(&mut self) -> Result<(), CskkError> {
+        FileDictionary::reload(self)
     }
 }
 
@@ -40,7 +46,16 @@ impl FileDictionary for StaticFileDict {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>) {
-        self.dictionary = dictionary
+    fn set_dictionary(&mut self, dictionary: DictionaryEntriesPair) {
+        self.okuri_ari_dictionary = dictionary.okuri_ari;
+        self.okuri_nashi_dictionary = dictionary.okuri_nashi;
+    }
+
+    fn get_okuri_ari_dictionary(&self) -> &BTreeMap<String, DictEntry> {
+        &self.okuri_ari_dictionary
+    }
+
+    fn get_okuri_nashi_dictionary(&self) -> &BTreeMap<String, DictEntry> {
+        &self.okuri_nashi_dictionary
     }
 }

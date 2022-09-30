@@ -1,10 +1,11 @@
 use crate::dictionary::candidate::Candidate;
+use crate::dictionary::CompositeKey;
 use crate::error::CskkError;
 
 #[derive(Debug)]
 pub(crate) struct CandidateList {
     // 現在保持している選択肢の元
-    to_composite: String,
+    to_composite: CompositeKey,
     // 現在のカーソル位置
     selection_cursor_position: usize,
     // 変換中の選択肢
@@ -14,13 +15,13 @@ pub(crate) struct CandidateList {
 impl CandidateList {
     pub(crate) fn new() -> Self {
         CandidateList {
-            to_composite: "".to_string(),
+            to_composite: CompositeKey::new("", None),
             selection_cursor_position: 0,
             composition_candidates: vec![],
         }
     }
 
-    pub(crate) fn set(&mut self, raw_to_composite: String, candidates: Vec<Candidate>) {
+    pub(crate) fn set(&mut self, raw_to_composite: CompositeKey, candidates: Vec<Candidate>) {
         self.to_composite = raw_to_composite;
         self.composition_candidates = candidates;
         self.selection_cursor_position = 0;
@@ -41,7 +42,7 @@ impl CandidateList {
         }
     }
 
-    pub(crate) fn get_current_to_composite(&self) -> &str {
+    pub(crate) fn get_current_to_composite(&self) -> &CompositeKey {
         &self.to_composite
     }
 

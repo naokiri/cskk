@@ -1196,7 +1196,9 @@ fn semicolon_entry() {
         .build(dict_file);
     let reader = BufReader::new(decoder);
     for line in reader.lines().flatten() {
-        assert_eq!(line.chars().filter(|x| x.eq(&';')).count(), 0);
+        if !line.starts_with(";;") {
+            assert_eq!(line.chars().filter(|x| x.eq(&';')).count(), 0);
+        }
     }
 }
 
