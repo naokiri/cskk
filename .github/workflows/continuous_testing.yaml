@@ -121,7 +121,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
       - name: Install required libs (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
@@ -156,21 +156,21 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
       - name: copy header file (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
       - name: link lib versioning (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
       - name: Show built file
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: ls -l ./target/*
       - name: Show built file under debug
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: ls -l ./target/x86_64-apple-darwin/debug/
       - name: Build lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
       - name: Run lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macOS-12'
         run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
         
