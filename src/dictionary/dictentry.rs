@@ -16,7 +16,7 @@ impl DictEntry {
     pub(crate) fn new(midashi: &str, candidates: Vec<Candidate>, has_okuri: bool) -> Self {
         Self {
             midashi: midashi.to_string(),
-            candidates: candidates,
+            candidates,
             has_okuri,
         }
     }

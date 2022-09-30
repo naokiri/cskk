@@ -60,7 +60,7 @@ impl Candidate {
         let mut chunk = raw_entry.split(';');
         if let Some(text) = chunk.next() {
             let kouho = DictEntry::process_lisp_fun(text);
-            let annotation = chunk.next().map(|entry| DictEntry::process_lisp_fun(entry));
+            let annotation = chunk.next().map(DictEntry::process_lisp_fun);
             Ok(Candidate::new(
                 midashi.to_string(),
                 has_okuri,

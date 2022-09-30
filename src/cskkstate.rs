@@ -285,7 +285,7 @@ impl CskkState {
             }
         }
 
-        return CompositeKey::new(&self.raw_to_composite, None);
+        CompositeKey::new(&self.raw_to_composite, None)
     }
 
     pub(crate) fn set_capital_transition(&mut self, has_transitioned: bool) {
