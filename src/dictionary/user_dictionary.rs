@@ -4,7 +4,6 @@ use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
-use log::*;
 use std::collections::BTreeMap;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
@@ -96,10 +95,14 @@ impl Dictionary for UserDictionary {
         }
     }
 
-    fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+    fn select_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
-        debug!("Select midashi: {:?}", midashi);
-        let dictionary = if candidate.okuri {
+        log::debug!("Select midashi: {:?}", midashi);
+        let dictionary = if composite_key.has_okuri() {
             &mut self.okuri_ari_dictionary
         } else {
             &mut self.okuri_nashi_dictionary
@@ -117,7 +120,7 @@ impl Dictionary for UserDictionary {
                     DictEntry::new(
                         &candidate.midashi,
                         vec![candidate.to_owned()],
-                        candidate.okuri,
+                        composite_key.has_okuri(),
                     ),
                 );
             }
@@ -126,8 +129,12 @@ impl Dictionary for UserDictionary {
         Ok(true)
     }
 
-    fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
-        let dictionary = if candidate.okuri {
+    fn purge_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
+        let dictionary = if composite_key.has_okuri() {
             &mut self.okuri_ari_dictionary
         } else {
             &mut self.okuri_nashi_dictionary
@@ -136,6 +143,9 @@ impl Dictionary for UserDictionary {
         let entry = dictionary.get_mut(midashi.as_str());
         if let Some(dict_entry) = entry {
             dict_entry.remove_matching_candidate(candidate);
+        } else {
+            // Not warning because this is usual when selected candidate from other dictionary.
+            log::info!("Tried to remove candidate that doesn't exist in this dictionary. Ignored.")
         }
         self.has_change = true;
         Ok(true)
@@ -206,10 +216,11 @@ mod test {
         File::create("tests/data/dictionaries/empty.dat")?;
         let mut user_dictionary =
             UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
-        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow", false).unwrap();
-        user_dictionary.select_candidate(&candidate)?;
+        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
+        let composite_key = CompositeKey::new("あああ", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
-        user_dictionary.purge_candidate(&candidate)?;
+        user_dictionary.purge_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
         Ok(())
     }

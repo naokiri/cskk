@@ -1,15 +1,22 @@
 use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
 use anyhow::bail;
+use pest::Parser;
+use pest_derive::Parser;
 use regex::{Captures, Regex};
 use std::fmt::Write;
 
+/// 辞書の一行にあたる構造
 #[derive(Debug, Clone)]
 pub(crate) struct DictEntry {
     pub(crate) midashi: String,
     pub(crate) candidates: Vec<Candidate>,
     has_okuri: bool,
 }
+
+#[derive(Parser)]
+#[grammar = "dictionary/dictentry.pest"]
+pub(crate) struct DictEntryParser;
 
 impl DictEntry {
     /// Usually, use from_skk_jisyo_line
@@ -41,7 +48,7 @@ impl DictEntry {
         &self.candidates
     }
 
-    pub(crate) fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
+    pub(crate) fn from_skkjisyo_line_old(line: &str) -> Result<Self, CskkError> {
         lazy_static! {}
         let mut result = Vec::new();
         let mut line = line.trim().split_ascii_whitespace();
@@ -62,8 +69,7 @@ impl DictEntry {
         let entries = entries.split('/');
         for entry in entries {
             if !entry.is_empty() {
-                if let Ok(candidate) = Candidate::from_skk_jisyo_string(&midashi, entry, has_okuri)
-                {
+                if let Ok(candidate) = Candidate::from_skk_jisyo_string(&midashi, entry) {
                     result.push(candidate)
                 }
             }
@@ -181,6 +187,9 @@ impl DictEntry {
             replacing_string = replacing_string.replace('/', "\\057");
             replacing_string = replacing_string.replace(';', "\\073");
             replacing_string = replacing_string.replace('"', "\\\"");
+            replacing_string = replacing_string.replace('[', "\\133");
+            replacing_string = replacing_string.replace(']', "\\135");
+            //todo!("add []");
             return format!(r#"(concat "{}")"#, replacing_string);
         }
 
@@ -190,6 +199,103 @@ impl DictEntry {
     /// true if this is likely okuri ari entry
     pub(crate) fn is_okuri_ari_entry(&self) -> bool {
         self.has_okuri
+    }
+
+    pub(crate) fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
+        if let Ok(mut pairs) = DictEntryParser::parse(Rule::entry, line) {
+            // Safe to use unwrap here it's guaranteed to follow the grammer.
+            let mut entry = pairs.next().unwrap().into_inner();
+            let midashi = entry.next().unwrap().as_str();
+            let midashi = DictEntry::process_lisp_fun(midashi);
+
+            let alphabet = [
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+                'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            ];
+            let has_okuri = !midashi.starts_with(alphabet) && midashi.ends_with(alphabet);
+
+            let mut candidates = Vec::new();
+            for candidate in entry.next().unwrap().into_inner() {
+                match candidate.as_rule() {
+                    Rule::annotated_candidate => {
+                        let mut annotated = candidate.into_inner();
+                        let kouho = annotated.next().unwrap().as_str();
+                        let kouho = DictEntry::process_lisp_fun(kouho);
+                        let annotation = annotated.next().unwrap().as_str();
+                        let annotation = DictEntry::process_lisp_fun(annotation);
+                        candidates.push(Candidate::new(
+                            midashi.to_owned(),
+                            None,
+                            kouho.to_owned(),
+                            Some(annotation),
+                            kouho.to_owned(),
+                        ))
+                    }
+                    Rule::simple_candidate => {
+                        let kouho = candidate.into_inner().next().unwrap().as_str();
+                        let kouho = DictEntry::process_lisp_fun(kouho);
+                        candidates.push(Candidate::new(
+                            midashi.to_owned(),
+                            None,
+                            kouho.to_owned(),
+                            None,
+                            kouho.to_owned(),
+                        ))
+                    }
+                    Rule::strict_okuri_candidate => {
+                        let mut strict_okuri = candidate.into_inner();
+                        let kana = strict_okuri.next().unwrap().as_str();
+                        let kana = kana.chars().next().unwrap();
+                        for inner_candidate in strict_okuri {
+                            match inner_candidate.as_rule() {
+                                Rule::annotated_candidate => {
+                                    let mut annotated = inner_candidate.into_inner();
+                                    let kouho = annotated.next().unwrap().as_str();
+                                    let kouho = DictEntry::process_lisp_fun(kouho);
+                                    let annotation = annotated.next().unwrap().as_str();
+                                    let annotation = DictEntry::process_lisp_fun(annotation);
+                                    candidates.push(Candidate::new(
+                                        midashi.to_owned(),
+                                        Some(kana),
+                                        kouho.to_owned(),
+                                        Some(annotation),
+                                        kouho.to_owned(),
+                                    ))
+                                }
+                                Rule::simple_candidate => {
+                                    let kouho =
+                                        inner_candidate.into_inner().next().unwrap().as_str();
+                                    let kouho = DictEntry::process_lisp_fun(kouho);
+                                    candidates.push(Candidate::new(
+                                        midashi.to_owned(),
+                                        Some(kana),
+                                        kouho.to_owned(),
+                                        None,
+                                        kouho.to_owned(),
+                                    ))
+                                }
+                                _ => {
+                                    // Never
+                                    log::error!("Dictionary parser found non candidate in strict okuri candidate. Ignored this part. {}", inner_candidate.as_str());
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        // never happens
+                        log::error!("Dictionary parser found non candidate in where candidate should be. Ignored this part. {}", candidate.as_str());
+                    }
+                }
+            }
+
+            return Ok(Self {
+                midashi,
+                candidates,
+                has_okuri,
+            });
+        }
+
+        Err(CskkError::ParseError(format!("Failed to parse {}", line)))
     }
 }
 
@@ -275,7 +381,7 @@ mod test {
     fn remove() {
         let jisyo = "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/";
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        let candidate = Candidate::from_skk_jisyo_string("あい", "愛", false).unwrap();
+        let candidate = Candidate::from_skk_jisyo_string("あい", "愛").unwrap();
         dict_entry.remove_matching_candidate(&candidate);
         let Candidate {
             kouho_text,
@@ -290,7 +396,7 @@ mod test {
     fn insert() {
         let jisyo = "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/";
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        let candidate = Candidate::from_skk_jisyo_string("あい", "アイ;foo", false).unwrap();
+        let candidate = Candidate::from_skk_jisyo_string("あい", "アイ;foo").unwrap();
         dict_entry.insert_as_first_candidate(candidate);
         let Candidate {
             kouho_text,
@@ -331,5 +437,28 @@ mod test {
     fn is_okuri_ari() {
         let entry = DictEntry::from_skkjisyo_line("おくr /送;(send)/").unwrap();
         assert!(entry.is_okuri_ari_entry());
+    }
+
+    #[test]
+    fn parser() {
+        init_test_logger();
+        let results =
+            DictEntryParser::parse(Rule::entry, "おくr /送;(send)/遅/[る/暗;(dark)/]/").unwrap();
+
+        for result in results {
+            log::error!("{:?}", result)
+        }
+    }
+
+    #[test]
+    fn parse_dictionary_line() {
+        init_test_logger();
+        let results =
+            DictEntry::from_skkjisyo_line("おくr /送;(send)/[る/暗;(dark)/]/hoge/").unwrap();
+        assert!(results.has_okuri);
+        assert_eq!(results.candidates.len(), 3);
+        assert_eq!(results.candidates[0].kouho_text, "送");
+        assert_eq!(results.candidates[1].okuri, Some('る'));
+        assert_eq!(results.candidates[2].kouho_text, "hoge");
     }
 }

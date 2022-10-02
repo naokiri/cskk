@@ -387,8 +387,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                purge_candidate(cskkdict, &current_candidate);
+                purge_candidate(cskkdict, &composite_key, &current_candidate);
             }
         } else {
             log::warn!(
@@ -408,9 +413,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
-
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                confirm_candidate(cskkdict, &current_candidate);
+                confirm_candidate(cskkdict, &current_candidate, &composite_key);
             }
 
             let composited_okuri = self.kana_form_changer.adjust_kana_string(
@@ -523,7 +532,7 @@ impl CskkContext {
                     for output in outputs {
                         candidates.push(Candidate::new(
                             dict_key.get_to_composite().to_string(),
-                            !self.current_state_ref().get_okuri_string().is_empty(),
+                            dict_key.get_okuri().to_owned(),
                             confirmed.to_owned(),
                             None,
                             output,
@@ -539,7 +548,10 @@ impl CskkContext {
                             .get_current_to_composite()
                             .get_to_composite()
                             .to_string(),
-                        !self.current_state_ref().get_okuri_string().is_empty(),
+                        *current_state
+                            .get_candidate_list()
+                            .get_current_to_composite()
+                            .get_okuri(),
                         confirmed.to_owned(),
                         None,
                         confirmed,

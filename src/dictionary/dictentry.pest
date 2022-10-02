@@ -1,0 +1,15 @@
+candidate_allowed_characters = _{ !(";" | "/" | "[" | "]") ~ (SEPARATOR | SYMBOL | PUNCTUATION | NUMBER | MARK | LETTER) }
+midashi_allowed_characters = _{ !(" ") ~ (SEPARATOR | SYMBOL | PUNCTUATION | NUMBER | MARK | LETTER)}
+// from U+3041 to U+3096
+kana = { 'ぁ'..'ゖ' }
+candidate_word = @{candidate_allowed_characters+}
+midashi_word = @{midashi_allowed_characters+}
+simple_candidate = {candidate_word}
+annotated_candidate = {candidate_word ~ ";" ~ candidate_word}
+another_simple_candidate = _{ "/" ~ simple_candidate}
+another_annotated_candidate = _{ "/" ~ annotated_candidate }
+strict_okuri_candidate = ${ "[" ~ kana ~ "/" ~ (annotated_candidate| simple_candidate) ~ (another_annotated_candidate | another_simple_candidate)* ~ "/]" }
+candidate = _{ strict_okuri_candidate | annotated_candidate | simple_candidate }
+another_candidate = _{ "/" ~ candidate }
+candidates=${"/" ~ candidate ~ another_candidate* ~ "/"}
+entry = ${!";" ~ midashi_word ~ " " ~ candidates}

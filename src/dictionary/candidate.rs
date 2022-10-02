@@ -2,11 +2,11 @@ use crate::dictionary::dictentry::DictEntry;
 use crate::error::CskkError;
 use std::fmt::Write;
 
-// Blind copy of libskk vala Candidate class
 #[derive(Debug, Clone)]
 pub struct Candidate {
+    // 取り回しの都合がいいので見出しはDictEntryと重複して持っている
     pub(crate) midashi: String,
-    pub(crate) okuri: bool,
+    pub(crate) okuri: Option<char>,
     // Raw kouho_text that might include "#0回" etc
     pub(crate) kouho_text: String,
     pub(crate) annotation: Option<String>,
@@ -18,7 +18,7 @@ impl Default for Candidate {
     fn default() -> Self {
         Candidate {
             midashi: "エラー".to_string(),
-            okuri: false,
+            okuri: None,
             kouho_text: "エラー".to_string(),
             annotation: None,
             output: "エラー".to_string(),
@@ -38,7 +38,7 @@ impl PartialEq for Candidate {
 impl Candidate {
     pub(crate) fn new(
         midashi: String,
-        okuri: bool,
+        okuri: Option<char>,
         kouho_text: String,
         annotation: Option<String>,
         output: String,
@@ -52,11 +52,9 @@ impl Candidate {
         }
     }
 
-    pub(crate) fn from_skk_jisyo_string(
-        midashi: &str,
-        raw_entry: &str,
-        has_okuri: bool,
-    ) -> Result<Self, CskkError> {
+    /// SKK辞書の'/'の間の文字列を受け取り、candidateを返す。
+    pub(crate) fn from_skk_jisyo_string(midashi: &str, raw_entry: &str) -> Result<Self, CskkError> {
+        let has_okuri = None;
         let mut chunk = raw_entry.split(';');
         if let Some(text) = chunk.next() {
             let kouho = DictEntry::process_lisp_fun(text);
@@ -103,7 +101,7 @@ mod test {
     fn skk_jisyo_string_no_annotation() {
         let candidate = Candidate::new(
             "みだし".to_string(),
-            false,
+            None,
             "候補".to_string(),
             None,
             "候補".to_string(),

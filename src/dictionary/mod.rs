@@ -77,14 +77,21 @@ impl CskkDictionary {
 pub(crate) fn confirm_candidate(
     dictionary: &mut Arc<CskkDictionary>,
     candidate: &Candidate,
+    composite_key: &CompositeKey,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
-        CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
-        CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::StaticFile(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::UserFile(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::EmptyDict(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
     }
 }
 
@@ -93,14 +100,21 @@ pub(crate) fn confirm_candidate(
 /// Returns true if updated the dictionary.
 pub(crate) fn purge_candidate(
     dictionary: &mut Arc<CskkDictionary>,
+    composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(candidate),
-        CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(candidate),
-        CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(candidate),
+        CskkDictionaryType::StaticFile(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::UserFile(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::EmptyDict(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
     }
 }
 
@@ -385,12 +399,20 @@ pub(crate) trait Dictionary {
     /// Select that candidate.
     /// Supporting dictionary will add and move that candidate to the first place so that next time it comes to candidate early.
     /// Safe to call to read_only dictionary.
-    fn select_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+    fn select_candidate(
+        &mut self,
+        _composite_key: &CompositeKey,
+        _candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         Ok(false)
     }
     /// Remove that candidate if dictionary supports editing.
     /// Safe to call to read_only dictionary
-    fn purge_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+    fn purge_candidate(
+        &mut self,
+        _composite_key: &CompositeKey,
+        _candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         Ok(false)
     }
 
