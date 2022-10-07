@@ -278,11 +278,11 @@ impl CskkState {
 
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
     pub(crate) fn get_composite_key(&self) -> CompositeKey {
-        if self.use_okurigana {
-            // ひらがなはUnicode Scalar Valueなのでchars()で十分。
-            if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
-                return CompositeKey::new(&self.raw_to_composite, Some(first_kana));
-            }
+        if self.use_okurigana && !self.converted_kana_to_okuri.is_empty() {
+            return CompositeKey::new(
+                &self.raw_to_composite,
+                Some(self.converted_kana_to_okuri.to_owned()),
+            );
         }
 
         CompositeKey::new(&self.raw_to_composite, None)

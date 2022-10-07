@@ -2,9 +2,10 @@ use crate::dictionary::dictentry::DictEntry;
 use crate::error::CskkError;
 use std::fmt::Write;
 
-// Blind copy of libskk vala Candidate class
+// libskk vala Candidate classを元に、単体で送り仮名の厳密マッチの登録に必要な情報を持たせる。
 #[derive(Debug, Clone)]
 pub struct Candidate {
+    // 取り回しの都合上DictEntryと重複して持つ
     pub(crate) midashi: String,
     pub(crate) okuri: bool,
     // Raw kouho_text that might include "#0回" etc

@@ -1,6 +1,7 @@
 pub(crate) mod candidate;
 pub(crate) mod composite_key;
 pub(crate) mod dictentry;
+mod dictionary_parser;
 pub mod empty_dict;
 pub(crate) mod file_dictionary;
 pub mod static_dict;
@@ -197,7 +198,7 @@ pub(crate) fn to_composite_to_numeric_dict_key(
         matched_numbers.push(numeric_match.as_str().to_owned());
     }
     (
-        CompositeKey::new(&dict_key, *to_composite.get_okuri()),
+        CompositeKey::new(&dict_key, to_composite.get_okuri().to_owned()),
         matched_numbers,
     )
 }

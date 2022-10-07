@@ -7,6 +7,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate xkbcommon;
+#[macro_use]
+extern crate nom;
 
 use crate::command_handler::ConfigurableCommandHandler;
 use crate::command_handler::Instruction;

@@ -1,13 +1,16 @@
 use crate::KanaFormChanger;
 
+/// 辞書を引くための情報
+/// 厳密な送り仮名マッチのため、送り仮名を複数文字含みうる。
 #[derive(Clone, Debug)]
 pub(crate) struct CompositeKey {
     to_composite: String,
-    okuri: Option<char>,
+    // When Some(), should never be empty string.
+    okuri: Option<String>,
 }
 
 impl CompositeKey {
-    pub(crate) fn new(to_composite: &str, okuri: Option<char>) -> Self {
+    pub(crate) fn new(to_composite: &str, okuri: Option<String>) -> Self {
         CompositeKey {
             to_composite: to_composite.to_owned(),
             okuri,
@@ -18,7 +21,7 @@ impl CompositeKey {
         &self.to_composite
     }
 
-    pub(crate) fn get_okuri(&self) -> &Option<char> {
+    pub(crate) fn get_okuri(&self) -> &Option<String> {
         &self.okuri
     }
 
@@ -30,7 +33,11 @@ impl CompositeKey {
     pub(in crate::dictionary) fn get_dict_key(&self) -> String {
         if self.okuri.is_some() {
             // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字はひらがなから対応表を引く。
-            if let Some(okuri) = KanaFormChanger::kana_to_okuri_prefix(&self.okuri.unwrap()) {
+            if let Some(okuri) = KanaFormChanger::kana_to_okuri_prefix(
+                &self.okuri.as_ref().unwrap().chars().next().unwrap(),
+            )
+            //KanaFormChanger::kana_to_okuri_prefix(&self.okuri.unwrap())
+            {
                 let mut result = self.get_to_composite().to_string();
                 result.push(okuri);
                 return result;

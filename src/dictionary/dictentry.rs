@@ -2,6 +2,7 @@ use crate::dictionary::candidate::Candidate;
 use crate::error::CskkError;
 use anyhow::bail;
 use regex::{Captures, Regex};
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
 #[derive(Debug, Clone)]
@@ -9,6 +10,8 @@ pub(crate) struct DictEntry {
     pub(crate) midashi: String,
     pub(crate) candidates: Vec<Candidate>,
     has_okuri: bool,
+    // // 厳密な送り仮名がない場合や送りなしエントリは空文字列からのマップ
+    // strict_okuri_candidate_map: BTreeMap<String, Vec<Candidate>>,
 }
 
 impl DictEntry {
