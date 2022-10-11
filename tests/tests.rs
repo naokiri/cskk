@@ -1280,3 +1280,30 @@ fn preconversion_clear_and_input() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn strict_okuri_entry() {
+    init_test_logger();
+    let dictpath = "tests/data/dictionaries/strict_okuri.dat";
+    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o S e",
+        "▼干せ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "O k u T t e",
+        "▼贈って",
+        "",
+        InputMode::Hiragana,
+    );
+}
