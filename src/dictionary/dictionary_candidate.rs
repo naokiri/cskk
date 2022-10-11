@@ -1,6 +1,7 @@
 use crate::dictionary::dictentry::DictEntry;
 use crate::dictionary::dictionary_parser::CandidatePrototype;
 use crate::Candidate;
+use std::fmt::{Display, Formatter};
 
 // Candidateの辞書内のデータ。
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
@@ -34,6 +35,25 @@ impl DictionaryCandidate {
         Self {
             kouho_text,
             annotation,
+        }
+    }
+}
+
+impl Display for DictionaryCandidate {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.annotation.is_some() {
+            write!(
+                f,
+                "{};{}",
+                DictEntry::escape_dictionary_string(&self.kouho_text),
+                DictEntry::escape_dictionary_string(self.annotation.as_ref().unwrap())
+            )
+        } else {
+            write!(
+                f,
+                "{}",
+                DictEntry::escape_dictionary_string(&self.kouho_text)
+            )
         }
     }
 }

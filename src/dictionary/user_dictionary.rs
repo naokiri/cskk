@@ -73,7 +73,7 @@ impl Dictionary for UserDictionary {
             let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
             stream.write_all(encoded.as_slice())?;
             for dictentry in self.okuri_ari_dictionary.values() {
-                let mut source = dictentry.to_skk_jisyo_string();
+                let mut source = dictentry.to_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
                     stream.write_all(encoded.as_slice())?;
@@ -82,7 +82,7 @@ impl Dictionary for UserDictionary {
             let encoded = encode_string(&mut enc, ";; okuri-nasi entries.\n")?;
             stream.write_all(encoded.as_slice())?;
             for dictentry in self.okuri_nashi_dictionary.values() {
-                let mut source = dictentry.to_skk_jisyo_string();
+                let mut source = dictentry.to_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
                     stream.write_all(encoded.as_slice())?;

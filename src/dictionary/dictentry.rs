@@ -6,6 +6,7 @@ use anyhow::bail;
 use nom::Finish;
 use regex::{Captures, Regex};
 use std::collections::BTreeMap;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub(crate) struct DictEntry {
@@ -181,30 +182,6 @@ impl DictEntry {
         result
     }
 
-    // one line of dictionary.
-    // e.g.
-    // こうほ /候補/好捕/
-    pub(crate) fn to_skk_jisyo_string(&self) -> String {
-        "".to_string()
-        // if self.candidates.is_empty() {
-        //     return "".to_string();
-        // }
-        //
-        // let mut result = String::new();
-        // write!(
-        //     result,
-        //     "{} ",
-        //     DictEntry::escape_dictionary_string(&self.midashi)
-        // )
-        // .expect("Failed to allocate jisyo string for dict midashi");
-        // for candidate in &self.candidates {
-        //     write!(result, "/{}", &candidate.to_skk_jisyo_string())
-        //         .expect("Failed to allocate jisyo string for dict entry");
-        // }
-        // result.push('/');
-        // result
-    }
-
     ///
     /// 互換性のためLisp関数を適用する。
     /// 入れ子ではない単項concatのみ
@@ -300,6 +277,28 @@ impl DictEntry {
     }
 }
 
+impl Display for DictEntry {
+    ///
+    /// skk辞書内の一行
+    ///
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ", DictEntry::escape_dictionary_string(&self.midashi))?;
+        for (strict_okuri, cands) in &self.strict_okuri_candidate_map {
+            if !strict_okuri.is_empty() {
+                write!(f, "/[{}", strict_okuri)?;
+            }
+            for cand in cands {
+                write!(f, "/")?;
+                write!(f, "{}", cand)?;
+            }
+            if !strict_okuri.is_empty() {
+                write!(f, "/]")?;
+            }
+        }
+        write!(f, "/")
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -380,7 +379,14 @@ mod test {
     fn to_string() {
         let jisyo = "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/";
         let dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        assert_eq!(jisyo, &dict_entry.to_skk_jisyo_string());
+        assert_eq!(jisyo, &dict_entry.to_string());
+    }
+
+    #[test]
+    fn to_string_with_strict_okuri() {
+        let jisyo = "あいs /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/[さ/ダミー1/ダミー2/]/[せ/ダミー/]/";
+        let dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
+        assert_eq!(jisyo, &dict_entry.to_string());
     }
 
     #[test]
