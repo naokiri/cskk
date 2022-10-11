@@ -1,8 +1,10 @@
 use crate::dictionary::dictentry::DictEntry;
-use crate::error::CskkError;
+use crate::dictionary::dictionary_candidate::DictionaryCandidate;
+use crate::dictionary::CompositeKey;
 use std::fmt::Write;
 
-// libskk vala Candidate classを元に、単体で送り仮名の厳密マッチの登録に必要な情報を持たせる。
+// CandidateListに持たせる情報。
+// libskk vala Candidate classを元に、単体で送り仮名の厳密マッチの登録に必要な情報を持たせている。TODO: libskk 由来なので重複した情報を整理、valaなので外に見せすぎ、特にcomposite_keyに含まれる情報は不要かも
 #[derive(Debug, Clone)]
 pub struct Candidate {
     // 取り回しの都合上DictEntryと重複して持つ
@@ -11,7 +13,7 @@ pub struct Candidate {
     // Raw kouho_text that might include "#0回" etc
     pub(crate) kouho_text: String,
     pub(crate) annotation: Option<String>,
-    // Output to show the candidate.
+    // Output to show the candidate. "第#0回"が"第壱回"のように後処理されている想定。
     pub(crate) output: String,
 }
 
@@ -53,25 +55,41 @@ impl Candidate {
         }
     }
 
-    pub(crate) fn from_skk_jisyo_string(
-        midashi: &str,
-        raw_entry: &str,
-        has_okuri: bool,
-    ) -> Result<Self, CskkError> {
-        let mut chunk = raw_entry.split(';');
-        if let Some(text) = chunk.next() {
-            let kouho = DictEntry::process_lisp_fun(text);
-            let annotation = chunk.next().map(DictEntry::process_lisp_fun);
-            Ok(Candidate::new(
-                midashi.to_string(),
-                has_okuri,
-                kouho.to_string(),
-                annotation,
-                kouho,
-            ))
-        } else {
-            log::debug!("Failed to parse candidate from: {:?}", raw_entry);
-            Err(CskkError::Error("No candidate".to_string()))
+    // pub(crate) fn from_skk_jisyo_string(
+    //     midashi: &str,
+    //     raw_entry: &str,
+    //     has_okuri: bool,
+    // ) -> Result<Self, CskkError> {
+    //     let mut chunk = raw_entry.split(';');
+    //     if let Some(text) = chunk.next() {
+    //         let kouho = DictEntry::process_lisp_fun(text);
+    //         let annotation = chunk.next().map(DictEntry::process_lisp_fun);
+    //         Ok(Candidate::new(
+    //             midashi.to_string(),
+    //             has_okuri,
+    //             kouho.to_string(),
+    //             annotation,
+    //             kouho,
+    //         ))
+    //     } else {
+    //         log::debug!("Failed to parse candidate from: {:?}", raw_entry);
+    //         Err(CskkError::Error("No candidate".to_string()))
+    //     }
+    // }
+
+    ///
+    /// 辞書の候補からそのままの内容で候補リスト用のcandidateを返す。
+    ///
+    pub(in crate::dictionary) fn from_dictionary_candidate(
+        composite_key: &CompositeKey,
+        dictionary_cand: &DictionaryCandidate,
+    ) -> Self {
+        Self {
+            midashi: composite_key.get_to_composite().to_string(),
+            okuri: composite_key.has_okuri(),
+            kouho_text: dictionary_cand.kouho_text.to_owned(),
+            annotation: dictionary_cand.annotation.to_owned(),
+            output: dictionary_cand.kouho_text.to_owned(),
         }
     }
 

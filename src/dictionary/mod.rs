@@ -1,6 +1,7 @@
 pub(crate) mod candidate;
 pub(crate) mod composite_key;
 pub(crate) mod dictentry;
+mod dictionary_candidate;
 mod dictionary_parser;
 pub mod empty_dict;
 pub(crate) mod file_dictionary;
@@ -15,6 +16,7 @@ use crate::form_changer::numeric_form_changer::{
 pub(crate) use candidate::Candidate;
 pub(crate) use composite_key::CompositeKey;
 use dictentry::DictEntry;
+pub(in crate::dictionary) use dictionary_candidate::DictionaryCandidate;
 use empty_dict::EmptyDictionary;
 use log::*;
 use regex::Regex;
@@ -77,15 +79,22 @@ impl CskkDictionary {
 /// Returns true if updated the dictionary.
 pub(crate) fn confirm_candidate(
     dictionary: &mut Arc<CskkDictionary>,
+    composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
-        CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
-        CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::StaticFile(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::UserFile(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::EmptyDict(ref mut dict) => {
+            dict.select_candidate(composite_key, candidate)
+        }
     }
 }
 
@@ -94,19 +103,25 @@ pub(crate) fn confirm_candidate(
 /// Returns true if updated the dictionary.
 pub(crate) fn purge_candidate(
     dictionary: &mut Arc<CskkDictionary>,
+    composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => dict.purge_candidate(candidate),
-        CskkDictionaryType::UserFile(ref mut dict) => dict.purge_candidate(candidate),
-        CskkDictionaryType::EmptyDict(ref mut dict) => dict.purge_candidate(candidate),
+        CskkDictionaryType::StaticFile(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::UserFile(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
+        CskkDictionaryType::EmptyDict(ref mut dict) => {
+            dict.purge_candidate(composite_key, candidate)
+        }
     }
 }
 
-/// 現在ueno/libskk同様にDedupはkouho_textのみ、候補の順序はdictの順番通り。
-/// annotationについては特に決めていないが、現在のところsortの仕様により先の候補が優先される。
+/// 現在ueno/libskk同様にDedupはkouho_textのみ。
 pub(crate) fn get_all_candidates(
     dictionaries: &[Arc<CskkDictionary>],
     composite_key: &CompositeKey,
@@ -140,23 +155,19 @@ fn get_all_candidates_inner(
         matched_numbers = pair.1;
     }
 
-    for cskkdict in dictionaries.iter() {
-        let lock = cskkdict.mutex.lock().unwrap();
-        if let Some(dict_entry) = match &*lock {
-            CskkDictionaryType::StaticFile(dict) => dict.lookup(&composite_key),
-            CskkDictionaryType::UserFile(dict) => dict.lookup(&composite_key),
-            CskkDictionaryType::EmptyDict(dict) => dict.lookup(&composite_key),
-        } {
-            ordered_candidates.extend(dict_entry.get_candidates().to_owned());
-            deduped_candidates.extend(dict_entry.get_candidates().to_owned());
-        }
-    }
+    let candidates = get_candidates_in_order(dictionaries, &composite_key);
+    ordered_candidates.extend(candidates.to_owned());
+    deduped_candidates.extend(candidates.to_owned());
 
     if deduped_candidates.is_empty() {
         return vec![];
     }
-    deduped_candidates.sort_by(|a, b| a.kouho_text.cmp(&b.kouho_text));
+    deduped_candidates.sort_unstable();
+    // Make Option == some come before None
+    deduped_candidates.reverse();
     deduped_candidates.dedup_by(|a, b| a.kouho_text == b.kouho_text);
+    // reverse back for faster iteration? maybe unneeded.
+    deduped_candidates.reverse();
 
     let mut result = vec![];
     for candidate in ordered_candidates {
@@ -164,10 +175,13 @@ fn get_all_candidates_inner(
         for (pos, deduped) in deduped_candidates.iter().enumerate() {
             if (*deduped).eq(&candidate) {
                 if is_numeric_re_lookup {
-                    result.push((*deduped).clone());
+                    result.push(Candidate::from_dictionary_candidate(
+                        &composite_key,
+                        deduped,
+                    ));
                 } else {
                     result.append(&mut replace_numeric_match(
-                        deduped,
+                        &Candidate::from_dictionary_candidate(&composite_key, deduped),
                         &matched_numbers,
                         dictionaries,
                     ));
@@ -183,8 +197,47 @@ fn get_all_candidates_inner(
     result
 }
 
+/// dictionariesからcompositeKeyに合わせた順序でDictionaryCandidateを返す。
+///
+/// compositeKeyが送り無しの場合、単なる辞書順
+///
+/// compositeKeyが送り有りの場合、まず送り仮名の厳密マッチする候補を辞書順に、その後厳密マッチのない候補を辞書順に。
+///
+fn get_candidates_in_order(
+    dictionaries: &[Arc<CskkDictionary>],
+    composite_key: &CompositeKey,
+) -> Vec<DictionaryCandidate> {
+    let mut result = Vec::new();
+
+    for cskkdict in dictionaries.iter() {
+        let lock = cskkdict.mutex.lock().unwrap();
+        if let Some(dict_entry) = match &*lock {
+            CskkDictionaryType::StaticFile(dict) => dict.lookup(&composite_key),
+            CskkDictionaryType::UserFile(dict) => dict.lookup(&composite_key),
+            CskkDictionaryType::EmptyDict(dict) => dict.lookup(&composite_key),
+        } {
+            let strict_okuri_cands = if composite_key.has_okuri() {
+                dict_entry.get_candidates(composite_key.get_okuri())
+            } else {
+                None
+            };
+            if let Some(candidates) = strict_okuri_cands {
+                result.extend(candidates.to_owned());
+            }
+
+            let non_strict_okuri_cands = dict_entry.get_candidates(&None);
+            if let Some(candidates) = non_strict_okuri_cands {
+                result.extend(candidates.to_owned());
+            }
+        }
+    }
+
+    result
+}
+
 ///
 /// 数字が含まれていた場合#に置きかえて数字と共にかえす。
+///
 /// 12がつ6にち -> (#がつ#にち, [12,6])
 ///
 pub(crate) fn to_composite_to_numeric_dict_key(
@@ -386,12 +439,20 @@ pub(crate) trait Dictionary {
     /// Select that candidate.
     /// Supporting dictionary will add and move that candidate to the first place so that next time it comes to candidate early.
     /// Safe to call to read_only dictionary.
-    fn select_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+    fn select_candidate(
+        &mut self,
+        _composite_key: &CompositeKey,
+        _candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         Ok(false)
     }
     /// Remove that candidate if dictionary supports editing.
     /// Safe to call to read_only dictionary
-    fn purge_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
+    fn purge_candidate(
+        &mut self,
+        _composite_key: &CompositeKey,
+        _candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         Ok(false)
     }
 

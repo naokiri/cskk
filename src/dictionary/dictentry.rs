@@ -1,104 +1,208 @@
-use crate::dictionary::candidate::Candidate;
+use crate::dictionary::dictionary_parser::{entry, CandidatePrototype, DictEntryPrototype};
+use crate::dictionary::DictionaryCandidate;
+use crate::dictionary::{Candidate, CompositeKey};
 use crate::error::CskkError;
 use anyhow::bail;
+use nom::Finish;
 use regex::{Captures, Regex};
 use std::collections::BTreeMap;
-use std::fmt::Write;
 
 #[derive(Debug, Clone)]
 pub(crate) struct DictEntry {
-    pub(crate) midashi: String,
-    pub(crate) candidates: Vec<Candidate>,
+    pub(in crate::dictionary) midashi: String,
+    // 本来はエントリ自体が持つものではないが、
+    // 過去に送りありエントリと無しエントリを混ぜて扱っていたため、互換性のために区別をここにも持っている。
     has_okuri: bool,
-    // // 厳密な送り仮名がない場合や送りなしエントリは空文字列からのマップ
-    // strict_okuri_candidate_map: BTreeMap<String, Vec<Candidate>>,
+    // 厳密な送り仮名がない場合や送りなしエントリは空文字列からのマップ
+    strict_okuri_candidate_map: BTreeMap<String, Vec<DictionaryCandidate>>,
 }
 
 impl DictEntry {
-    /// Usually, use from_skk_jisyo_line
-    pub(crate) fn new(midashi: &str, candidates: Vec<Candidate>, has_okuri: bool) -> Self {
+    /// Usually, DictEntry should be created from [from_skkjisyo_line]
+    ///
+    /// Create new DictEntry that has single candidate
+    /// This is for registration of new composition.
+    ///
+    pub(in crate::dictionary) fn new(
+        midashi: &str,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Self {
+        let mut new_map = BTreeMap::new();
+        if let Some(strict_okuri) = composite_key.get_okuri() {
+            new_map.insert(
+                strict_okuri.to_owned(),
+                vec![DictionaryCandidate::from_candidate(candidate)],
+            );
+        } else {
+            new_map.insert(
+                "".to_string(),
+                vec![DictionaryCandidate::from_candidate(candidate)],
+            );
+        }
+
         Self {
             midashi: midashi.to_string(),
-            candidates,
-            has_okuri,
+            has_okuri: composite_key.has_okuri(),
+            strict_okuri_candidate_map: new_map,
         }
     }
 
-    pub(crate) fn remove_matching_candidate(&mut self, candidate: &Candidate) {
-        let index = self
-            .candidates
-            .iter()
-            .position(|it| *(it.kouho_text) == *candidate.kouho_text);
-        if let Some(index) = index {
-            self.candidates.remove(index);
+    /// candidateが含まれなかった場合はこのdictentryの先頭に追加する。
+    /// candidateがこのdictentryに含まれる場合は与えられたcandidateを先頭にする。
+    /// composite_keyが送り仮名を含む場合、厳密な送り仮名なしのエントリと有りのエントリの両方について先頭にする。
+    pub(in crate::dictionary) fn prioritize_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) {
+        if let Some(okuri) = composite_key.get_okuri() {
+            self.prioritize_candidate_for_okuri(okuri, candidate);
+        }
+
+        self.prioritize_candidate_for_okuri("", candidate);
+    }
+
+    /// strict_okuriの候補の中でcandidateを優先する。
+    fn prioritize_candidate_for_okuri(&mut self, strict_okuri: &str, candidate: &Candidate) {
+        let mut done = false;
+        if let Some(cands) = self.strict_okuri_candidate_map.get_mut(strict_okuri) {
+            let index = cands
+                .iter()
+                .position(|it| it.kouho_text == candidate.kouho_text);
+            if let Some(i) = index {
+                cands.swap(0, i);
+                // done by swap
+                done = true;
+            }
+
+            if !done {
+                cands.insert(0, DictionaryCandidate::from_candidate(candidate));
+                // done by insert on top
+                done = true;
+            }
+        }
+
+        if !done {
+            // create new mapping for okuri
+            self.strict_okuri_candidate_map.insert(
+                strict_okuri.to_string(),
+                vec![DictionaryCandidate::from_candidate(candidate)],
+            );
         }
     }
 
-    pub(crate) fn insert_as_first_candidate(&mut self, candidate: Candidate) {
-        if *candidate.midashi == self.midashi {
-            self.candidates.insert(0, candidate);
+    ///
+    /// composite_keyが送りなしの場合、エントリからcandidateに合うものを削除する。合うものがなかったら何もしない。
+    ///
+    /// composite_keyが送りありの場合、厳密な送り仮名マッチのエントリと厳密な送り仮名のないエントリの両方からcandidateにあうものを削除する。合うものがなかったら何もしない。
+    ///
+    pub(in crate::dictionary) fn remove_matching_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) {
+        if let Some(okuri) = composite_key.get_okuri() {
+            self.remove_candidate_for_okuri(okuri, candidate);
+        }
+
+        self.remove_candidate_for_okuri("", candidate);
+    }
+
+    fn remove_candidate_for_okuri(&mut self, strict_okuri: &str, candidate: &Candidate) {
+        if let Some(cands) = self.strict_okuri_candidate_map.get_mut(strict_okuri) {
+            let index = cands
+                .iter()
+                .position(|it| *(it.kouho_text) == *candidate.kouho_text);
+            if let Some(index) = index {
+                cands.remove(index);
+            }
         }
     }
 
-    pub(crate) fn get_candidates(&self) -> &Vec<Candidate> {
-        &self.candidates
+    /// strict_okuriのマッチするエントリを返す。
+    ///
+    pub(in crate::dictionary) fn get_candidates(
+        &self,
+        strict_okuri: &Option<String>,
+    ) -> Option<&Vec<DictionaryCandidate>> {
+        return if let Some(okuri) = strict_okuri {
+            self.strict_okuri_candidate_map.get(okuri)
+        } else {
+            self.strict_okuri_candidate_map.get("")
+        };
     }
 
+    ///
+    /// 過去に送り有無エントリを混ぜていた実装のため、ファイル読み込み側ではデフォルトでは送りありエントリと推定し、
+    /// 行処理では見出し語先頭がアルファベットではない(abbrevエントリではないと推定) かつ 末尾にアルファベットが付かないものを送りなしエントリとして扱っている。
+    ///
     pub(crate) fn from_skkjisyo_line(line: &str) -> Result<Self, CskkError> {
         lazy_static! {}
-        let mut result = Vec::new();
-        let mut line = line.trim().split_ascii_whitespace();
-        let midashi = if let Some(midashi) = line.next() {
-            DictEntry::process_lisp_fun(midashi)
+        let parsed = entry(line).finish();
+        if let Ok((_, dict_entry_prototype)) = parsed {
+            Ok(DictEntry::from_dict_entry_prototype(dict_entry_prototype))
         } else {
-            return Err(CskkError::Error("No midshi".to_string()));
-        };
+            Err(CskkError::ParseError(format!("falied to parse {}", line)))
+        }
+    }
+
+    fn from_dict_entry_prototype(dict_entry_prototype: DictEntryPrototype) -> Self {
+        let midashi = DictEntry::process_lisp_fun(dict_entry_prototype.midashi);
         let alphabet = [
             'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
             'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
         ];
         let has_okuri = !midashi.starts_with(alphabet) && midashi.ends_with(alphabet);
-        let entries = line.collect::<Vec<&str>>().join(" ");
-        if entries.is_empty() {
-            return Err(CskkError::Error("No entries".to_string()));
-        }
-        let entries = entries.split('/');
-        for entry in entries {
-            if !entry.is_empty() {
-                if let Ok(candidate) = Candidate::from_skk_jisyo_string(&midashi, entry, has_okuri)
-                {
-                    result.push(candidate)
-                }
-            }
-        }
-        Ok(Self {
+
+        let strict_okuri_candidate_map =
+            DictEntry::candidates_from_prototype(dict_entry_prototype.candidates);
+
+        Self {
             midashi,
-            candidates: result,
             has_okuri,
-        })
+            strict_okuri_candidate_map,
+        }
+    }
+
+    fn candidates_from_prototype(
+        candidates_prototype: BTreeMap<&str, Vec<CandidatePrototype>>,
+    ) -> BTreeMap<String, Vec<DictionaryCandidate>> {
+        let mut result = BTreeMap::new();
+        for (key, val) in candidates_prototype {
+            result.insert(
+                key.to_string(),
+                val.iter()
+                    .map(DictionaryCandidate::from_candidate_prototype)
+                    .collect(),
+            );
+        }
+
+        result
     }
 
     // one line of dictionary.
     // e.g.
     // こうほ /候補/好捕/
-    pub fn to_skk_jisyo_string(&self) -> String {
-        if self.candidates.is_empty() {
-            return "".to_string();
-        }
-
-        let mut result = String::new();
-        write!(
-            result,
-            "{} ",
-            DictEntry::escape_dictionary_string(&self.midashi)
-        )
-        .expect("Failed to allocate jisyo string for dict midashi");
-        for candidate in &self.candidates {
-            write!(result, "/{}", &candidate.to_skk_jisyo_string())
-                .expect("Failed to allocate jisyo string for dict entry");
-        }
-        result.push('/');
-        result
+    pub(crate) fn to_skk_jisyo_string(&self) -> String {
+        "".to_string()
+        // if self.candidates.is_empty() {
+        //     return "".to_string();
+        // }
+        //
+        // let mut result = String::new();
+        // write!(
+        //     result,
+        //     "{} ",
+        //     DictEntry::escape_dictionary_string(&self.midashi)
+        // )
+        // .expect("Failed to allocate jisyo string for dict midashi");
+        // for candidate in &self.candidates {
+        //     write!(result, "/{}", &candidate.to_skk_jisyo_string())
+        //         .expect("Failed to allocate jisyo string for dict entry");
+        // }
+        // result.push('/');
+        // result
     }
 
     ///
@@ -205,21 +309,20 @@ mod test {
     fn split_candidate_okuri_nashi() {
         let result = DictEntry::from_skkjisyo_line(
             "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/"
-        );
-        let result = result.unwrap();
+        ).unwrap();
         assert_eq!("あい", result.midashi);
-        let Candidate {
+        let DictionaryCandidate {
             kouho_text,
             annotation,
             ..
-        } = &result.candidates[0];
+        } = &result.strict_okuri_candidate_map.get("").unwrap()[0];
         assert_eq!("愛", *kouho_text);
         assert_eq!(None, *annotation);
-        let Candidate {
+        let DictionaryCandidate {
             kouho_text,
             annotation,
             ..
-        } = &result.candidates[5];
+        } = &result.strict_okuri_candidate_map.get("").unwrap()[5];
         assert_eq!("亜衣", *kouho_text);
         assert_eq!(
             "人名",
@@ -232,11 +335,11 @@ mod test {
         let result = DictEntry::from_skkjisyo_line("おどr /踊;dance/躍;jump/踴;「踊」の異体字/");
         let result = result.unwrap();
         assert_eq!("おどr", result.midashi);
-        let Candidate {
+        let DictionaryCandidate {
             kouho_text,
             annotation,
             ..
-        } = &result.candidates[0];
+        } = &result.strict_okuri_candidate_map.get("").unwrap()[0];
         assert_eq!("踊", kouho_text);
         assert_eq!(
             "dance",
@@ -244,11 +347,11 @@ mod test {
                 .as_ref()
                 .expect("踊 in sense of dance doesn't have annotation")
         );
-        let Candidate {
+        let DictionaryCandidate {
             kouho_text,
             annotation,
             ..
-        } = &result.candidates[1];
+        } = &result.strict_okuri_candidate_map.get("").unwrap()[1];
         assert_eq!("躍", kouho_text);
         assert_eq!(
             "jump",
@@ -263,8 +366,14 @@ mod test {
         init_test_logger();
         let jisyo = "おくr /送;(send)/贈;(present) 賞を贈る/遅/後;気後れ/遲;「遅」の旧字/";
         let result = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        assert_eq!("送", result.candidates[0].kouho_text);
-        assert_eq!("遅", result.candidates[2].kouho_text);
+        assert_eq!(
+            "送",
+            &result.strict_okuri_candidate_map.get("").unwrap()[0].kouho_text
+        );
+        assert_eq!(
+            "遅",
+            &result.strict_okuri_candidate_map.get("").unwrap()[2].kouho_text
+        );
     }
 
     #[test]
@@ -278,30 +387,22 @@ mod test {
     fn remove() {
         let jisyo = "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/";
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        let candidate = Candidate::from_skk_jisyo_string("あい", "愛", false).unwrap();
-        dict_entry.remove_matching_candidate(&candidate);
-        let Candidate {
+        let candidate = Candidate::new(
+            "あい".to_string(),
+            false,
+            "愛".to_string(),
+            None,
+            "愛".to_string(),
+        );
+        let composite_key = CompositeKey::new("あい", None);
+        dict_entry.remove_matching_candidate(&composite_key, &candidate);
+        let DictionaryCandidate {
             kouho_text,
             annotation,
             ..
-        } = &dict_entry.candidates[0];
+        } = &dict_entry.strict_okuri_candidate_map.get("").unwrap()[0];
         assert_eq!("相", kouho_text);
         assert_eq!(None, *annotation);
-    }
-
-    #[test]
-    fn insert() {
-        let jisyo = "あい /愛/相/藍/間/合/亜衣;人名/哀;悲哀/埃;(ほこり)塵埃/挨;挨拶/曖;曖昧/瞹;「曖」の異体字/靉/噫;ああ/欸/隘;狭隘/娃/藹;和気藹々/阨;≒隘/穢;(慣用音)/姶;姶良町/会;?/饗;?/";
-        let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
-        let candidate = Candidate::from_skk_jisyo_string("あい", "アイ;foo", false).unwrap();
-        dict_entry.insert_as_first_candidate(candidate);
-        let Candidate {
-            kouho_text,
-            annotation,
-            ..
-        } = &dict_entry.candidates[0];
-        assert_eq!("アイ", kouho_text);
-        assert_eq!(Some("foo".to_string()), *annotation);
     }
 
     #[test]

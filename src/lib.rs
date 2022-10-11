@@ -6,9 +6,8 @@ extern crate sequence_trie;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate xkbcommon;
-#[macro_use]
 extern crate nom;
+extern crate xkbcommon;
 
 use crate::command_handler::ConfigurableCommandHandler;
 use crate::command_handler::Instruction;
@@ -389,8 +388,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                purge_candidate(cskkdict, &current_candidate);
+                purge_candidate(cskkdict, &composite_key, &current_candidate);
             }
         } else {
             log::warn!(
@@ -410,9 +414,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
-
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                confirm_candidate(cskkdict, &current_candidate);
+                confirm_candidate(cskkdict, &composite_key, &current_candidate);
             }
 
             let composited_okuri = self.kana_form_changer.adjust_kana_string(

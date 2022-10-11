@@ -7,19 +7,19 @@ use nom::IResult;
 use std::collections::BTreeMap;
 
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) struct CandidatePrototype<'a> {
-    kouho: &'a str,
-    annotation: Option<&'a str>,
+pub(in crate::dictionary) struct CandidatePrototype<'a> {
+    pub(in crate::dictionary) kouho: &'a str,
+    pub(in crate::dictionary) annotation: Option<&'a str>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) struct DictEntryPrototype<'a> {
-    midashi: &'a str,
-    candidates: BTreeMap<&'a str, Vec<CandidatePrototype<'a>>>,
+pub(in crate::dictionary) struct DictEntryPrototype<'a> {
+    pub(in crate::dictionary) midashi: &'a str,
+    pub(in crate::dictionary) candidates: BTreeMap<&'a str, Vec<CandidatePrototype<'a>>>,
 }
 
 /// 辞書のエントリを読む
-fn entry(input: &str) -> IResult<&str, DictEntryPrototype> {
+pub(in crate::dictionary) fn entry(input: &str) -> IResult<&str, DictEntryPrototype> {
     let (i, midashi) = midashi(input)?;
     let (i, _) = take_while1(|c| c == ' ')(i)?;
     let (_, candidates) = candidates(i)?;
@@ -141,7 +141,7 @@ mod test {
         let (rest, result) = candidates("/愛;love/相/[す/愛/]/").unwrap();
         let mut expected = BTreeMap::new();
         expected.insert(
-            "".to_string(),
+            "",
             vec![
                 CandidatePrototype {
                     kouho: "愛",
@@ -154,7 +154,7 @@ mod test {
             ],
         );
         expected.insert(
-            "す".to_string(),
+            "す",
             vec![CandidatePrototype {
                 kouho: "愛",
                 annotation: None,
@@ -171,7 +171,7 @@ mod test {
         assert_eq!(rest, "/相/");
         let mut expected = BTreeMap::new();
         expected.insert(
-            "".to_string(),
+            "",
             vec![CandidatePrototype {
                 kouho: "愛",
                 annotation: None,
@@ -186,7 +186,7 @@ mod test {
         assert_eq!(rest, "/打/");
         let mut expected = BTreeMap::new();
         expected.insert(
-            "つ".to_string(),
+            "つ",
             vec![
                 CandidatePrototype {
                     kouho: "打",
@@ -205,7 +205,7 @@ mod test {
     fn basic_strict_okuri_candidate() {
         let mut expected = BTreeMap::new();
         expected.insert(
-            "って".to_string(),
+            "って",
             vec![
                 CandidatePrototype {
                     kouho: "送",

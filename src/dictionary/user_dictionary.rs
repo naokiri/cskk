@@ -96,7 +96,11 @@ impl Dictionary for UserDictionary {
         }
     }
 
-    fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+    fn select_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
         debug!("Select midashi: {:?}", midashi);
         let dictionary = if candidate.okuri {
@@ -108,17 +112,12 @@ impl Dictionary for UserDictionary {
         let entry = dictionary.get_mut(midashi.as_str());
         match entry {
             Some(dict_entry) => {
-                dict_entry.remove_matching_candidate(candidate);
-                dict_entry.insert_as_first_candidate(candidate.clone());
+                dict_entry.prioritize_candidate(composite_key, candidate);
             }
             None => {
                 dictionary.insert(
                     candidate.midashi.to_owned(),
-                    DictEntry::new(
-                        &candidate.midashi,
-                        vec![candidate.to_owned()],
-                        candidate.okuri,
-                    ),
+                    DictEntry::new(&candidate.midashi, composite_key, candidate),
                 );
             }
         }
@@ -126,7 +125,11 @@ impl Dictionary for UserDictionary {
         Ok(true)
     }
 
-    fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+    fn purge_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         let dictionary = if candidate.okuri {
             &mut self.okuri_ari_dictionary
         } else {
@@ -135,7 +138,7 @@ impl Dictionary for UserDictionary {
         let midashi = &candidate.midashi;
         let entry = dictionary.get_mut(midashi.as_str());
         if let Some(dict_entry) = entry {
-            dict_entry.remove_matching_candidate(candidate);
+            dict_entry.remove_matching_candidate(composite_key, candidate);
         }
         self.has_change = true;
         Ok(true)
@@ -206,10 +209,17 @@ mod test {
         File::create("tests/data/dictionaries/empty.dat")?;
         let mut user_dictionary =
             UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
-        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow", false).unwrap();
-        user_dictionary.select_candidate(&candidate)?;
+        let candidate = Candidate::new(
+            "あああ".to_string(),
+            false,
+            "アアア".to_string(),
+            Some("wow".to_string()),
+            "アアア".to_string(),
+        );
+        let composite_key = CompositeKey::new("あああ", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
-        user_dictionary.purge_candidate(&candidate)?;
+        user_dictionary.purge_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
         Ok(())
     }
