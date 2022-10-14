@@ -78,8 +78,8 @@ jobs:
       - name: check version
         id: versions
         run: |
-          echo ::set-output name=version::`bin/version.sh`
-          echo ::set-output name=major-version::`bin/major_version.sh`
+          echo version=`bin/version.sh` >> ${GITHUB_OUTPUT}
+          echo major-version=`bin/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: output version
         run: | 
           echo Version: ${{ steps.versions.outputs.version }} 
