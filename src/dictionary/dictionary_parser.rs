@@ -127,6 +127,7 @@ fn contains_non_srict_okuri_candidate_illegal_char(s: &str) -> bool {
     s.contains('[') || s.contains(']') || s.contains('/')
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
