@@ -18,6 +18,8 @@ CSKKはSKKと外延的に同値であるため、こう名付けられました�
 
 Fcitx5用: [fcitx5-cskk](https://github.com/naokiri/fcitx5-cskk)
 
+説明書: [cskk-docs](https://naokiri.github.io/cskk-docs/)
+
 ロゴ・アイコン類: [cskk-icons](https://github.com/naokiri/cskk-icons)
 
 参考

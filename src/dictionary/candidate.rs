@@ -61,7 +61,7 @@ impl Candidate {
         dictionary_cand: &DictionaryCandidate,
     ) -> Self {
         Self {
-            midashi: composite_key.get_to_composite().to_string(),
+            midashi: composite_key.get_dict_key(),
             okuri: composite_key.has_okuri(),
             kouho_text: dictionary_cand.kouho_text.to_owned(),
             annotation: dictionary_cand.annotation.to_owned(),
