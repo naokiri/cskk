@@ -18,8 +18,8 @@ jobs:
       - name: check version
         id: versions
         run: |
-          echo ::set-output name=version::`bin/version.sh`
-          echo ::set-output name=major-version::`bin/major_version.sh`
+          echo version=`bin/version.sh` >> ${GITHUB_OUTPUT}
+          echo major-version=`bin/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: Check tag matches version
         run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
       - name: Install cargo
