@@ -157,7 +157,7 @@ fn get_all_candidates_inner(
 
     let candidates = get_candidates_in_order(dictionaries, &composite_key);
     ordered_candidates.extend(candidates.to_owned());
-    deduped_candidates.extend(candidates.to_owned());
+    deduped_candidates.extend(candidates);
 
     if deduped_candidates.is_empty() {
         return vec![];
@@ -212,9 +212,9 @@ fn get_candidates_in_order(
     for cskkdict in dictionaries.iter() {
         let lock = cskkdict.mutex.lock().unwrap();
         if let Some(dict_entry) = match &*lock {
-            CskkDictionaryType::StaticFile(dict) => dict.lookup(&composite_key),
-            CskkDictionaryType::UserFile(dict) => dict.lookup(&composite_key),
-            CskkDictionaryType::EmptyDict(dict) => dict.lookup(&composite_key),
+            CskkDictionaryType::StaticFile(dict) => dict.lookup(composite_key),
+            CskkDictionaryType::UserFile(dict) => dict.lookup(composite_key),
+            CskkDictionaryType::EmptyDict(dict) => dict.lookup(composite_key),
         } {
             let strict_okuri_cands = if composite_key.has_okuri() {
                 dict_entry.get_candidates(composite_key.get_okuri())
