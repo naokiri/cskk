@@ -1307,3 +1307,50 @@ fn strict_okuri_entry() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn strict_okuri_precedence() {
+    init_test_logger();
+    let dictpath = "tests/data/dictionaries/strict_okuri_precedence.dat";
+    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8").unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "O o K i",
+        "▼大き",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "O o K u",
+        "▼多く",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "O o K i space Return",
+        "",
+        "多き",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "O o K i ",
+        "▼多き",
+        "",
+        InputMode::Hiragana,
+    );
+}

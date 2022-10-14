@@ -202,6 +202,7 @@ fn get_all_candidates_inner(
 /// compositeKeyが送り無しの場合、単なる辞書順
 ///
 /// compositeKeyが送り有りの場合、まず送り仮名の厳密マッチする候補を辞書順に、その後厳密マッチのない候補を辞書順に。
+/// つまりddskkのskk-henkan-strict-okuri-precedenceが設定された時の動作を行う。
 ///
 fn get_candidates_in_order(
     dictionaries: &[Arc<CskkDictionary>],
