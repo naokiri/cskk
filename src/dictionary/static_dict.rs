@@ -1,8 +1,8 @@
+use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntries, FileDictionary};
+use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::CskkError;
 use std::collections::BTreeMap;
-
-use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair, FileDictionary};
-use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 pub(crate) struct StaticFileDict {
@@ -21,15 +21,20 @@ impl StaticFileDict {
         Ok(StaticFileDict {
             file_path: String::from(file_path),
             encode: encode.to_string(),
-            okuri_ari_dictionary: dictionary.okuri_ari,
-            okuri_nashi_dictionary: dictionary.okuri_nashi,
+            okuri_ari_dictionary: BTreeMap::from_iter(dictionary.okuri_ari),
+            okuri_nashi_dictionary: BTreeMap::from_iter(dictionary.okuri_nashi),
         })
     }
 }
 
 impl Dictionary for StaticFileDict {
     fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
-        FileDictionary::lookup(self, composite_key)
+        return if composite_key.has_okuri() {
+            self.okuri_ari_dictionary.get(&composite_key.get_dict_key())
+        } else {
+            self.okuri_nashi_dictionary
+                .get(&composite_key.get_dict_key())
+        };
     }
 
     fn reload(&mut self) -> Result<(), CskkError> {
@@ -46,16 +51,8 @@ impl FileDictionary for StaticFileDict {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: DictionaryEntriesPair) {
-        self.okuri_ari_dictionary = dictionary.okuri_ari;
-        self.okuri_nashi_dictionary = dictionary.okuri_nashi;
-    }
-
-    fn get_okuri_ari_dictionary(&self) -> &BTreeMap<String, DictEntry> {
-        &self.okuri_ari_dictionary
-    }
-
-    fn get_okuri_nashi_dictionary(&self) -> &BTreeMap<String, DictEntry> {
-        &self.okuri_nashi_dictionary
+    fn set_dictionary(&mut self, dictionary: DictionaryEntries) {
+        self.okuri_ari_dictionary = BTreeMap::from_iter(dictionary.okuri_ari);
+        self.okuri_nashi_dictionary = BTreeMap::from_iter(dictionary.okuri_nashi);
     }
 }

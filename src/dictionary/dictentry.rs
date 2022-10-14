@@ -35,12 +35,12 @@ impl DictEntry {
                 strict_okuri.to_owned(),
                 vec![DictionaryCandidate::from_candidate(candidate)],
             );
-        } else {
-            new_map.insert(
-                "".to_string(),
-                vec![DictionaryCandidate::from_candidate(candidate)],
-            );
         }
+        // even for okuri-ari key, register a non strict okuri entry
+        new_map.insert(
+            "".to_string(),
+            vec![DictionaryCandidate::from_candidate(candidate)],
+        );
 
         Self {
             midashi: midashi.to_string(),
@@ -66,6 +66,7 @@ impl DictEntry {
 
     /// strict_okuriの候補の中でcandidateを優先する。
     fn prioritize_candidate_for_okuri(&mut self, strict_okuri: &str, candidate: &Candidate) {
+        // 長さもたいしたことがないのでVecを手作業でRecent used 更新している。LRUCacheを用いるべきか検討の余地あり。
         let mut done = false;
         if let Some(cands) = self.strict_okuri_candidate_map.get_mut(strict_okuri) {
             let index = cands

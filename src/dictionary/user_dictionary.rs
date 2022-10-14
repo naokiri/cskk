@@ -1,11 +1,11 @@
 use crate::dictionary::candidate::Candidate;
-use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntriesPair, FileDictionary};
+use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntries, FileDictionary};
 use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
 use log::*;
-use std::collections::BTreeMap;
+use lru::LruCache;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 
@@ -18,8 +18,8 @@ pub(crate) struct UserDictionary {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    okuri_ari_dictionary: BTreeMap<String, DictEntry>,
-    okuri_nashi_dictionary: BTreeMap<String, DictEntry>,
+    okuri_ari_dictionary: LruCache<String, DictEntry>,
+    okuri_nashi_dictionary: LruCache<String, DictEntry>,
     // Just bool, because we know this is under mutex.
     has_change: bool,
 }
@@ -29,11 +29,21 @@ const BUF_SIZE: usize = 1024;
 impl UserDictionary {
     pub(crate) fn new(file_path: &str, encode: &str) -> Result<Self, CskkError> {
         let dictionary = load_dictionary(file_path, encode.as_bytes())?;
+        let mut okuri_ari_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_ari.into_iter().rev() {
+            okuri_ari_dict.put(k, v);
+        }
+
+        let mut okuri_nashi_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_nashi.into_iter().rev() {
+            okuri_nashi_dict.put(k, v);
+        }
+
         Ok(UserDictionary {
             file_path: String::from(file_path),
             encode: encode.to_string(),
-            okuri_ari_dictionary: dictionary.okuri_ari,
-            okuri_nashi_dictionary: dictionary.okuri_nashi,
+            okuri_ari_dictionary: okuri_ari_dict,
+            okuri_nashi_dictionary: okuri_nashi_dict,
             has_change: false,
         })
     }
@@ -41,7 +51,13 @@ impl UserDictionary {
 
 impl Dictionary for UserDictionary {
     fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
-        FileDictionary::lookup(self, composite_key)
+        return if composite_key.has_okuri() {
+            self.okuri_ari_dictionary
+                .peek(&composite_key.get_dict_key())
+        } else {
+            self.okuri_nashi_dictionary
+                .peek(&composite_key.get_dict_key())
+        };
     }
 
     fn is_read_only(&self) -> bool {
@@ -50,6 +66,7 @@ impl Dictionary for UserDictionary {
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
     /// 辞書ファイルのフォーマットは SKK 16.2 user manual 5.10.7 辞書の書式 に依る
+    /// userdictなので送りありエントリも送りなしエントリも最近使用した順に並ぶ。
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
         if self.has_change {
             rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
@@ -72,7 +89,7 @@ impl Dictionary for UserDictionary {
 
             let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
             stream.write_all(encoded.as_slice())?;
-            for dictentry in self.okuri_ari_dictionary.values() {
+            for (_, dictentry) in self.okuri_ari_dictionary.iter() {
                 let mut source = dictentry.to_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
@@ -81,7 +98,7 @@ impl Dictionary for UserDictionary {
             }
             let encoded = encode_string(&mut enc, ";; okuri-nasi entries.\n")?;
             stream.write_all(encoded.as_slice())?;
-            for dictentry in self.okuri_nashi_dictionary.values() {
+            for (_, dictentry) in self.okuri_nashi_dictionary.iter() {
                 let mut source = dictentry.to_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
@@ -115,7 +132,7 @@ impl Dictionary for UserDictionary {
                 dict_entry.prioritize_candidate(composite_key, candidate);
             }
             None => {
-                dictionary.insert(
+                dictionary.put(
                     candidate.midashi.to_owned(),
                     DictEntry::new(&candidate.midashi, composite_key, candidate),
                 );
@@ -158,16 +175,18 @@ impl FileDictionary for UserDictionary {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: DictionaryEntriesPair) {
-        self.okuri_ari_dictionary = dictionary.okuri_ari;
-        self.okuri_nashi_dictionary = dictionary.okuri_nashi;
-    }
-    fn get_okuri_ari_dictionary(&self) -> &BTreeMap<String, DictEntry> {
-        &self.okuri_ari_dictionary
-    }
+    fn set_dictionary(&mut self, dictionary: DictionaryEntries) {
+        let mut okuri_ari_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_ari.into_iter().rev() {
+            okuri_ari_dict.put(k, v);
+        }
+        self.okuri_ari_dictionary = okuri_ari_dict;
 
-    fn get_okuri_nashi_dictionary(&self) -> &BTreeMap<String, DictEntry> {
-        &self.okuri_nashi_dictionary
+        let mut okuri_nashi_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_nashi.into_iter().rev() {
+            okuri_nashi_dict.put(k, v);
+        }
+        self.okuri_nashi_dictionary = okuri_nashi_dict;
     }
 }
 
@@ -203,6 +222,8 @@ fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>, Cskk
 #[cfg(test)]
 mod test {
     use super::*;
+    use encoding_rs_io::DecodeReaderBytesBuilder;
+    use std::io::{BufRead, BufReader};
 
     #[test]
     fn userdict() -> Result<(), CskkError> {
@@ -220,6 +241,87 @@ mod test {
         user_dictionary.select_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
         user_dictionary.purge_candidate(&composite_key, &candidate)?;
+        user_dictionary.save_dictionary()?;
+        Ok(())
+    }
+
+    /// Recent select_candidate の順序になっているか
+    #[test]
+    fn userdict_ordering() -> Result<(), CskkError> {
+        let filepath = "tests/data/dictionaries/empty.dat";
+        File::create(filepath)?;
+        let mut user_dictionary = UserDictionary::new(filepath, "utf-8")?;
+        let candidate = Candidate::new(
+            "あ".to_string(),
+            false,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("あ", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        let candidate = Candidate::new(
+            "い".to_string(),
+            false,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("い", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+
+        let candidate = Candidate::new(
+            "あb".to_string(),
+            true,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("あ", Some("ば".to_string()));
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+
+        let candidate = Candidate::new(
+            "いb".to_string(),
+            true,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("い", Some("ば".to_string()));
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        user_dictionary.save_dictionary()?;
+
+        let saved_file = File::open("tests/data/dictionaries/empty.dat")?;
+        let enc = Encoding::for_label_no_replacement("utf-8".as_bytes());
+        let decoder = DecodeReaderBytesBuilder::new()
+            .encoding(enc)
+            .build(saved_file);
+        let reader = BufReader::new(decoder);
+        for (i, line) in reader.lines().enumerate() {
+            if let Ok(line) = line {
+                match i {
+                    0 => {
+                        assert!(line.contains(";; okuri-ari entries"))
+                    }
+                    1 => {
+                        assert!(line.contains("いb /候補/[ば/候補/]/"))
+                    }
+                    2 => {
+                        assert!(line.contains("あb /候補/[ば/候補/]/"))
+                    }
+                    3 => {
+                        assert!(line.contains(";; okuri-nasi entries"))
+                    }
+                    4 => {
+                        assert!(line.contains("い /候補/"))
+                    }
+                    5 => {
+                        assert!(line.contains("あ /候補/"))
+                    }
+                    _ => {}
+                }
+            }
+        }
         user_dictionary.save_dictionary()?;
         Ok(())
     }
