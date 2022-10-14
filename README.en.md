@@ -72,7 +72,7 @@ To install to non-standard directories, append following options like this. See
 - [x] Basic 漢字変換
 - [x] static dictionary
 - [x] user dictionary
-    - not ddskk compatible
+  - ddskk compatible since v0.11.0
 - [ ] 接頭辞・接尾辞変換
 - [x] 数値変換
 - [x] auto-start-henkan   

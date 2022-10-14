@@ -6,14 +6,14 @@ extern crate sequence_trie;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate nom;
 extern crate xkbcommon;
 
 use crate::command_handler::ConfigurableCommandHandler;
 use crate::command_handler::Instruction;
 use crate::config::CskkConfig;
 use crate::cskkstate::CskkState;
-use crate::dictionary::candidate::Candidate;
-use crate::dictionary::file_dictionary::FileDictionary;
+use crate::dictionary::Candidate;
 use crate::dictionary::{
     confirm_candidate, get_all_candidates, numeric_entry_count, numeric_string_count,
     purge_candidate, replace_numeric_string, to_composite_to_numeric_dict_key, CskkDictionary,
@@ -168,7 +168,11 @@ pub fn skk_context_set_dictionaries_rs(
 /// 内部状態なので、Rust libが使用することを想定しない。
 ///
 pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String {
-    context.current_state_ref().get_composite_key()
+    context
+        .current_state_ref()
+        .get_composite_key()
+        .get_to_composite()
+        .to_string()
 }
 
 ///
@@ -371,8 +375,8 @@ impl CskkContext {
     /// 現在のraw_to_compositeから変換候補をリストにして、変換候補を指すポインタを0に戻す。
     ///
     fn update_candidate_list(&mut self) {
-        let raw_to_composite = self.current_state_ref().get_composite_key();
-        let candidates = get_all_candidates(&self.dictionaries, &raw_to_composite);
+        let composite_key = self.current_state_ref().get_composite_key();
+        let candidates = get_all_candidates(&self.dictionaries, &composite_key);
         self.current_state().set_new_candidate_list(candidates);
     }
 
@@ -384,8 +388,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                purge_candidate(cskkdict, &current_candidate);
+                purge_candidate(cskkdict, &composite_key, &current_candidate);
             }
         } else {
             log::warn!(
@@ -405,9 +414,13 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
-
+            let composite_key = self
+                .current_state_ref()
+                .get_candidate_list()
+                .get_current_to_composite()
+                .to_owned();
             for cskkdict in self.dictionaries.iter_mut() {
-                confirm_candidate(cskkdict, &current_candidate);
+                confirm_candidate(cskkdict, &composite_key, &current_candidate);
             }
 
             let composited_okuri = self.kana_form_changer.adjust_kana_string(
@@ -495,12 +508,14 @@ impl CskkContext {
                 current_state.composition_mode = CompositionMode::Direct;
 
                 let numeric_count = numeric_entry_count(&confirmed);
+
                 if numeric_count != 0
                     && numeric_count
                         == numeric_string_count(
                             current_state
                                 .get_candidate_list()
-                                .get_current_to_composite(),
+                                .get_current_to_composite()
+                                .get_to_composite(),
                         )
                 {
                     // 変換する文字列の数字が確定文字列の数字代理と同数含まれる場合(numeric entry)を辞書登録する。
@@ -517,9 +532,9 @@ impl CskkContext {
                     let mut candidates = vec![];
                     for output in outputs {
                         candidates.push(Candidate::new(
-                            Arc::new(dict_key.clone()),
+                            dict_key.get_to_composite().to_string(),
                             !self.current_state_ref().get_okuri_string().is_empty(),
-                            Arc::new(confirmed.to_owned()),
+                            confirmed.to_owned(),
                             None,
                             output,
                         ));
@@ -529,14 +544,13 @@ impl CskkContext {
                 } else {
                     // numeric entryではない普通の変換候補としてconfirmedを追加する。
                     let candidates = vec![Candidate::new(
-                        Arc::new(
-                            current_state
-                                .get_candidate_list()
-                                .get_current_to_composite()
-                                .to_string(),
-                        ),
+                        current_state
+                            .get_candidate_list()
+                            .get_current_to_composite()
+                            .get_to_composite()
+                            .to_string(),
                         !self.current_state_ref().get_okuri_string().is_empty(),
-                        Arc::new(confirmed.to_owned()),
+                        confirmed.to_owned(),
                         None,
                         confirmed,
                     )];
@@ -1200,8 +1214,9 @@ impl CskkContext {
         // remove that from key and enter composition selection mode.
         let mut done = false;
         let composite_key = self.current_state_ref().get_composite_key();
+        let raw_to_composite = composite_key.get_to_composite();
         for suffix in &self.config.auto_start_henkan_keywords.clone() {
-            if !done && !composite_key.eq(suffix) && composite_key.ends_with(suffix) {
+            if !done && !raw_to_composite.eq(suffix) && raw_to_composite.ends_with(suffix) {
                 // suffix matched the current composite_key's end
                 // Now remove suffix from composite_key and put it to postfix.
                 for _ in 0..suffix.chars().count() {

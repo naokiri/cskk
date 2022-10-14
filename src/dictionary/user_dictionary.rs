@@ -1,12 +1,11 @@
-use std::collections::BTreeMap;
-
 use crate::dictionary::candidate::Candidate;
-use crate::dictionary::file_dictionary::{load_dictionary, FileDictionary};
-use crate::dictionary::{DictEntry, Dictionary};
+use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntries, FileDictionary};
+use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
 use log::*;
+use lru::LruCache;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 
@@ -19,7 +18,8 @@ pub(crate) struct UserDictionary {
     file_path: String,
     encode: String,
     // Midashi -> DictEntry map
-    dictionary: BTreeMap<String, DictEntry>,
+    okuri_ari_dictionary: LruCache<String, DictEntry>,
+    okuri_nashi_dictionary: LruCache<String, DictEntry>,
     // Just bool, because we know this is under mutex.
     has_change: bool,
 }
@@ -29,18 +29,35 @@ const BUF_SIZE: usize = 1024;
 impl UserDictionary {
     pub(crate) fn new(file_path: &str, encode: &str) -> Result<Self, CskkError> {
         let dictionary = load_dictionary(file_path, encode.as_bytes())?;
+        let mut okuri_ari_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_ari.into_iter().rev() {
+            okuri_ari_dict.put(k, v);
+        }
+
+        let mut okuri_nashi_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_nashi.into_iter().rev() {
+            okuri_nashi_dict.put(k, v);
+        }
+
         Ok(UserDictionary {
             file_path: String::from(file_path),
             encode: encode.to_string(),
-            dictionary,
+            okuri_ari_dictionary: okuri_ari_dict,
+            okuri_nashi_dictionary: okuri_nashi_dict,
             has_change: false,
         })
     }
 }
 
 impl Dictionary for UserDictionary {
-    fn lookup(&self, midashi: &str, _okuri: bool) -> Option<&DictEntry> {
-        self.dictionary.get(midashi)
+    fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
+        return if composite_key.has_okuri() {
+            self.okuri_ari_dictionary
+                .peek(&composite_key.get_dict_key())
+        } else {
+            self.okuri_nashi_dictionary
+                .peek(&composite_key.get_dict_key())
+        };
     }
 
     fn is_read_only(&self) -> bool {
@@ -48,7 +65,8 @@ impl Dictionary for UserDictionary {
     }
 
     /// {file_path}.BAK に退避してからfile_pathに保存する
-    /// TODO: 現在は他の辞書と互換性がないただのエントリの羅列なので、okuri-ari entriesとokuri-nasi entriesに分けてddskkのようにファイル上で走査する辞書互換にする。
+    /// 辞書ファイルのフォーマットは SKK 16.2 user manual 5.10.7 辞書の書式 に依る
+    /// userdictなので送りありエントリも送りなしエントリも最近使用した順に並ぶ。
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
         if self.has_change {
             rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
@@ -58,8 +76,30 @@ impl Dictionary for UserDictionary {
             let mut enc = Encoding::for_label(self.encode.as_bytes())
                 .expect("It should be same as encoding name succeeded when loading file.")
                 .new_encoder();
-            for dictentry in self.dictionary.values() {
-                let mut source = dictentry.to_skk_jisyo_string();
+
+            // Not using. Can't compile on mac.
+            // let encoded = encode_string(
+            //     &mut enc,
+            //     &format!(
+            //         ";; Save on {} \n",
+            //         chrono::offset::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
+            //     ),
+            // )?;
+            // stream.write_all(encoded.as_slice())?;
+
+            let encoded = encode_string(&mut enc, ";; okuri-ari entries.\n")?;
+            stream.write_all(encoded.as_slice())?;
+            for (_, dictentry) in self.okuri_ari_dictionary.iter() {
+                let mut source = dictentry.to_string();
+                source += "\n";
+                if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
+                    stream.write_all(encoded.as_slice())?;
+                }
+            }
+            let encoded = encode_string(&mut enc, ";; okuri-nasi entries.\n")?;
+            stream.write_all(encoded.as_slice())?;
+            for (_, dictentry) in self.okuri_nashi_dictionary.iter() {
+                let mut source = dictentry.to_string();
                 source += "\n";
                 if let Ok(encoded) = encode_string(&mut enc, source.as_mut_str()) {
                     stream.write_all(encoded.as_slice())?;
@@ -73,22 +113,28 @@ impl Dictionary for UserDictionary {
         }
     }
 
-    fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+    fn select_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
         debug!("Select midashi: {:?}", midashi);
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        let dictionary = if candidate.okuri {
+            &mut self.okuri_ari_dictionary
+        } else {
+            &mut self.okuri_nashi_dictionary
+        };
+
+        let entry = dictionary.get_mut(midashi.as_str());
         match entry {
             Some(dict_entry) => {
-                dict_entry.remove_matching_candidate(candidate);
-                dict_entry.insert_as_first_candidate(candidate.clone());
+                dict_entry.prioritize_candidate(composite_key, candidate);
             }
             None => {
-                self.dictionary.insert(
-                    (*candidate.midashi).clone(),
-                    DictEntry {
-                        midashi: (*candidate.midashi).clone(),
-                        candidates: vec![(*candidate).clone()],
-                    },
+                dictionary.put(
+                    candidate.midashi.to_owned(),
+                    DictEntry::new(&candidate.midashi, composite_key, candidate),
                 );
             }
         }
@@ -96,14 +142,27 @@ impl Dictionary for UserDictionary {
         Ok(true)
     }
 
-    fn purge_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
+    fn purge_candidate(
+        &mut self,
+        composite_key: &CompositeKey,
+        candidate: &Candidate,
+    ) -> Result<bool, CskkError> {
+        let dictionary = if candidate.okuri {
+            &mut self.okuri_ari_dictionary
+        } else {
+            &mut self.okuri_nashi_dictionary
+        };
         let midashi = &candidate.midashi;
-        let entry = self.dictionary.get_mut(midashi.as_str());
+        let entry = dictionary.get_mut(midashi.as_str());
         if let Some(dict_entry) = entry {
-            dict_entry.remove_matching_candidate(candidate);
+            dict_entry.remove_matching_candidate(composite_key, candidate);
         }
         self.has_change = true;
         Ok(true)
+    }
+
+    fn reload(&mut self) -> Result<(), CskkError> {
+        FileDictionary::reload(self)
     }
 }
 
@@ -116,8 +175,18 @@ impl FileDictionary for UserDictionary {
         &self.encode
     }
 
-    fn set_dictionary(&mut self, dictionary: BTreeMap<String, DictEntry>) {
-        self.dictionary = dictionary;
+    fn set_dictionary(&mut self, dictionary: DictionaryEntries) {
+        let mut okuri_ari_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_ari.into_iter().rev() {
+            okuri_ari_dict.put(k, v);
+        }
+        self.okuri_ari_dictionary = okuri_ari_dict;
+
+        let mut okuri_nashi_dict = LruCache::unbounded();
+        for (k, v) in dictionary.okuri_nashi.into_iter().rev() {
+            okuri_nashi_dict.put(k, v);
+        }
+        self.okuri_nashi_dictionary = okuri_nashi_dict;
     }
 }
 
@@ -153,16 +222,106 @@ fn encode_string(encoder: &mut Encoder, to_encode: &str) -> Result<Vec<u8>, Cskk
 #[cfg(test)]
 mod test {
     use super::*;
+    use encoding_rs_io::DecodeReaderBytesBuilder;
+    use std::io::{BufRead, BufReader};
 
     #[test]
     fn userdict() -> Result<(), CskkError> {
         File::create("tests/data/dictionaries/empty.dat")?;
         let mut user_dictionary =
             UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
-        let candidate = Candidate::from_skk_jisyo_string("あああ", "アアア;wow").unwrap();
-        user_dictionary.select_candidate(&candidate)?;
+        let candidate = Candidate::new(
+            "あああ".to_string(),
+            false,
+            "アアア".to_string(),
+            Some("wow".to_string()),
+            "アアア".to_string(),
+        );
+        let composite_key = CompositeKey::new("あああ", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
-        user_dictionary.purge_candidate(&candidate)?;
+        user_dictionary.purge_candidate(&composite_key, &candidate)?;
+        user_dictionary.save_dictionary()?;
+        Ok(())
+    }
+
+    /// Recent select_candidate の順序になっているか
+    #[test]
+    fn userdict_ordering() -> Result<(), CskkError> {
+        let filepath = "tests/data/dictionaries/empty.dat";
+        File::create(filepath)?;
+        let mut user_dictionary = UserDictionary::new(filepath, "utf-8")?;
+        let candidate = Candidate::new(
+            "あ".to_string(),
+            false,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("あ", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        let candidate = Candidate::new(
+            "い".to_string(),
+            false,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("い", None);
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+
+        let candidate = Candidate::new(
+            "あb".to_string(),
+            true,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("あ", Some("ば".to_string()));
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+
+        let candidate = Candidate::new(
+            "いb".to_string(),
+            true,
+            "候補".to_string(),
+            None,
+            "候補".to_string(),
+        );
+        let composite_key = CompositeKey::new("い", Some("ば".to_string()));
+        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        user_dictionary.save_dictionary()?;
+
+        let saved_file = File::open("tests/data/dictionaries/empty.dat")?;
+        let enc = Encoding::for_label_no_replacement("utf-8".as_bytes());
+        let decoder = DecodeReaderBytesBuilder::new()
+            .encoding(enc)
+            .build(saved_file);
+        let reader = BufReader::new(decoder);
+        for (i, line) in reader.lines().enumerate() {
+            if let Ok(line) = line {
+                match i {
+                    0 => {
+                        assert!(line.contains(";; okuri-ari entries"))
+                    }
+                    1 => {
+                        assert!(line.contains("いb /候補/[ば/候補/]/"))
+                    }
+                    2 => {
+                        assert!(line.contains("あb /候補/[ば/候補/]/"))
+                    }
+                    3 => {
+                        assert!(line.contains(";; okuri-nasi entries"))
+                    }
+                    4 => {
+                        assert!(line.contains("い /候補/"))
+                    }
+                    5 => {
+                        assert!(line.contains("あ /候補/"))
+                    }
+                    _ => {}
+                }
+            }
+        }
         user_dictionary.save_dictionary()?;
         Ok(())
     }

@@ -1,5 +1,6 @@
 use crate::candidate_list::CandidateList;
 use crate::dictionary::candidate::Candidate;
+use crate::dictionary::CompositeKey;
 use crate::form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
 use std::fmt::{Debug, Formatter};
@@ -23,7 +24,7 @@ pub(crate) struct CskkState {
     raw_to_composite: String,
     // 未確定入力の漢字の読み部分。主にひらがな、Abbrev等の時は英字もありうる。出力時にInputModeにあわせて変換される。
     converted_kana_to_composite: String,
-    // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。convertがあるInputMode時のみ使用
+    // 未確定入力の漢字の読み以外の部分。多くの場合送り仮名であり、その想定のもとに変数名を付けてしまったが、auto_start_henkan等の強制的に変換を開始する場合にはおくりがな以外のpostfixが入ることもある。
     converted_kana_to_okuri: String,
     // 現在の変換候補リスト
     candidate_list: CandidateList,
@@ -33,7 +34,7 @@ pub(crate) struct CskkState {
     confirmed: String,
     // 今のかな変換の間に大文字でモード変更をしたかどうか。このステートによってシフトを押したままキー入力をしてしまった時に連続してモード変更しないようにしている。
     capital_transition: bool,
-    // 現在送り仮名を入力しているかどうか。postfixを送り仮名として用いるべきかどうか。
+    // 現在送り仮名を入力しているかどうか。converted_kana_to_okuriを送り仮名として用いるべきかどうか。
     use_okurigana: bool,
 }
 
@@ -276,22 +277,15 @@ impl CskkState {
     }
 
     /// 今のステートで変換する時の辞書のキーとして使うべき文字列を返す。
-    pub(crate) fn get_composite_key(&self) -> String {
-        // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字はひらがなから対応表を引く。
-        if self.use_okurigana {
-            // ひらがなはUnicode Scalar Valueなのでchars()で十分。
-            if let Some(first_kana) = self.converted_kana_to_okuri.chars().next() {
-                if let Some(okuri_first) =
-                    KanaFormChanger::kana_to_okuri_prefix(&first_kana.to_string())
-                {
-                    let mut string = self.raw_to_composite.to_owned();
-                    string.push_str(okuri_first);
-                    return string;
-                }
-            }
+    pub(crate) fn get_composite_key(&self) -> CompositeKey {
+        if self.use_okurigana && !self.converted_kana_to_okuri.is_empty() {
+            return CompositeKey::new(
+                &self.raw_to_composite,
+                Some(self.converted_kana_to_okuri.to_owned()),
+            );
         }
 
-        self.raw_to_composite.to_owned()
+        CompositeKey::new(&self.raw_to_composite, None)
     }
 
     pub(crate) fn set_capital_transition(&mut self, has_transitioned: bool) {
@@ -339,8 +333,8 @@ impl CskkState {
 
     /// 現在の変換候補を設定し、最初の候補を指す
     pub(crate) fn set_new_candidate_list(&mut self, candidates: Vec<Candidate>) {
-        let raw_to_composite = self.get_composite_key();
-        self.candidate_list.set(raw_to_composite, candidates);
+        let composite_key = self.get_composite_key();
+        self.candidate_list.set(composite_key, candidates);
         self.composited_okuri = self.converted_kana_to_okuri.to_string();
     }
 }

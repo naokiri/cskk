@@ -79,7 +79,7 @@ root権限がある場合、以下を実行する。
 - [x] Basic 漢字変換
 - [x] static dictionary
 - [x] user dictionary
-    - not ddskk compatible
+  - ddskk compatible since v0.11.0
 - [ ] 接頭辞・接尾辞変換
 - [x] 数値変換
 - [x] auto-start-henkan   
