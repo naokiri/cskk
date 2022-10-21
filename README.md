@@ -16,7 +16,7 @@ Cobalt SKK ライブラリ.
 CSKK はSKK(Simple Kana Kanji 変換)用ライブラリです。
 CSKKはSKKと外延的に同値であるため、こう名付けられました。
 
-Fcitx5用: [fcitx5-cskk](https://github.com/naokiri/fcitx5-cskk)
+Fcitx5用: [fcitx5-cskk](https://github.com/fcitx/fcitx5-cskk)
 
 説明書: [cskk-docs](https://naokiri.github.io/cskk-docs/)
 
