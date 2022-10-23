@@ -12,7 +12,7 @@ extern crate xkbcommon;
 use crate::command_handler::ConfigurableCommandHandler;
 use crate::command_handler::Instruction;
 use crate::config::CskkConfig;
-use crate::cskkstate::CskkState;
+use crate::cskkstate::{CskkState, CskkStateInfo};
 use crate::dictionary::Candidate;
 use crate::dictionary::{
     confirm_candidate, get_all_candidates, numeric_entry_count, numeric_string_count,
@@ -287,8 +287,9 @@ impl CskkContext {
     ///
     /// pollされていない入力を状態に応じて修飾して返す。
     ///
+    /// libskk互換の素朴な修飾ではないものを作る場合は[get_preedit_detail]でIME側で修飾する。
+    ///
     /// TODO: 常に返るので、Optionである必要がなかった。caller側できちんとOption扱いするか、返り値の型を変えるか。
-    /// TODO: Update to return (String, cursor_begin, cursor_end) as a Rust interface.
     ///
     pub fn get_preedit(&self) -> Option<String> {
         let mut result = String::new();
@@ -307,10 +308,26 @@ impl CskkContext {
     }
 
     ///
+    /// 現在の状態スタック全ての表示要素リストを返す。
+    /// [get_preedit]で素朴に修飾されたデータの元。
+    ///
+    pub fn get_preedit_detail(&self) -> Vec<CskkStateInfo> {
+        let mut result = Vec::new();
+        for state in &self.state_stack {
+            result.push(state.preedit_detail(&self.kana_form_changer, state.input_mode))
+        }
+
+        result
+    }
+
+    ///
     /// UTF-8 character range of text to emphasize in preedit.
     ///
     /// Currently we don't have expand/shrink-preedit feature, thus we have no text we want to emphasize.
     ///
+    /// # Deprecated
+    ///
+    /// Fancy formatting will be delegated to IMEs in favor of [get_preedit_detail]
     pub fn get_preedit_underline(&self) -> (isize, isize) {
         (0, 0)
     }

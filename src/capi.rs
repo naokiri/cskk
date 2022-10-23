@@ -1,17 +1,9 @@
+use crate::cskkstate::{CompositionSelectionData, DirectData, PreCompositionData};
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::CskkError::Error;
-use crate::{
-    get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
-    skk_context_get_current_candidate_count_rs,
-    skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
-    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs,
-    skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
-    skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
-    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
-    skk_context_set_period_style_rs, CskkContext, CskkError,
-};
+use crate::{get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs, skk_context_get_current_candidate_count_rs, skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs, skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs, skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_context_set_period_style_rs, CskkContext, CskkError, CskkStateInfo};
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::mem::ManuallyDrop;
@@ -52,6 +44,60 @@ impl Drop for CskkRulesFfi {
             drop(CString::from_raw(self.description));
         }
     }
+}
+
+///
+/// 入力途上の状態を返す構造体群
+/// CompositionModeに合わせた構造体で、各要素は存在すれば\0終端のUTF-8文字配列、存在しなければNULLが含まれる。
+///
+#[repr(C)]
+pub enum CskkStateInfoFfi {
+    Direct(DirectDataFfi),
+    /// PreCompositionはAbbreviationモードを含む。
+    PreComposition(PreCompositionDataFfi),
+    PreCompositionOkurigana(PreCompositionDataFfi),
+    CompositionSelection(CompositionSelectionDataFfi),
+    Register(PreCompositionDataFfi),
+}
+
+#[repr(C)]
+pub struct DirectDataFfi {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: *mut c_char,
+    /// まだかな変換を成されていないキー入力の文字列表現
+    pub unconverted: *mut c_char,
+}
+
+#[repr(C)]
+pub struct CompositionSelectionDataFfi {
+    /// 現在選択されている変換候補
+    pub composited: *mut c_char,
+    /// 現在の変換候補に付く送り仮名
+    pub okuri: *mut c_char,
+    /// 現在の候補のアノテーション
+    pub annotation: *mut c_char,
+}
+
+#[repr(C)]
+pub struct PreCompositionDataFfi {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: *mut c_char,
+    /// 漢字変換に用いようとしている部分
+    pub kana_to_composite: *mut c_char,
+    /// 漢字変換時に送り仮名として用いようとしている部分
+    pub okuri: *mut c_char,
+    /// かな変換が成されていない入力キーの文字列表現。
+    ///
+    /// 現在のCompositionModeがPreCompositionならば漢字変換に用いようとしている部分に付き、
+    ///
+    /// PreCompositionOkuriganaならば送り仮名に用いようとしている部分に付く。
+    ///
+    /// surrounding_textで指定範囲のみからの変換に対応していない現在、正常な遷移ではRegisterには存在しない。
+    pub unconverted: *mut c_char,
 }
 
 ///
@@ -335,6 +381,31 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
 }
 
 ///
+/// preedit状態の配列を返す。
+/// 配列の長さは引数のstate_stack_lenにセットする。
+/// 失敗時にはNULLを返す。
+///
+/// # Safety
+/// 返り値はcallerがskk_free_preedit_detailで解放しないとメモリリークする
+///
+#[no_mangle]
+pub extern "C" fn skk_context_get_preedit_detail(context: &CskkContext, state_stack_len: &c_int) -> *mut CskkStateInfoFfi {
+    let preedit = context.get_preedit_detail();
+        
+    
+
+    if let Ok(result) = maybe_result {
+        result.into_raw()
+    } else {
+        ptr::null_mut()
+    }
+}
+
+fn convert_preedit_detail(state_info: CskkStateInfo) -> CskkStateInfoFfi {
+    
+}
+
+///
 /// cskk libraryが渡したC言語文字列をfreeする。
 ///
 /// # Safety
@@ -406,6 +477,11 @@ pub unsafe extern "C" fn skk_free_rules(rules_ptr: *mut CskkRulesFfi, length: c_
 /// Get emphasizing range of preedit.
 /// offset: starting offset (in UTF-8 chars) of underline
 /// nchars: number of characters to be underlined
+///
+/// # Deprecated
+/// Fancy formatting will be delegated to IME in favor of [skk_context_get_preedit_detail].
+///
+/// Deprecated interface might be deleted on major update.
 ///
 /// # Safety
 ///
