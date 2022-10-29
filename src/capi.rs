@@ -1,3 +1,4 @@
+use crate::cskkstate::PreCompositionData;
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
@@ -18,7 +19,6 @@ use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_uint};
 use std::sync::Arc;
 use std::{ptr, slice};
-use crate::cskkstate::PreCompositionData;
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
