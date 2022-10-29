@@ -1,3 +1,4 @@
+use crate::cskkstate::PreCompositionData;
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
@@ -10,7 +11,7 @@ use crate::{
     skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
     skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
     skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
-    skk_context_set_period_style_rs, CskkContext, CskkError,
+    skk_context_set_period_style_rs, CskkContext, CskkError, CskkStateInfo,
 };
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -52,6 +53,61 @@ impl Drop for CskkRulesFfi {
             drop(CString::from_raw(self.description));
         }
     }
+}
+
+///
+/// 入力途上の状態を返す構造体群
+/// CompositionModeに合わせた構造体で、各要素は存在すれば\0終端のUTF-8文字配列、存在しなければNULLが含まれる。
+///
+// Using long common postfix name because C header cannot have same name even in different enum.
+#[repr(C)]
+pub enum CskkStateInfoFfi {
+    DirectStateInfo(DirectDataFfi),
+    /// PreCompositionはAbbreviationモードを含む。
+    PreCompositionStateInfo(PreCompositionDataFfi),
+    PreCompositionOkuriganaStateInfo(PreCompositionDataFfi),
+    CompositionSelectionStateInfo(CompositionSelectionDataFfi),
+    RegisterStateInfo(PreCompositionDataFfi),
+}
+
+#[repr(C)]
+pub struct DirectDataFfi {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: *mut c_char,
+    /// まだかな変換を成されていないキー入力の文字列表現
+    pub unconverted: *mut c_char,
+}
+
+#[repr(C)]
+pub struct CompositionSelectionDataFfi {
+    /// 現在選択されている変換候補
+    pub composited: *mut c_char,
+    /// 現在の変換候補に付く送り仮名
+    pub okuri: *mut c_char,
+    /// 現在の候補のアノテーション
+    pub annotation: *mut c_char,
+}
+
+#[repr(C)]
+pub struct PreCompositionDataFfi {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: *mut c_char,
+    /// 漢字変換に用いようとしている部分
+    pub kana_to_composite: *mut c_char,
+    /// 漢字変換時に送り仮名として用いようとしている部分
+    pub okuri: *mut c_char,
+    /// かな変換が成されていない入力キーの文字列表現。
+    ///
+    /// 現在のCompositionModeがPreCompositionならば漢字変換に用いようとしている部分に付き、
+    ///
+    /// PreCompositionOkuriganaならば送り仮名に用いようとしている部分に付く。
+    ///
+    /// surrounding_textで指定範囲のみからの変換に対応していない現在、正常な遷移ではRegisterには存在しない。
+    pub unconverted: *mut c_char,
 }
 
 ///
@@ -335,6 +391,141 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
 }
 
 ///
+/// preedit状態の配列を返す。
+/// 最初のものが一番外側の状態で、Registerモードの時には後にその内側の状態が続く。
+/// 結果の配列の長さは引数のstate_stack_lenにセットする。
+/// 失敗時にはNULLを返す。
+///
+/// # Safety
+/// 返り値の内容およびポインタは変更してはならない。
+/// 返り値はcallerがskk_free_preedit_detailで解放しないとメモリリークする
+/// state_stack_lenが有効なunsigned intへのポインタでないと予期せぬ動作を起こす。
+///
+#[no_mangle]
+pub unsafe extern "C" fn skk_context_get_preedit_detail(
+    context: &CskkContext,
+    state_stack_len: *mut c_uint,
+) -> *mut CskkStateInfoFfi {
+    let preedit = context.get_preedit_detail();
+    let mut converted = preedit
+        .into_iter()
+        .map(convert_state_info)
+        .collect::<Vec<CskkStateInfoFfi>>();
+    *state_stack_len = u32::try_from(converted.len()).unwrap_or_default();
+
+    if !converted.is_empty() {
+        // Make Vec capacity to be equals length so that we can restore on free function.
+        converted.set_len(converted.len());
+        let mut retval = ManuallyDrop::new(converted);
+
+        retval.as_mut_ptr()
+    } else {
+        // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
+        // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
+        ptr::null_mut()
+    }
+}
+
+/// CskkStateInfoのStringからcstringに変換したFFI用の構造体を返す。
+fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
+    match state_info {
+        CskkStateInfo::Direct(direct_data) => {
+            let confirmed = CString::new(direct_data.confirmed)
+                .unwrap_or_default()
+                .into_raw();
+
+            let unconverted = if direct_data.unconverted.is_some() {
+                CString::new(direct_data.unconverted.unwrap())
+                    .unwrap()
+                    .into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            CskkStateInfoFfi::DirectStateInfo(DirectDataFfi {
+                confirmed,
+                unconverted,
+            })
+        }
+        CskkStateInfo::PreComposition(precomposition_data) => {
+            CskkStateInfoFfi::PreCompositionStateInfo(convert_precomposition_data(
+                precomposition_data,
+            ))
+        }
+        CskkStateInfo::PreCompositionOkurigana(precomposition_data) => {
+            CskkStateInfoFfi::PreCompositionOkuriganaStateInfo(convert_precomposition_data(
+                precomposition_data,
+            ))
+        }
+        CskkStateInfo::Register(precomposition_data) => {
+            CskkStateInfoFfi::RegisterStateInfo(convert_precomposition_data(precomposition_data))
+        }
+        CskkStateInfo::CompositionSelection(composition_selection_data) => {
+            let composited = CString::new(composition_selection_data.composited)
+                .unwrap()
+                .into_raw();
+            let okuri = if let Some(okuri_string) = composition_selection_data.okuri {
+                CString::new(okuri_string).unwrap_or_default().into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            let annotation = if let Some(annotation_string) = composition_selection_data.annotation
+            {
+                CString::new(annotation_string)
+                    .unwrap_or_default()
+                    .into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            CskkStateInfoFfi::CompositionSelectionStateInfo(CompositionSelectionDataFfi {
+                composited,
+                okuri,
+                annotation,
+            })
+        }
+    }
+}
+
+fn convert_precomposition_data(precomposition_data: PreCompositionData) -> PreCompositionDataFfi {
+    let confirmed = CString::new(precomposition_data.confirmed)
+        .unwrap_or_default()
+        .into_raw();
+    let kana_to_composite = CString::new(precomposition_data.kana_to_composite)
+        .unwrap_or_default()
+        .into_raw();
+    let okuri = if let Some(okuri_string) = precomposition_data.okuri {
+        CString::new(okuri_string).unwrap_or_default().into_raw()
+    } else {
+        ptr::null_mut()
+    };
+    let unconverted = if let Some(unconverted_string) = precomposition_data.unconverted {
+        CString::new(unconverted_string).unwrap().into_raw()
+    } else {
+        ptr::null_mut()
+    };
+
+    PreCompositionDataFfi {
+        confirmed,
+        kana_to_composite,
+        okuri,
+        unconverted,
+    }
+}
+
+///
+/// preedit_detailsを解放する。
+///
+/// # Safety
+/// ptrとlengthはskk_context_get_preedit_detailsの返り値でなければならない。
+///
+pub unsafe extern "C" fn skk_free_preedit_details(ptr: *mut CskkStateInfoFfi, length: c_uint) {
+    if ptr.is_null() {
+        return;
+    }
+    let length = length as usize;
+    drop(Vec::from_raw_parts(ptr, length, length))
+}
+
+///
 /// cskk libraryが渡したC言語文字列をfreeする。
 ///
 /// # Safety
@@ -406,6 +597,11 @@ pub unsafe extern "C" fn skk_free_rules(rules_ptr: *mut CskkRulesFfi, length: c_
 /// Get emphasizing range of preedit.
 /// offset: starting offset (in UTF-8 chars) of underline
 /// nchars: number of characters to be underlined
+///
+/// # Deprecated
+/// Fancy formatting will be delegated to IME in favor of [skk_context_get_preedit_detail].
+///
+/// Deprecated interface might be deleted on major update.
 ///
 /// # Safety
 ///

@@ -3,8 +3,10 @@ use crate::dictionary::candidate::Candidate;
 use crate::dictionary::CompositeKey;
 use crate::form_changer::KanaFormChanger;
 use crate::skk_modes::{CompositionMode, InputMode};
+use crate::CskkStateInfo::{
+    CompositionSelection, Direct, PreComposition, PreCompositionOkurigana, Register,
+};
 use std::fmt::{Debug, Formatter};
-use xkbcommon::xkb;
 use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
@@ -36,6 +38,59 @@ pub(crate) struct CskkState {
     capital_transition: bool,
     // 現在送り仮名を入力しているかどうか。converted_kana_to_okuriを送り仮名として用いるべきかどうか。
     use_okurigana: bool,
+}
+
+///
+/// 外部IMEでformatさせるために渡す現在の表示状態のコピー
+/// 表示のために用いるデータが共通のRegister, Precomposition, PrecompositionOkuriganaは共通化されている。
+///
+#[derive(Debug, PartialEq, Eq)]
+pub enum CskkStateInfo {
+    Direct(DirectData),
+    PreComposition(PreCompositionData),
+    PreCompositionOkurigana(PreCompositionData),
+    CompositionSelection(CompositionSelectionData),
+    Register(PreCompositionData),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DirectData {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: String,
+    /// まだかな変換を成されていないキー入力の文字列表現
+    pub unconverted: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct CompositionSelectionData {
+    /// 現在選択されている変換候補
+    pub composited: String,
+    /// 現在の変換候補に付く送り仮名
+    pub okuri: Option<String>,
+    /// 現在の候補のアノテーション
+    pub annotation: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct PreCompositionData {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: String,
+    /// 漢字変換に用いようとしている部分
+    pub kana_to_composite: String,
+    /// 漢字変換時に送り仮名として用いようとしている部分
+    pub okuri: Option<String>,
+    /// かな変換が成されていない入力キーの文字列表現。
+    ///
+    /// 現在のCompositionModeがPreCompositionならば漢字変換に用いようとしている部分に付き、
+    ///
+    /// PreCompositionOkuriganaならば送り仮名に用いようとしている部分に付く。
+    ///
+    /// surrounding_textで指定範囲のみからの変換に対応していない現在、正常な遷移ではRegisterには存在しない。
+    pub unconverted: Option<String>,
 }
 
 impl CskkState {
@@ -214,64 +269,118 @@ impl CskkState {
         self.use_okurigana = false;
     }
 
+    /// libskkのようにこのlibrary内で修飾した現在の状態を返す。
+    /// より高度な修飾をIM側で行うためには[preedit_detail]を用いる。
     pub(crate) fn preedit_string(
         &self,
         kana_form_changer: &KanaFormChanger,
         current_input_mode: InputMode,
     ) -> String {
-        let converted = &self.confirmed;
-        let unconverted = &self.pre_conversion;
-        let kana_to_composite = kana_form_changer
-            .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite);
-        let kana_to_okuri =
-            kana_form_changer.adjust_kana_string(current_input_mode, &self.converted_kana_to_okuri);
-        let current_candidate = self.candidate_list.get_current_candidate();
-        let fallback_candidate = Candidate::default();
-        let composited = &current_candidate.unwrap_or(&fallback_candidate).output;
-        let composited_okuri =
-            kana_form_changer.adjust_kana_string(current_input_mode, &self.composited_okuri);
-
-        match self.composition_mode {
-            CompositionMode::Direct => {
-                converted.to_owned()
-                    + &unconverted
-                        .iter()
-                        .map(|keysym| xkb::keysym_get_name(*keysym))
-                        .collect::<Vec<_>>()
-                        .join("")
+        let stateinfo = self.preedit_detail(kana_form_changer, current_input_mode);
+        match stateinfo {
+            Direct(direct_data) => {
+                direct_data.confirmed + &direct_data.unconverted.unwrap_or_default()
             }
+            PreComposition(precomposition_data) => {
+                "▽".to_string()
+                    + &precomposition_data.confirmed
+                    + &precomposition_data.kana_to_composite
+                    + &precomposition_data.unconverted.unwrap_or_default()
+            }
+            PreCompositionOkurigana(precomposition_data) => {
+                "▽".to_string()
+                    + &precomposition_data.confirmed
+                    + &precomposition_data.kana_to_composite
+                    + "*"
+                    + &precomposition_data.okuri.unwrap_or_default()
+                    + &precomposition_data.unconverted.unwrap_or_default()
+            }
+            CompositionSelection(composition_selection_data) => {
+                "▼".to_string()
+                    + &composition_selection_data.composited
+                    + &composition_selection_data.okuri.unwrap_or_default()
+            }
+            Register(precomposition_data) => {
+                if precomposition_data.okuri.is_some() {
+                    "▼".to_string()
+                        + &precomposition_data.kana_to_composite
+                        + "*"
+                        + &precomposition_data.okuri.unwrap_or_default()
+                } else {
+                    "▼".to_string() + &precomposition_data.kana_to_composite
+                }
+            }
+        }
+    }
+
+    ///
+    /// 外部IMEでformatさせるために渡す現在の表示状態のコピーを返す。
+    ///
+    pub(crate) fn preedit_detail(
+        &self,
+        kana_form_changer: &KanaFormChanger,
+        current_input_mode: InputMode,
+    ) -> CskkStateInfo {
+        let unconverted = if self.pre_conversion.is_empty() {
+            None
+        } else {
+            Some(
+                self.pre_conversion
+                    .iter()
+                    .map(|keysym| keysym_get_name(*keysym))
+                    .collect::<Vec<_>>()
+                    .join(""),
+            )
+        };
+        let okuri = if self.converted_kana_to_okuri.is_empty() {
+            None
+        } else {
+            Some(
+                kana_form_changer
+                    .adjust_kana_string(current_input_mode, &self.converted_kana_to_okuri),
+            )
+        };
+        match self.composition_mode {
+            CompositionMode::Direct => Direct(DirectData {
+                confirmed: self.confirmed.to_owned(),
+                unconverted,
+            }),
             CompositionMode::PreComposition | CompositionMode::Abbreviation => {
-                "▽".to_owned()
-                    + converted
-                    + &kana_to_composite
-                    + &unconverted
-                        .iter()
-                        .map(|keysym| xkb::keysym_get_name(*keysym))
-                        .collect::<Vec<_>>()
-                        .join("")
+                PreComposition(PreCompositionData {
+                    confirmed: self.confirmed.to_owned(),
+                    kana_to_composite: kana_form_changer
+                        .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite),
+                    okuri,
+                    unconverted,
+                })
             }
             CompositionMode::PreCompositionOkurigana => {
-                "▽".to_owned()
-                    + converted
-                    + &kana_to_composite
-                    + "*"
-                    + &kana_to_okuri
-                    + &unconverted
-                        .iter()
-                        .map(|keysym| xkb::keysym_get_name(*keysym))
-                        .collect::<Vec<_>>()
-                        .join("")
-                // + &unconverted.iter().collect::<String>()
+                PreCompositionOkurigana(PreCompositionData {
+                    confirmed: self.confirmed.to_owned(),
+                    kana_to_composite: kana_form_changer
+                        .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite),
+                    okuri,
+                    unconverted,
+                })
             }
+            CompositionMode::Register => Register(PreCompositionData {
+                confirmed: self.confirmed.to_owned(),
+                kana_to_composite: kana_form_changer
+                    .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite),
+                okuri,
+                unconverted,
+            }),
             CompositionMode::CompositionSelection => {
-                "▼".to_owned() + composited + &composited_okuri
-            }
-            CompositionMode::Register => {
-                if kana_to_okuri.is_empty() {
-                    "▼".to_string() + &kana_to_composite
-                } else {
-                    "▼".to_string() + &kana_to_composite + "*" + &kana_to_okuri
-                }
+                let current_candidate = self.candidate_list.get_current_candidate();
+                let fallback_candidate = Candidate::default();
+                let candidate = current_candidate.unwrap_or(&fallback_candidate).to_owned();
+                let composited = candidate.output;
+                let annotation = candidate.annotation;
+                CompositionSelection(CompositionSelectionData {
+                    composited,
+                    okuri,
+                    annotation,
+                })
             }
         }
     }
