@@ -309,6 +309,7 @@ impl CskkContext {
 
     ///
     /// 現在の状態スタック全ての表示要素リストを返す。
+    /// 最初のものが一番外側の状態で、Registerモードの時には後にその内側の状態が続く。
     /// [get_preedit]で素朴に修飾されたデータの元。
     ///
     pub fn get_preedit_detail(&self) -> Vec<CskkStateInfo> {
@@ -1478,6 +1479,7 @@ impl Display for CskkState {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use crate::cskkstate::PreCompositionData;
     use crate::testhelper::init_test_logger;
     use xkbcommon::xkb::keysyms;
 
@@ -1614,5 +1616,25 @@ mod unit_tests {
         let actual = cskkcontext
             .process_key_event(&CskkKeyEvent::from_string_representation("BackSpace").unwrap());
         assert!(actual);
+    }
+
+    #[test]
+    fn preedit_details_basic() {
+        init_test_logger();
+        let mut cskkcontext = new_test_context(InputMode::Hiragana, CompositionMode::Direct);
+        cskkcontext.process_key_event(&CskkKeyEvent::from_string_representation("A").unwrap());
+        let result = cskkcontext.get_preedit_detail();
+        assert_eq!(result.len(), 1);
+        let top_state = result.get(0).unwrap();
+        assert!(matches!(top_state, CskkStateInfo::PreComposition(_)));
+        assert_eq!(
+            *top_state,
+            CskkStateInfo::PreComposition(PreCompositionData {
+                confirmed: "".to_string(),
+                kana_to_composite: "あ".to_string(),
+                okuri: None,
+                unconverted: None
+            })
+        )
     }
 }

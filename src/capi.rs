@@ -1,15 +1,24 @@
-use crate::cskkstate::{CompositionSelectionData, DirectData, PreCompositionData};
 use crate::dictionary::CskkDictionary;
 use crate::keyevent::CskkKeyEvent;
 use crate::skk_modes::{CommaStyle, CompositionMode, InputMode, PeriodStyle};
 use crate::CskkError::Error;
-use crate::{get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs, skk_context_get_current_candidate_count_rs, skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs, skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs, skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs, skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs, skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs, skk_context_set_period_style_rs, CskkContext, CskkError, CskkStateInfo};
+use crate::{
+    get_available_rules, skk_context_confirm_candidate_at_rs, skk_context_get_composition_mode_rs,
+    skk_context_get_current_candidate_count_rs,
+    skk_context_get_current_candidate_cursor_position_rs, skk_context_get_current_candidates_rs,
+    skk_context_get_current_to_composite_rs, skk_context_get_input_mode_rs,
+    skk_context_poll_output_rs, skk_context_reset_rs, skk_context_select_candidate_at_rs,
+    skk_context_set_auto_start_henkan_keywords_rs, skk_context_set_comma_style_rs,
+    skk_context_set_dictionaries_rs, skk_context_set_input_mode_rs,
+    skk_context_set_period_style_rs, CskkContext, CskkError, CskkStateInfo,
+};
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_uint};
 use std::sync::Arc;
 use std::{ptr, slice};
+use crate::cskkstate::PreCompositionData;
 
 pub struct CskkDictionaryFfi {
     dictionary: Arc<CskkDictionary>,
@@ -382,27 +391,135 @@ pub extern "C" fn skk_context_get_preedit(context: &CskkContext) -> *mut c_char 
 
 ///
 /// preedit状態の配列を返す。
-/// 配列の長さは引数のstate_stack_lenにセットする。
+/// 最初のものが一番外側の状態で、Registerモードの時には後にその内側の状態が続く。
+/// 結果の配列の長さは引数のstate_stack_lenにセットする。
 /// 失敗時にはNULLを返す。
 ///
 /// # Safety
+/// 返り値の内容およびポインタは変更してはならない。
 /// 返り値はcallerがskk_free_preedit_detailで解放しないとメモリリークする
+/// state_stack_lenが有効なunsigned intへのポインタでないと予期せぬ動作を起こす。
 ///
 #[no_mangle]
-pub extern "C" fn skk_context_get_preedit_detail(context: &CskkContext, state_stack_len: &c_int) -> *mut CskkStateInfoFfi {
+pub unsafe extern "C" fn skk_context_get_preedit_detail(
+    context: &CskkContext,
+    state_stack_len: *mut c_uint,
+) -> *mut CskkStateInfoFfi {
     let preedit = context.get_preedit_detail();
-        
-    
+    let mut converted = preedit
+        .into_iter()
+        .map(convert_state_info)
+        .collect::<Vec<CskkStateInfoFfi>>();
+    *state_stack_len = u32::try_from(converted.len()).unwrap_or_default();
 
-    if let Ok(result) = maybe_result {
-        result.into_raw()
+    if !converted.is_empty() {
+        // Make Vec capacity to be equals length so that we can restore on free function.
+        converted.set_len(converted.len());
+        let mut retval = ManuallyDrop::new(converted);
+
+        retval.as_mut_ptr()
     } else {
+        // Must treat specially since Vec with 0 capacity has some value not guaranteed to be NULL in C.
+        // See https://doc.rust-lang.org/std/vec/struct.Vec.html#guarantees
         ptr::null_mut()
     }
 }
 
-fn convert_preedit_detail(state_info: CskkStateInfo) -> CskkStateInfoFfi {
-    
+/// CskkStateInfoのStringからcstringに変換したFFI用の構造体を返す。
+fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
+    match state_info {
+        CskkStateInfo::Direct(direct_data) => {
+            let confirmed = CString::new(direct_data.confirmed)
+                .unwrap_or_default()
+                .into_raw();
+
+            let unconverted = if direct_data.unconverted.is_some() {
+                CString::new(direct_data.unconverted.unwrap())
+                    .unwrap()
+                    .into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            CskkStateInfoFfi::Direct(DirectDataFfi {
+                confirmed,
+                unconverted,
+            })
+        }
+        CskkStateInfo::PreComposition(precomposition_data) => {
+            CskkStateInfoFfi::PreComposition(convert_precomposition_data(precomposition_data))
+        }
+        CskkStateInfo::PreCompositionOkurigana(precomposition_data) => {
+            CskkStateInfoFfi::PreCompositionOkurigana(convert_precomposition_data(
+                precomposition_data,
+            ))
+        }
+        CskkStateInfo::Register(precomposition_data) => {
+            CskkStateInfoFfi::Register(convert_precomposition_data(precomposition_data))
+        }
+        CskkStateInfo::CompositionSelection(composition_selection_data) => {
+            let composited = CString::new(composition_selection_data.composited)
+                .unwrap()
+                .into_raw();
+            let okuri = if let Some(okuri_string) = composition_selection_data.okuri {
+                CString::new(okuri_string).unwrap_or_default().into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            let annotation = if let Some(annotation_string) = composition_selection_data.annotation
+            {
+                CString::new(annotation_string)
+                    .unwrap_or_default()
+                    .into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            CskkStateInfoFfi::CompositionSelection(CompositionSelectionDataFfi {
+                composited,
+                okuri,
+                annotation,
+            })
+        }
+    }
+}
+
+fn convert_precomposition_data(precomposition_data: PreCompositionData) -> PreCompositionDataFfi {
+    let confirmed = CString::new(precomposition_data.confirmed)
+        .unwrap_or_default()
+        .into_raw();
+    let kana_to_composite = CString::new(precomposition_data.kana_to_composite)
+        .unwrap_or_default()
+        .into_raw();
+    let okuri = if let Some(okuri_string) = precomposition_data.okuri {
+        CString::new(okuri_string).unwrap_or_default().into_raw()
+    } else {
+        ptr::null_mut()
+    };
+    let unconverted = if let Some(unconverted_string) = precomposition_data.unconverted {
+        CString::new(unconverted_string).unwrap().into_raw()
+    } else {
+        ptr::null_mut()
+    };
+
+    PreCompositionDataFfi {
+        confirmed,
+        kana_to_composite,
+        okuri,
+        unconverted,
+    }
+}
+
+///
+/// preedit_detailsを解放する。
+///
+/// # Safety
+/// ptrとlengthはskk_context_get_preedit_detailsの返り値でなければならない。
+///
+pub unsafe extern "C" fn skk_free_preedit_details(ptr: *mut CskkStateInfoFfi, length: c_uint) {
+    if ptr.is_null() {
+        return;
+    }
+    let length = length as usize;
+    drop(Vec::from_raw_parts(ptr, length, length))
 }
 
 ///
