@@ -59,14 +59,15 @@ impl Drop for CskkRulesFfi {
 /// 入力途上の状態を返す構造体群
 /// CompositionModeに合わせた構造体で、各要素は存在すれば\0終端のUTF-8文字配列、存在しなければNULLが含まれる。
 ///
+// Using long common postfix name because C header cannot have same name even in different enum.
 #[repr(C)]
 pub enum CskkStateInfoFfi {
-    Direct(DirectDataFfi),
+    DirectStateInfo(DirectDataFfi),
     /// PreCompositionはAbbreviationモードを含む。
-    PreComposition(PreCompositionDataFfi),
-    PreCompositionOkurigana(PreCompositionDataFfi),
-    CompositionSelection(CompositionSelectionDataFfi),
-    Register(PreCompositionDataFfi),
+    PreCompositionStateInfo(PreCompositionDataFfi),
+    PreCompositionOkuriganaStateInfo(PreCompositionDataFfi),
+    CompositionSelectionStateInfo(CompositionSelectionDataFfi),
+    RegisterStateInfo(PreCompositionDataFfi),
 }
 
 #[repr(C)]
@@ -440,21 +441,23 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
             } else {
                 ptr::null_mut()
             };
-            CskkStateInfoFfi::Direct(DirectDataFfi {
+            CskkStateInfoFfi::DirectStateInfo(DirectDataFfi {
                 confirmed,
                 unconverted,
             })
         }
         CskkStateInfo::PreComposition(precomposition_data) => {
-            CskkStateInfoFfi::PreComposition(convert_precomposition_data(precomposition_data))
+            CskkStateInfoFfi::PreCompositionStateInfo(convert_precomposition_data(
+                precomposition_data,
+            ))
         }
         CskkStateInfo::PreCompositionOkurigana(precomposition_data) => {
-            CskkStateInfoFfi::PreCompositionOkurigana(convert_precomposition_data(
+            CskkStateInfoFfi::PreCompositionOkuriganaStateInfo(convert_precomposition_data(
                 precomposition_data,
             ))
         }
         CskkStateInfo::Register(precomposition_data) => {
-            CskkStateInfoFfi::Register(convert_precomposition_data(precomposition_data))
+            CskkStateInfoFfi::RegisterStateInfo(convert_precomposition_data(precomposition_data))
         }
         CskkStateInfo::CompositionSelection(composition_selection_data) => {
             let composited = CString::new(composition_selection_data.composited)
@@ -473,7 +476,7 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
             } else {
                 ptr::null_mut()
             };
-            CskkStateInfoFfi::CompositionSelection(CompositionSelectionDataFfi {
+            CskkStateInfoFfi::CompositionSelectionStateInfo(CompositionSelectionDataFfi {
                 composited,
                 okuri,
                 annotation,
