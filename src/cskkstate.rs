@@ -44,7 +44,7 @@ pub(crate) struct CskkState {
 /// 外部IMEでformatさせるために渡す現在の表示状態のコピー
 /// 表示のために用いるデータが共通のRegister, Precomposition, PrecompositionOkuriganaは共通化されている。
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CskkStateInfo {
     Direct(DirectData),
     PreComposition(PreCompositionData),
@@ -53,7 +53,7 @@ pub enum CskkStateInfo {
     Register(PreCompositionData),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DirectData {
     /// pollされた時に返す確定済み文字列。
     ///
@@ -63,7 +63,7 @@ pub struct DirectData {
     pub unconverted: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CompositionSelectionData {
     /// 現在選択されている変換候補
     pub composited: String,
@@ -73,7 +73,7 @@ pub struct CompositionSelectionData {
     pub annotation: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PreCompositionData {
     /// pollされた時に返す確定済み文字列。
     ///
