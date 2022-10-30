@@ -80,6 +80,19 @@ pub struct DirectDataFfi {
     pub unconverted: *mut c_char,
 }
 
+impl Drop for DirectDataFfi {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.confirmed.is_null() {
+                drop(CString::from_raw(self.confirmed));
+            }
+            if !self.unconverted.is_null() {
+                drop(CString::from_raw(self.unconverted));
+            }
+        }
+    }
+}
+
 #[repr(C)]
 pub struct CompositionSelectionDataFfi {
     /// 現在選択されている変換候補
@@ -88,6 +101,22 @@ pub struct CompositionSelectionDataFfi {
     pub okuri: *mut c_char,
     /// 現在の候補のアノテーション
     pub annotation: *mut c_char,
+}
+
+impl Drop for CompositionSelectionDataFfi {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.composited.is_null() {
+                drop(CString::from_raw(self.composited));
+            }
+            if !self.okuri.is_null() {
+                drop(CString::from_raw(self.okuri));
+            }
+            if !self.annotation.is_null() {
+                drop(CString::from_raw(self.annotation));
+            }
+        }
+    }
 }
 
 #[repr(C)]
@@ -108,6 +137,25 @@ pub struct PreCompositionDataFfi {
     ///
     /// surrounding_textで指定範囲のみからの変換に対応していない現在、正常な遷移ではRegisterには存在しない。
     pub unconverted: *mut c_char,
+}
+
+impl Drop for PreCompositionDataFfi {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.confirmed.is_null() {
+                drop(CString::from_raw(self.confirmed));
+            }
+            if !self.kana_to_composite.is_null() {
+                drop(CString::from_raw(self.kana_to_composite));
+            }
+            if !self.okuri.is_null() {
+                drop(CString::from_raw(self.okuri));
+            }
+            if !self.unconverted.is_null() {
+                drop(CString::from_raw(self.unconverted));
+            }
+        }
+    }
 }
 
 ///
