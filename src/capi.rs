@@ -565,7 +565,8 @@ fn convert_precomposition_data(precomposition_data: PreCompositionData) -> PreCo
 /// # Safety
 /// ptrとlengthはskk_context_get_preedit_detailsの返り値でなければならない。
 ///
-pub unsafe extern "C" fn skk_free_preedit_details(ptr: *mut CskkStateInfoFfi, length: c_uint) {
+#[no_mangle]
+pub unsafe extern "C" fn skk_free_preedit_detail(ptr: *mut CskkStateInfoFfi, length: c_uint) {
     if ptr.is_null() {
         return;
     }
