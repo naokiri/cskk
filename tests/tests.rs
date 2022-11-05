@@ -3,7 +3,7 @@ extern crate cskk;
 mod utils;
 
 use crate::utils::{
-    default_test_context, init_test_logger, make_empty_dict, test_context_with_dictionaries,
+    default_test_context, init_test_logger, make_temp_file, test_context_with_dictionaries,
     transition_check,
 };
 use cskk::dictionary::CskkDictionary;
@@ -238,11 +238,11 @@ fn empty_dict_context() {
 
 #[test]
 fn register_and_read() {
-    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
+    let temppath = make_temp_file().unwrap();
+    let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
         CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict =
-        CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -466,11 +466,11 @@ fn reset_precomposition_on_ctrl_g() {
 #[test]
 fn flush_kana_on_abort_no_candidate_registration() {
     init_test_logger();
-    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
+    let temppath = make_temp_file().unwrap();
+    let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
         CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict =
-        CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -802,8 +802,9 @@ fn multiple_number_composition() {
 #[test]
 fn register_number() {
     init_test_logger();
-    make_empty_dict("tests/data/dictionaries/empty.dat").unwrap();
-    let dict = CskkDictionary::new_user_dict("tests/data/dictionaries/empty.dat", "utf-8").unwrap();
+    let temppath = make_temp_file().unwrap();
+    let empty_dict_path = temppath.to_str().unwrap();
+    let dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -1164,9 +1165,9 @@ fn concat_dict_entry_read() {
 #[test]
 fn semicolon_entry() {
     init_test_logger();
-    let dictpath = "tests/data/dictionaries/empty.dat";
-    make_empty_dict(dictpath).unwrap();
-    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8").unwrap();
+    let temppath = make_temp_file().unwrap();
+    let empty_dict_path = temppath.to_str().unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
     transition_check(
         &mut context,
@@ -1189,7 +1190,7 @@ fn semicolon_entry() {
     );
     context.save_dictionary();
 
-    let dict_file = File::open(dictpath).unwrap();
+    let dict_file = File::open(empty_dict_path).unwrap();
     let enc = Encoding::for_label_no_replacement("utf-8".as_bytes());
     let decoder = DecodeReaderBytesBuilder::new()
         .encoding(enc)

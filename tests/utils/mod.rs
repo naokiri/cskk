@@ -5,9 +5,8 @@ use cskk::{
     skk_context_process_key_events_rs, skk_context_set_composition_mode,
     skk_context_set_input_mode_rs, CskkContext,
 };
-use std::fs::File;
-use std::io;
 use std::sync::Arc;
+use tempfile::{NamedTempFile, TempPath};
 
 pub fn transition_check(
     context: &mut CskkContext,
@@ -41,10 +40,11 @@ pub fn transition_check(
     );
 }
 
-/// Make file_path as a empty dict, erase content if any.
-pub fn make_empty_dict(file_path: &str) -> io::Result<()> {
-    let file = File::create(file_path)?;
-    file.sync_data()
+/// Make a temporary empty dict file, returns filepath.
+pub fn make_temp_file() -> anyhow::Result<TempPath> {
+    let tempfile = NamedTempFile::new()?;
+
+    return Ok(tempfile.into_temp_path());
 }
 
 pub fn default_test_context() -> CskkContext {
