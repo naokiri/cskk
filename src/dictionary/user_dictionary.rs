@@ -69,7 +69,7 @@ impl Dictionary for UserDictionary {
     /// userdictなので送りありエントリも送りなしエントリも最近使用した順に並ぶ。
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
         if self.has_change {
-            rename(&self.file_path, &format!("{}.BAK", self.file_path))?;
+            rename(&self.file_path, format!("{}.BAK", self.file_path))?;
             let dict_file = File::create(&self.file_path)?;
 
             let mut stream = BufWriter::new(dict_file);
