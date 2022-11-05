@@ -224,12 +224,13 @@ mod test {
     use super::*;
     use encoding_rs_io::DecodeReaderBytesBuilder;
     use std::io::{BufRead, BufReader};
+    use tempfile::NamedTempFile;
 
     #[test]
     fn userdict() -> Result<(), CskkError> {
-        File::create("tests/data/dictionaries/empty.dat")?;
-        let mut user_dictionary =
-            UserDictionary::new("tests/data/dictionaries/empty.dat", "utf-8")?;
+        let file = NamedTempFile::new()?;
+        let filename = file.path().to_str().unwrap();
+        let mut user_dictionary = UserDictionary::new(filename, "utf-8")?;
         let candidate = Candidate::new(
             "あああ".to_string(),
             false,
@@ -248,9 +249,9 @@ mod test {
     /// Recent select_candidate の順序になっているか
     #[test]
     fn userdict_ordering() -> Result<(), CskkError> {
-        let filepath = "tests/data/dictionaries/empty.dat";
-        File::create(filepath)?;
-        let mut user_dictionary = UserDictionary::new(filepath, "utf-8")?;
+        let file = NamedTempFile::new()?;
+        let filename = file.path().to_str().unwrap();
+        let mut user_dictionary = UserDictionary::new(filename, "utf-8")?;
         let candidate = Candidate::new(
             "あ".to_string(),
             false,
@@ -291,7 +292,7 @@ mod test {
         user_dictionary.select_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
 
-        let saved_file = File::open("tests/data/dictionaries/empty.dat")?;
+        let saved_file = File::open(filename)?;
         let enc = Encoding::for_label_no_replacement("utf-8".as_bytes());
         let decoder = DecodeReaderBytesBuilder::new()
             .encoding(enc)
