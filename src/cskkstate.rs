@@ -10,6 +10,7 @@ use std::fmt::{Debug, Formatter};
 use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
+// FIXME: 全てのフィールドが共用のステートで作ってしまったが、compositionmodeごとに保持したい情報は異なるのでわかりづらい。リファクタリング候補。
 /// Rough prototype yet.
 ///
 pub(crate) struct CskkState {
@@ -332,7 +333,7 @@ impl CskkState {
                     .join(""),
             )
         };
-        let okuri = if self.converted_kana_to_okuri.is_empty() {
+        let okuri = if self.converted_kana_to_okuri.is_empty() || !self.use_okurigana {
             None
         } else {
             Some(
