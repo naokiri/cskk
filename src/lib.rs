@@ -1171,31 +1171,7 @@ impl CskkContext {
                     return self.current_state().delete();
                 }
                 Instruction::TryNextCandidate => {
-                    // if has candidate and has next, pointer to the next candidate and set to composition selection mode.
-                    // if not, go to registeration mode.
-
-                    if initial_composition_mode != CompositionMode::CompositionSelection {
-                        self.output_converted_kana_if_any(
-                            initial_input_mode,
-                            initial_composition_mode,
-                        );
-                        self.update_candidate_list();
-                        if !self
-                            .current_state_ref()
-                            .get_to_composite_string()
-                            .is_empty()
-                            && self.current_state_ref().get_candidate_list().is_empty()
-                        {
-                            self.enter_register_mode(initial_composition_mode);
-                        } else if !self.current_state_ref().get_candidate_list().is_empty() {
-                            self.set_composition_mode(CompositionMode::CompositionSelection);
-                        }
-                    } else if !self.current_state_ref().get_candidate_list().has_next() {
-                        self.enter_register_mode(initial_composition_mode);
-                    } else {
-                        self.current_state().forward_candidate();
-                        self.set_composition_mode(CompositionMode::CompositionSelection);
-                    }
+                    self.try_next_candidate(initial_composition_mode, initial_input_mode);
                 }
                 Instruction::TryPreviousCandidate => {
                     if self.current_state_ref().composition_mode
@@ -1222,7 +1198,36 @@ impl CskkContext {
         !instructions.is_empty()
     }
 
+    // if has candidate and has next, pointer to the next candidate and set to composition selection mode.
+    // if not, go to registeration mode.
+    fn try_next_candidate(
+        &mut self,
+        initial_composition_mode: CompositionMode,
+        initial_input_mode: InputMode,
+    ) {
+        if initial_composition_mode != CompositionMode::CompositionSelection {
+            self.output_converted_kana_if_any(initial_input_mode, initial_composition_mode);
+            self.update_candidate_list();
+            if !self
+                .current_state_ref()
+                .get_to_composite_string()
+                .is_empty()
+                && self.current_state_ref().get_candidate_list().is_empty()
+            {
+                self.enter_register_mode(initial_composition_mode);
+            } else if !self.current_state_ref().get_candidate_list().is_empty() {
+                self.set_composition_mode(CompositionMode::CompositionSelection);
+            }
+        } else if !self.current_state_ref().get_candidate_list().has_next() {
+            self.enter_register_mode(initial_composition_mode);
+        } else {
+            self.current_state().forward_candidate();
+            self.set_composition_mode(CompositionMode::CompositionSelection);
+        }
+    }
+
     /// check and attempt to start auto_start_henkan.
+    /// return true if should go to next candidate
     fn auto_start_henkan(&mut self) {
         assert_eq!(
             self.current_state_ref().composition_mode,
@@ -1230,23 +1235,30 @@ impl CskkContext {
         );
         // If composite_key ends with auto_start_henkan keywords and also the composite_key is not empty,
         // remove that from key and enter composition selection mode.
-        let mut done = false;
+        let mut auto_start_henkan_keyword_matched = false;
         let composite_key = self.current_state_ref().get_composite_key();
         let raw_to_composite = composite_key.get_to_composite();
         for suffix in &self.config.auto_start_henkan_keywords.clone() {
-            if !done && !raw_to_composite.eq(suffix) && raw_to_composite.ends_with(suffix) {
+            if !auto_start_henkan_keyword_matched
+                && !raw_to_composite.eq(suffix)
+                && raw_to_composite.ends_with(suffix)
+            {
                 // suffix matched the current composite_key's end
                 // Now remove suffix from composite_key and put it to postfix.
                 for _ in 0..suffix.chars().count() {
                     self.current_state().delete();
                 }
                 self.current_state().set_converted_to_postfix(suffix);
-                done = true;
+                auto_start_henkan_keyword_matched = true;
+                break;
             }
         }
-        if done {
-            self.update_candidate_list();
-            self.set_composition_mode(CompositionMode::CompositionSelection);
+
+        if auto_start_henkan_keyword_matched {
+            self.try_next_candidate(
+                CompositionMode::PreComposition,
+                self.current_state_ref().input_mode,
+            );
         }
     }
 
