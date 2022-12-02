@@ -53,7 +53,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ matrix.channel }}-${{ hashFiles('**/Cargo.lock') }}
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Install cargo
