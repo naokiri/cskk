@@ -67,7 +67,7 @@ pub enum CskkStateInfoFfi {
     PreCompositionStateInfo(PreCompositionDataFfi),
     PreCompositionOkuriganaStateInfo(PreCompositionDataFfi),
     CompositionSelectionStateInfo(CompositionSelectionDataFfi),
-    RegisterStateInfo(PreCompositionDataFfi),
+    RegisterStateInfo(RegisterDataFfi),
 }
 
 #[repr(C)]
@@ -153,6 +153,39 @@ impl Drop for PreCompositionDataFfi {
             }
             if !self.unconverted.is_null() {
                 drop(CString::from_raw(self.unconverted));
+            }
+        }
+    }
+}
+
+#[repr(C)]
+pub struct RegisterDataFfi {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: *mut c_char,
+    /// 漢字変換に用いようとしている部分
+    pub kana_to_composite: *mut c_char,
+    /// 漢字変換時に送り仮名として用いようとしている部分
+    pub okuri: *mut c_char,
+    /// 漢字変換時に後に付く部分。auto-start-henkanの「。」等
+    pub postfix: *mut c_char,
+}
+
+impl Drop for RegisterDataFfi {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.confirmed.is_null() {
+                drop(CString::from_raw(self.confirmed));
+            }
+            if !self.kana_to_composite.is_null() {
+                drop(CString::from_raw(self.kana_to_composite));
+            }
+            if !self.okuri.is_null() {
+                drop(CString::from_raw(self.okuri));
+            }
+            if !self.postfix.is_null() {
+                drop(CString::from_raw(self.postfix));
             }
         }
     }
@@ -504,8 +537,30 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
                 precomposition_data,
             ))
         }
-        CskkStateInfo::Register(precomposition_data) => {
-            CskkStateInfoFfi::RegisterStateInfo(convert_precomposition_data(precomposition_data))
+        CskkStateInfo::Register(register_data) => {
+            let confirmed = CString::new(register_data.confirmed)
+                .unwrap_or_default()
+                .into_raw();
+            let kana_to_composite = CString::new(register_data.kana_to_composite)
+                .unwrap_or_default()
+                .into_raw();
+            let okuri = if let Some(okuri_string) = register_data.okuri {
+                CString::new(okuri_string).unwrap_or_default().into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            let postfix = if let Some(unconverted_string) = register_data.postfix {
+                CString::new(unconverted_string).unwrap().into_raw()
+            } else {
+                ptr::null_mut()
+            };
+
+            CskkStateInfoFfi::RegisterStateInfo(RegisterDataFfi {
+                confirmed,
+                kana_to_composite,
+                okuri,
+                postfix,
+            })
         }
         CskkStateInfo::CompositionSelection(composition_selection_data) => {
             let composited = CString::new(composition_selection_data.composited)

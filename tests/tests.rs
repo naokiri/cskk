@@ -1366,7 +1366,7 @@ fn auto_start_henkan_no_candidate() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "A a period",
-        "▼ああ【】",
+        "▼ああ。【】",
         "",
         InputMode::Hiragana,
     );

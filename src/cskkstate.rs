@@ -38,12 +38,13 @@ pub(crate) struct CskkState {
     // 今のかな変換の間に大文字でモード変更をしたかどうか。このステートによってシフトを押したままキー入力をしてしまった時に連続してモード変更しないようにしている。
     capital_transition: bool,
     // 現在送り仮名を入力しているかどうか。converted_kana_to_okuriを送り仮名として用いるべきかどうか。
+    // FIXME: ちゃんと意味ごとに別のフィールドに入れ、このようなboolでフィールドの意味を変えないようにリファクタリング。
     use_okurigana: bool,
 }
 
 ///
 /// 外部IMEでformatさせるために渡す現在の表示状態のコピー
-/// 表示のために用いるデータが共通のRegister, Precomposition, PrecompositionOkuriganaは共通化されている。
+/// 表示のために用いるデータが共通のPrecomposition, PrecompositionOkuriganaは共通化されている。
 ///
 #[derive(Debug, PartialEq, Eq)]
 pub enum CskkStateInfo {
@@ -51,7 +52,7 @@ pub enum CskkStateInfo {
     PreComposition(PreCompositionData),
     PreCompositionOkurigana(PreCompositionData),
     CompositionSelection(CompositionSelectionData),
-    Register(PreCompositionData),
+    Register(RegisterData),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -89,9 +90,21 @@ pub struct PreCompositionData {
     /// 現在のCompositionModeがPreCompositionならば漢字変換に用いようとしている部分に付き、
     ///
     /// PreCompositionOkuriganaならば送り仮名に用いようとしている部分に付く。
-    ///
-    /// surrounding_textで指定範囲のみからの変換に対応していない現在、正常な遷移ではRegisterには存在しない。
     pub unconverted: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct RegisterData {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: String,
+    /// 漢字変換に用いようとしている部分
+    pub kana_to_composite: String,
+    /// 漢字変換時に送り仮名として用いようとしている部分
+    pub okuri: Option<String>,
+    /// 漢字変換時に変換対象の後に付ける部分。auto-start-henkanの時の「。」類
+    pub postfix: Option<String>,
 }
 
 impl CskkState {
@@ -301,14 +314,17 @@ impl CskkState {
                     + &composition_selection_data.composited
                     + &composition_selection_data.okuri.unwrap_or_default()
             }
-            Register(precomposition_data) => {
-                if precomposition_data.okuri.is_some() {
+            Register(register_data) => {
+                if register_data.okuri.is_some() {
                     "▼".to_string()
-                        + &precomposition_data.kana_to_composite
+                        + &register_data.kana_to_composite
                         + "*"
-                        + &precomposition_data.okuri.unwrap_or_default()
+                        + &register_data.okuri.unwrap_or_default()
+                        + &register_data.postfix.unwrap_or_default()
                 } else {
-                    "▼".to_string() + &precomposition_data.kana_to_composite
+                    "▼".to_string()
+                        + &register_data.kana_to_composite
+                        + &register_data.postfix.unwrap_or_default()
                 }
             }
         }
@@ -333,7 +349,7 @@ impl CskkState {
                     .join(""),
             )
         };
-        let okuri = if self.converted_kana_to_okuri.is_empty() || !self.use_okurigana {
+        let okuri = if self.converted_kana_to_okuri.is_empty() {
             None
         } else {
             Some(
@@ -364,13 +380,22 @@ impl CskkState {
                     unconverted,
                 })
             }
-            CompositionMode::Register => Register(PreCompositionData {
-                confirmed: self.confirmed.to_owned(),
-                kana_to_composite: kana_form_changer
-                    .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite),
-                okuri,
-                unconverted,
-            }),
+            CompositionMode::Register => {
+                // Bad hack to adopt auto-start-henkan, which uses converted_kana_to_okuri as postfix, not okurigana
+                let (okuri, postfix) = if !self.use_okurigana {
+                    (None, okuri)
+                } else {
+                    (okuri, None)
+                };
+
+                Register(RegisterData {
+                    confirmed: self.confirmed.to_owned(),
+                    kana_to_composite: kana_form_changer
+                        .adjust_kana_string(current_input_mode, &self.converted_kana_to_composite),
+                    okuri,
+                    postfix,
+                })
+            }
             CompositionMode::CompositionSelection => {
                 let current_candidate = self.candidate_list.get_current_candidate();
                 let fallback_candidate = Candidate::default();
