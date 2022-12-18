@@ -145,7 +145,7 @@ impl DictEntry {
         if let Ok((_, dict_entry_prototype)) = parsed {
             Ok(DictEntry::from_dict_entry_prototype(dict_entry_prototype))
         } else {
-            Err(CskkError::ParseError(format!("falied to parse {}", line)))
+            Err(CskkError::ParseError(format!("falied to parse {line}")))
         }
     }
 
@@ -266,7 +266,7 @@ impl DictEntry {
             replacing_string = replacing_string.replace('/', "\\057");
             replacing_string = replacing_string.replace(';', "\\073");
             replacing_string = replacing_string.replace('"', "\\\"");
-            return format!(r#"(concat "{}")"#, replacing_string);
+            return format!(r#"(concat "{replacing_string}")"#);
         }
 
         entry.to_owned()
@@ -286,11 +286,11 @@ impl Display for DictEntry {
         write!(f, "{} ", DictEntry::escape_dictionary_string(&self.midashi))?;
         for (strict_okuri, cands) in &self.strict_okuri_candidate_map {
             if !strict_okuri.is_empty() {
-                write!(f, "/[{}", strict_okuri)?;
+                write!(f, "/[{strict_okuri}")?;
             }
             for cand in cands {
                 write!(f, "/")?;
-                write!(f, "{}", cand)?;
+                write!(f, "{cand}")?;
             }
             if !strict_okuri.is_empty() {
                 write!(f, "/]")?;

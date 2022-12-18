@@ -4,11 +4,7 @@ use crate::skk_modes::{CommaStyle, PeriodStyle};
 use sequence_trie::SequenceTrie;
 use std::collections::HashMap;
 use xkbcommon::xkb::keysyms;
-#[cfg(test)]
-use xkbcommon::xkb::keysyms::{
-    KEY_a, KEY_at, KEY_b, KEY_bracketleft, KEY_e, KEY_i, KEY_k, KEY_n, KEY_o, KEY_t, KEY_u, KEY_7,
-    KEY_A, KEY_B,
-};
+
 use xkbcommon::xkb::Keysym;
 
 pub(crate) type Converted = String;
@@ -195,52 +191,52 @@ impl KanaBuilder {
 }
 
 #[cfg(test)]
-impl KanaBuilder {
-    pub fn test_converter() -> Self {
-        let mut process_list = SequenceTrie::new();
-
-        process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
-        process_list.insert(&[KEY_i], ("い".to_string(), vec![]));
-        process_list.insert(&[KEY_u], ("う".to_string(), vec![]));
-        process_list.insert(&[KEY_e], ("え".to_string(), vec![]));
-        process_list.insert(&[KEY_o], ("お".to_string(), vec![]));
-
-        process_list.insert(&[KEY_k, KEY_a], ("か".to_string(), vec![]));
-        process_list.insert(&[KEY_k, KEY_i], ("き".to_string(), vec![]));
-        process_list.insert(&[KEY_k, KEY_u], ("く".to_string(), vec![]));
-        process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
-        process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
-
-        process_list.insert(
-            &[keysyms::KEY_t, keysyms::KEY_s, keysyms::KEY_u],
-            ("つ".to_string(), vec![]),
-        );
-
-        KanaBuilder {
-            process_map: process_list,
-        }
-    }
-
-    // Example from ddskk 16.2 skk-kana-input
-    fn test_ant_converter() -> Self {
-        let mut process_list = SequenceTrie::new();
-
-        process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
-        process_list.insert(&[KEY_n], ("ん".to_string(), vec![]));
-        process_list.insert(&[KEY_n, KEY_n], ("ん".to_string(), vec![]));
-        process_list.insert(&[KEY_n, KEY_n], ("な".to_string(), vec![]));
-        process_list.insert(&[KEY_t, KEY_a], ("た".to_string(), vec![]));
-        process_list.insert(&[KEY_t, KEY_t], ("っ".to_string(), vec![KEY_t]));
-
-        KanaBuilder {
-            process_map: process_list,
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
+    use xkbcommon::xkb::keysyms::{
+        KEY_a, KEY_at, KEY_b, KEY_bracketleft, KEY_e, KEY_i, KEY_k, KEY_n, KEY_o, KEY_s, KEY_t,
+        KEY_u, KEY_7, KEY_A, KEY_B,
+    };
+
+    impl KanaBuilder {
+        pub fn test_converter() -> Self {
+            let mut process_list = SequenceTrie::new();
+
+            process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
+            process_list.insert(&[KEY_i], ("い".to_string(), vec![]));
+            process_list.insert(&[KEY_u], ("う".to_string(), vec![]));
+            process_list.insert(&[KEY_e], ("え".to_string(), vec![]));
+            process_list.insert(&[KEY_o], ("お".to_string(), vec![]));
+
+            process_list.insert(&[KEY_k, KEY_a], ("か".to_string(), vec![]));
+            process_list.insert(&[KEY_k, KEY_i], ("き".to_string(), vec![]));
+            process_list.insert(&[KEY_k, KEY_u], ("く".to_string(), vec![]));
+            process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
+            process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
+
+            process_list.insert(&[KEY_t, KEY_s, KEY_u], ("つ".to_string(), vec![]));
+
+            KanaBuilder {
+                process_map: process_list,
+            }
+        }
+
+        // Example from ddskk 16.2 skk-kana-input
+        fn test_ant_converter() -> Self {
+            let mut process_list = SequenceTrie::new();
+
+            process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
+            process_list.insert(&[KEY_n], ("ん".to_string(), vec![]));
+            process_list.insert(&[KEY_n, KEY_n], ("ん".to_string(), vec![]));
+            process_list.insert(&[KEY_n, KEY_n], ("な".to_string(), vec![]));
+            process_list.insert(&[KEY_t, KEY_a], ("た".to_string(), vec![]));
+            process_list.insert(&[KEY_t, KEY_t], ("っ".to_string(), vec![KEY_t]));
+
+            KanaBuilder {
+                process_map: process_list,
+            }
+        }
+    }
 
     #[test]
     fn combine_with_unprocessed() {
@@ -314,7 +310,7 @@ mod tests {
     #[test]
     fn can_continue_2of3letter() {
         let converter = KanaBuilder::test_converter();
-        let unprocessed = vec![keysyms::KEY_t];
+        let unprocessed = vec![KEY_t];
         let actual = converter.can_continue(
             &CskkKeyEvent::from_string_representation("s").unwrap(),
             &unprocessed,
@@ -325,7 +321,7 @@ mod tests {
     #[test]
     fn can_continue_na() {
         let converter = KanaBuilder::test_ant_converter();
-        let unprocessed = vec![keysyms::KEY_n];
+        let unprocessed = vec![KEY_n];
         let actual = converter.can_continue(
             &CskkKeyEvent::from_string_representation("a").unwrap(),
             &unprocessed,

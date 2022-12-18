@@ -226,8 +226,8 @@ mod tests {
         # Comment example, and empty set example
         [direct.katakana]
         "#;
-        let result = toml::from_str::<CommandOnly>(&str).unwrap();
-        println!("{:?}", result);
+        let result = toml::from_str::<CommandOnly>(str).unwrap();
+        println!("{result:?}");
         println!("{:?}", result.command.direct);
     }
 }

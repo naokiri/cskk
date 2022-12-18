@@ -27,8 +27,6 @@ use crate::rule::{CskkRule, CskkRuleMetadata, CskkRuleMetadataEntry};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::{AsciiFormChanger, KanaFormChanger};
-use log::debug;
-use log::warn;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
@@ -665,7 +663,7 @@ impl CskkContext {
             match result {
                 Ok(_) => {}
                 Err(error) => {
-                    warn!("{}", &error.to_string());
+                    log::warn!("{}", &error.to_string());
                 }
             }
         }
@@ -683,7 +681,7 @@ impl CskkContext {
             match result {
                 Ok(_) => {}
                 Err(error) => {
-                    warn!("{}", &error.to_string());
+                    log::warn!("{}", &error.to_string());
                 }
             }
         }
@@ -945,7 +943,7 @@ impl CskkContext {
                             self.current_state().clear_preconverted_kanainputs();
                         }
                         _ => {
-                            debug!("Unreachable");
+                            log::debug!("Unreachable");
                             return false;
                         }
                     }
@@ -1050,7 +1048,7 @@ impl CskkContext {
                             }
 
                             _ => {
-                                debug!("Unreachable. kana builder unacceptable key given in wrong composition mode.");
+                                log::debug!("Unreachable. kana builder unacceptable key given in wrong composition mode.");
                                 return false;
                             }
                         }
@@ -1114,7 +1112,7 @@ impl CskkContext {
         initial_input_mode: InputMode,
     ) -> bool {
         for instruction in instructions {
-            debug!("{:?}", &instruction);
+            log::debug!("{:?}", &instruction);
             match instruction {
                 Instruction::ChangeCompositionMode(composition_mode) => {
                     self.set_composition_mode(*composition_mode);
@@ -1190,7 +1188,7 @@ impl CskkContext {
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
-                    debug!("unimplemented instruction: {:?}", &instruction);
+                    log::debug!("unimplemented instruction: {:?}", &instruction);
                 }
             }
         }
@@ -1283,7 +1281,7 @@ impl CskkContext {
                 );
             }
             _ => {
-                debug!("Unreachable.");
+                log::debug!("Unreachable.");
                 return false;
             }
         }
@@ -1337,9 +1335,9 @@ impl CskkContext {
         for key_event in key_event_seq {
             let processed = self.process_key_event(key_event);
             if !processed {
-                debug!("Key event not processed: {:?}", key_event);
+                log::debug!("Key event not processed: {:?}", key_event);
             }
-            debug!("State stack: {:#?}", &self.state_stack);
+            log::debug!("State stack: {:#?}", &self.state_stack);
         }
         true
     }
@@ -1480,7 +1478,7 @@ impl Display for CskkState {
         );
         write!(f, "    unconverted:");
         for c in &self.pre_conversion {
-            write!(f, "{}", c);
+            write!(f, "{c}");
         }
         writeln!(f);
         writeln!(f, "}}");
