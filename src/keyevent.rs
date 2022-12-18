@@ -5,7 +5,7 @@ use std::fmt::{Debug, Display};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms, Keysym};
+use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms};
 // Hidden by bitflags macro
 use crate::error::CskkError;
 #[allow(unused_imports)]
@@ -110,7 +110,7 @@ impl CskkKeyEvent {
     /// TODO: Switch to another interface that accepts ModMap of xkb instead of each bool when xkbcommon lib can handle them better.
     ///
     pub fn from_keysym_with_flags(
-        keysym: Keysym,
+        keysym: xkb::Keysym,
         ctrl_mod: bool,
         shift_mod: bool,
         alt_mod: bool,
@@ -137,7 +137,7 @@ impl CskkKeyEvent {
     ///
     /// "Up", "at", "mu", "ae", "oe", "ht", "ff", "cr", "lf", "nl", "IO" 等短い名称のKeysymは対応するKeysym扱いされるので、2つのKeysym扱いしたい場合はスペースを間に入れる必要がある。
     ///
-    pub(crate) fn keysyms_from_str(string: &str) -> Vec<Keysym> {
+    pub(crate) fn keysyms_from_str(string: &str) -> Vec<xkb::Keysym> {
         let mut result = vec![];
         let words = string.split(' ');
         for word in words {
@@ -246,7 +246,7 @@ impl CskkKeyEvent {
                     Err(e) => Err(e),
                 }
             }
-            _ => Err(CskkError::Error(format!("Syntax error. keys: {}", keys))),
+            _ => Err(CskkError::Error(format!("Syntax error. keys: {keys}"))),
         }
     }
 
@@ -343,7 +343,7 @@ impl FromStr for CskkKeyEvent {
         if keysym == xkb::keysyms::KEY_VoidSymbol {
             Err(CskkError::ParseError("No str checked".to_owned()))
         } else if keysym == xkb::keysyms::KEY_NoSymbol {
-            Err(CskkError::ParseError(format!("Not a key symbol: {}", s)))
+            Err(CskkError::ParseError(format!("Not a key symbol: {s}")))
         } else {
             Ok(CskkKeyEvent {
                 modifiers: modifier,
