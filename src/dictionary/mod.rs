@@ -5,6 +5,7 @@ mod dictionary_candidate;
 mod dictionary_parser;
 pub mod empty_dict;
 pub(crate) mod file_dictionary;
+mod lru_ordered_map;
 pub mod static_dict;
 pub mod user_dictionary;
 

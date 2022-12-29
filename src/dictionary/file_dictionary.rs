@@ -1,4 +1,5 @@
 use crate::dictionary::dictentry::DictEntry;
+use crate::dictionary::lru_ordered_map::LruOrderedMap;
 use crate::dictionary::Dictionary;
 use crate::error::CskkError;
 use encoding_rs::Encoding;
@@ -8,8 +9,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 pub(in crate::dictionary) struct DictionaryEntries {
-    pub(in crate::dictionary) okuri_ari: Vec<(String, DictEntry)>,
-    pub(in crate::dictionary) okuri_nashi: Vec<(String, DictEntry)>,
+    pub(in crate::dictionary) okuri_ari: LruOrderedMap<String, DictEntry>,
+    pub(in crate::dictionary) okuri_nashi: LruOrderedMap<String, DictEntry>,
 }
 
 pub(in crate::dictionary) trait FileDictionary: Dictionary {
@@ -31,7 +32,7 @@ enum DictionaryLoadMode {
     OkuriNashi,
 }
 
-/// 順序付きで辞書を読む
+/// 順序付きで辞書を読む。
 pub(in crate::dictionary) fn load_dictionary(
     file_path: &str,
     encode: &[u8],
@@ -42,8 +43,8 @@ pub(in crate::dictionary) fn load_dictionary(
         .encoding(enc)
         .build(dict_file);
     let reader = BufReader::new(decoder);
-    let mut okuri_ari_dictionary = Vec::new();
-    let mut okuri_nashi_dictionary = Vec::new();
+    let mut okuri_ari_dictionary = LruOrderedMap::new();
+    let mut okuri_nashi_dictionary = LruOrderedMap::new();
 
     // 後の送り仮名再確認の時にabbrevエントリを読み間違えないため、デフォルトはOkuriAri
     let mut mode = DictionaryLoadMode::OkuriAri;
@@ -63,13 +64,13 @@ pub(in crate::dictionary) fn load_dictionary(
                             DictionaryLoadMode::OkuriAri => {
                                 // 過去の辞書でokuri-ari,nasiを無視して保存していた互換性のため、行をparseした内容で確認しなおす。
                                 if parsed.is_okuri_ari_entry() {
-                                    okuri_ari_dictionary.push((parsed.midashi.clone(), parsed));
+                                    okuri_ari_dictionary.push(parsed.midashi.clone(), parsed);
                                 } else {
-                                    okuri_nashi_dictionary.push((parsed.midashi.clone(), parsed));
+                                    okuri_nashi_dictionary.push(parsed.midashi.clone(), parsed);
                                 }
                             }
                             DictionaryLoadMode::OkuriNashi => {
-                                okuri_nashi_dictionary.push((parsed.midashi.clone(), parsed));
+                                okuri_nashi_dictionary.push(parsed.midashi.clone(), parsed);
                             }
                         },
                         Err(_) => {
