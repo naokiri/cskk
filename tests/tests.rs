@@ -207,7 +207,8 @@ fn katakana_input() {
 #[test]
 fn save_dict() {
     let dict =
-        CskkDictionary::new_user_dict("tests/data/dictionaries/userdict.dat", "utf-8").unwrap();
+        CskkDictionary::new_user_dict("tests/data/dictionaries/userdict.dat", "utf-8", false)
+            .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     skk_context_save_dictionaries_rs(&mut context);
     skk_context_reload_dictionary(&mut context);
@@ -241,8 +242,9 @@ fn register_and_read() {
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -469,8 +471,9 @@ fn flush_kana_on_abort_no_candidate_registration() {
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     transition_check(
@@ -657,7 +660,7 @@ fn wide_latin() {
 fn number_composition() {
     init_test_logger();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "UTF-8")
+        CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "UTF-8", false)
             .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
@@ -785,7 +788,7 @@ fn rom_kana_conversion_vu() {
 fn multiple_number_composition() {
     init_test_logger();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "UTF-8")
+        CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "UTF-8", false)
             .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_check(
@@ -804,7 +807,7 @@ fn register_number() {
     init_test_logger();
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
-    let dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+    let dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -831,7 +834,8 @@ fn register_number() {
 fn numeric_type_4() {
     init_test_logger();
     let dict =
-        CskkDictionary::new_user_dict("tests/data/dictionaries/number_jisyo.dat", "utf-8").unwrap();
+        CskkDictionary::new_user_dict("tests/data/dictionaries/number_jisyo.dat", "utf-8", false)
+            .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -998,7 +1002,8 @@ fn arrow() {
 fn using_capital_letter() {
     init_test_logger();
     let dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
     let mut context = CskkContext::new_from_specified_paths(
         InputMode::Ascii,
         CompositionMode::Direct,
@@ -1057,9 +1062,12 @@ fn auto_start_henkan_without_kana() {
 #[test]
 fn register_more_for_existing_candidate() {
     init_test_logger();
-    let dict =
-        CskkDictionary::new_user_dict("tests/data/dictionaries/register_test_dict.dat", "utf-8")
-            .unwrap();
+    let dict = CskkDictionary::new_user_dict(
+        "tests/data/dictionaries/register_test_dict.dat",
+        "utf-8",
+        false,
+    )
+    .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -1130,9 +1138,12 @@ fn basic_okuri_ari() {
 #[test]
 fn okuri_more_than_2_hiragana() {
     init_test_logger();
-    let dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/2letter_okuri.dat", "utf-8")
-            .unwrap();
+    let dict = CskkDictionary::new_static_dict(
+        "tests/data/dictionaries/2letter_okuri.dat",
+        "utf-8",
+        false,
+    )
+    .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -1148,8 +1159,9 @@ fn okuri_more_than_2_hiragana() {
 #[test]
 fn concat_dict_entry_read() {
     init_test_logger();
-    let dict = CskkDictionary::new_static_dict("tests/data/dictionaries/concat_dict.dat", "utf-8")
-        .unwrap();
+    let dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/concat_dict.dat", "utf-8", false)
+            .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -1167,7 +1179,7 @@ fn semicolon_entry() {
     init_test_logger();
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
-    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
     transition_check(
         &mut context,
@@ -1286,7 +1298,7 @@ fn preconversion_clear_and_input() {
 fn strict_okuri_entry() {
     init_test_logger();
     let dictpath = "tests/data/dictionaries/strict_okuri.dat";
-    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8", false).unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
     transition_check(
         &mut context,
@@ -1313,7 +1325,7 @@ fn strict_okuri_entry() {
 fn strict_okuri_precedence() {
     init_test_logger();
     let dictpath = "tests/data/dictionaries/strict_okuri_precedence.dat";
-    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(dictpath, "utf-8", false).unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
     transition_check(
         &mut context,
@@ -1377,7 +1389,7 @@ fn auto_start_henkan_register_not_includes_period() {
     init_test_logger();
     let temppath = make_temp_file().unwrap();
     let new_dict_path = temppath.to_str().unwrap();
-    let user_dict = CskkDictionary::new_user_dict(new_dict_path, "utf-8").unwrap();
+    let user_dict = CskkDictionary::new_user_dict(new_dict_path, "utf-8", false).unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(user_dict)]);
     transition_check(
         &mut context,

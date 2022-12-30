@@ -46,7 +46,8 @@ pub fn make_temp_file() -> anyhow::Result<TempPath> {
 
 pub fn default_test_context() -> CskkContext {
     let dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
     test_context_with_dictionaries(vec![Arc::new(dict)])
 }
 

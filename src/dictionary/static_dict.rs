@@ -28,6 +28,7 @@ impl StaticFileDict {
 }
 
 impl Dictionary for StaticFileDict {
+    // filedictで共通になってしまったのでuser_dictionaryと共通化する？
     /// 合致するDictEntryがあれば返す。lookupのみで、選択による副作用なし。
     fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
         return if composite_key.has_okuri() {
@@ -37,6 +38,13 @@ impl Dictionary for StaticFileDict {
             self.okuri_nashi_dictionary
                 .peek(&composite_key.get_dict_key())
         };
+    }
+
+    fn complete<'a>(
+        &'a self,
+        midashi_head: &'a CompositeKey,
+    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+        FileDictionary::complete(self, midashi_head)
     }
 
     fn reload(&mut self) -> Result<(), CskkError> {
@@ -56,5 +64,65 @@ impl FileDictionary for StaticFileDict {
     fn set_dictionary(&mut self, dictionary: DictionaryEntries) {
         self.okuri_ari_dictionary = dictionary.okuri_ari;
         self.okuri_nashi_dictionary = dictionary.okuri_nashi;
+    }
+
+    fn get_okuri_nashi_dictionary(&self) -> &LruOrderedMap<String, DictEntry> {
+        &self.okuri_nashi_dictionary
+    }
+
+    fn get_okuri_ari_dictionary(&self) -> &LruOrderedMap<String, DictEntry> {
+        &self.okuri_ari_dictionary
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    pub fn complete() -> Result<(), CskkError> {
+        let filename = "tests/data/dictionaries/dictionary_complete.dict";
+        let static_dict = StaticFileDict::new(filename, "utf-8")?;
+        let composite_key = CompositeKey::new("", None);
+        //let empty_complete_result = static_dict.complete(&CompositeKey::new("", None)).unwrap();
+        let empty_complete_result = FileDictionary::complete(&static_dict, &composite_key);
+        for (idx, entry) in empty_complete_result.into_iter().enumerate() {
+            match idx {
+                0 => {
+                    assert_eq!("あ", entry.midashi)
+                }
+                1 => {
+                    assert_eq!("い", entry.midashi)
+                }
+                2 => {
+                    assert_eq!("いあ", entry.midashi)
+                }
+                3 => {
+                    assert_eq!("いい", entry.midashi)
+                }
+                _ => {
+                    panic!("Unexpected size of result");
+                }
+            }
+        }
+        let composite_key = CompositeKey::new("い", None);
+        let result = FileDictionary::complete(&static_dict, &composite_key);
+        for (idx, entry) in result.into_iter().enumerate() {
+            match idx {
+                0 => {
+                    assert_eq!("い", entry.midashi)
+                }
+                1 => {
+                    assert_eq!("いあ", entry.midashi)
+                }
+                2 => {
+                    assert_eq!("いい", entry.midashi)
+                }
+                _ => {
+                    panic!("Unexpected size of result");
+                }
+            }
+        }
+        Ok(())
     }
 }

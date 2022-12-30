@@ -54,6 +54,13 @@ impl Dictionary for UserDictionary {
         false
     }
 
+    fn complete<'a>(
+        &'a self,
+        midashi_head: &'a CompositeKey,
+    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+        FileDictionary::complete(self, midashi_head)
+    }
+
     /// {file_path}.BAK に退避してからfile_pathに保存する
     /// 辞書ファイルのフォーマットは SKK 16.2 user manual 5.10.7 辞書の書式 に依る
     /// userdictなので送りありエントリも送りなしエントリも最近使用した順に並ぶ。
@@ -173,6 +180,14 @@ impl FileDictionary for UserDictionary {
     fn set_dictionary(&mut self, dictionary: DictionaryEntries) {
         self.okuri_ari_dictionary = dictionary.okuri_ari;
         self.okuri_nashi_dictionary = dictionary.okuri_nashi;
+    }
+
+    fn get_okuri_nashi_dictionary(&self) -> &LruOrderedMap<String, DictEntry> {
+        &self.okuri_nashi_dictionary
+    }
+
+    fn get_okuri_ari_dictionary(&self) -> &LruOrderedMap<String, DictEntry> {
+        &self.okuri_ari_dictionary
     }
 }
 

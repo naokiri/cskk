@@ -1495,7 +1495,7 @@ mod unit_tests {
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
         let dict = Arc::new(
-            CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp")
+            CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
                 .unwrap(),
         );
         let dictionaries = vec![dict];

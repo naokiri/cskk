@@ -101,8 +101,9 @@ fn register_mode_transitions_composition() {
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
     init_test_logger();
@@ -153,8 +154,9 @@ fn register_mode_purge_candidate() {
     let temppath = make_temp_file().unwrap();
     let empty_dict_path = temppath.to_str().unwrap();
     let static_dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
-    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
+    let user_dict = CskkDictionary::new_user_dict(empty_dict_path, "utf-8", false).unwrap();
     let mut context =
         test_context_with_dictionaries(vec![Arc::new(static_dict), Arc::new(user_dict)]);
 

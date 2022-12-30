@@ -13,8 +13,9 @@ mod utils;
 #[test]
 fn basic_abbreviation_mode() {
     init_test_logger();
-    let dict = CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8")
-        .unwrap();
+    let dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8", false)
+            .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,

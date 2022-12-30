@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct LruEntry<K, V> {
+    // Noneはhead/tailのmarker entryのみ。
     // FIXME: MaybeuninitのほうがOption分allocateしなくてよいうえにIterがわかりやすくなるか？ リファクタリング候補
     key: Option<Rc<K>>,
     val: Option<V>,
@@ -35,11 +36,11 @@ impl<K, V> LruEntry<K, V> {
 }
 
 ///
-/// LruOrderedMapのイテレータ
+/// LruOrderedMapのリストのイテレータ
 ///
-/// This `struct` is created by the [`iter_lru`], [`iter_ordered`]? method on [`LruOrderedMap`]
+/// This `struct` is created by the [`iter_lru`] method on [`LruOrderedMap`]
 ///
-pub struct Iter<'a, K: 'a, V: 'a> {
+pub struct LinkedListIter<'a, K: 'a, V: 'a> {
     len: usize,
 
     ptr: *const LruEntry<K, V>,
@@ -48,7 +49,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     phantom: PhantomData<&'a K>,
 }
 
-impl<'a, K, V> Iterator for Iter<'a, K, V> {
+impl<'a, K, V> Iterator for LinkedListIter<'a, K, V> {
     type Item = (Option<&'a Rc<K>>, Option<&'a V>);
 
     fn next(&mut self) -> Option<(Option<&'a Rc<K>>, Option<&'a V>)> {
@@ -74,7 +75,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> DoubleEndedIterator for Iter<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for LinkedListIter<'a, K, V> {
     fn next_back(&mut self) -> Option<(Option<&'a Rc<K>>, Option<&'a V>)> {
         if self.len == 0 {
             return None;
@@ -90,14 +91,14 @@ impl<'a, K, V> DoubleEndedIterator for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for LinkedListIter<'a, K, V> {}
 
 ///
-/// LruOrderedMapのイテレータ
+/// LruOrderedMapのリストのイテレータ
 ///
-/// This `struct` is created by the [`iter_mut_lru`], [`iter_mut_ordered`]? method on [`LruOrderedMap`]
+/// This `struct` is created by the [`iter_mut_lru`] method on [`LruOrderedMap`]
 ///
-pub struct IterMut<'a, K: 'a, V: 'a> {
+pub struct LinkedListIterMut<'a, K: 'a, V: 'a> {
     len: usize,
 
     ptr: *mut LruEntry<K, V>,
@@ -106,7 +107,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
     phantom: PhantomData<&'a K>,
 }
 
-impl<'a, K, V> Iterator for IterMut<'a, K, V> {
+impl<'a, K, V> Iterator for LinkedListIterMut<'a, K, V> {
     type Item = (Option<&'a Rc<K>>, Option<&'a mut V>);
 
     fn next(&mut self) -> Option<(Option<&'a Rc<K>>, Option<&'a mut V>)> {
@@ -132,7 +133,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for LinkedListIterMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(Option<&'a Rc<K>>, Option<&'a mut V>)> {
         if self.len == 0 {
             return None;
@@ -148,12 +149,85 @@ impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for LinkedListIterMut<'a, K, V> {}
 
 ///
-///辞書順に保持しつつLeast Recently Used順にも探索できる構造
+/// LruOrderedMapのリストのイテレータ
 ///
-/// LRUCacheのような最大数制限なし
+/// This `struct` is created by the [`iter_sorted`] method on [`LruOrderedMap`]
+///
+pub struct SliceIter<'a, K: 'a, V: 'a>
+where
+    K: Eq + Hash + Ord,
+{
+    start: usize,
+    end: usize,
+    key_vec: &'a Vec<Rc<K>>,
+    val_map: &'a HashMap<Rc<K>, Box<LruEntry<K, V>>>,
+}
+
+impl<'a, K, V> Iterator for SliceIter<'a, K, V>
+where
+    K: Eq + Hash + Ord,
+{
+    type Item = (Option<&'a Rc<K>>, Option<&'a V>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.start < self.end {
+            let entry = self.val_map.get(self.key_vec.get(self.start).unwrap());
+            self.start += 1;
+
+            debug_assert!(entry.is_some());
+
+            if let Some(entry) = entry {
+                Some((entry.key.as_ref(), entry.val.as_ref()))
+            } else {
+                // Something really bad happening if reached here.
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.end - self.start, Some(self.end - self.start))
+    }
+
+    fn count(self) -> usize {
+        self.end - self.start
+    }
+}
+
+impl<'a, K, V> DoubleEndedIterator for SliceIter<'a, K, V>
+where
+    K: Eq + Hash + Ord,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.start < self.end {
+            let entry = self.val_map.get(self.key_vec.get(self.end).unwrap());
+            self.end -= 1;
+
+            debug_assert!(entry.is_some());
+
+            if let Some(entry) = entry {
+                Some((entry.key.as_ref(), entry.val.as_ref()))
+            } else {
+                // Something really bad happening if reached here.
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, K, V> ExactSizeIterator for SliceIter<'a, K, V> where K: Eq + Hash + Ord {}
+
+///
+/// 辞書順に保持しつつLeast Recently Used順にも探索できる構造
+///
+/// LRU Cacheのような最大数制限は実装していない。
 ///
 /// K = Stringの見出し V = DictEntry を想定
 ///
@@ -279,9 +353,20 @@ where
         }
     }
 
-    // pub fn iter_sorted() -> Iter<>
-    pub fn iter_lru(&self) -> Iter<'_, K, V> {
-        Iter {
+    ///
+    /// keyのソート昇順のIteratorを返す。
+    ///
+    pub fn iter_sorted(&self) -> SliceIter<K, V> {
+        SliceIter {
+            start: 0,
+            end: self.keys.len(),
+            key_vec: &self.keys,
+            val_map: &self.value_map,
+        }
+    }
+
+    pub fn iter_lru(&self) -> LinkedListIter<'_, K, V> {
+        LinkedListIter {
             len: self.keys.len(),
             ptr: unsafe { (*self.lru_head).next },
             end: unsafe { (*self.lru_tail).prev },
@@ -316,6 +401,76 @@ mod test {
         unsafe {
             assert_eq!(initial.lru_head, (*(*initial.lru_head).next).prev);
             assert_eq!(initial.lru_tail, (*(*initial.lru_tail).prev).next);
+        }
+    }
+
+    #[test]
+    pub fn remove() {
+        let mut target = LruOrderedMap::new();
+        target.push("a", "a");
+        target.push("b", "b");
+        target.push("c", "c");
+        let result = target.remove("a");
+        assert!(result.is_some());
+        let result = result.unwrap();
+        assert_eq!("a", result);
+        assert_eq!(2, target.iter_lru().len);
+    }
+
+    #[test]
+    pub fn push_get_lru_order() {
+        let mut target = LruOrderedMap::new();
+        target.push("a", "a");
+        target.push("b", "b");
+        target.push("c", "c");
+        target.get(&"b");
+
+        for (idx, (k, v)) in target.iter_lru().enumerate() {
+            match idx {
+                0 => {
+                    assert_eq!("b", **k.unwrap());
+                    assert_eq!("b", *v.unwrap());
+                }
+                1 => {
+                    assert_eq!("c", **k.unwrap());
+                    assert_eq!("c", *v.unwrap());
+                }
+                2 => {
+                    assert_eq!("a", **k.unwrap());
+                    assert_eq!("a", *v.unwrap());
+                }
+                _ => {
+                    panic!();
+                }
+            }
+        }
+    }
+
+    #[test]
+    pub fn get_ord_order() {
+        let mut target = LruOrderedMap::new();
+        target.push("b", "b");
+        target.push("a", "a");
+        target.push("c", "c");
+
+        for (idx, (k, v)) in target.iter_sorted().enumerate() {
+            match idx {
+                0 => {
+                    assert_eq!("a", **k.unwrap());
+                    assert_eq!("a", *v.unwrap());
+                }
+                1 => {
+                    assert_eq!("b", **k.unwrap());
+                    assert_eq!("b", *v.unwrap());
+                }
+                2 => {
+                    assert_eq!("c", **k.unwrap());
+                    assert_eq!("c", *v.unwrap());
+                }
+                _ => {
+                    panic!();
+                }
+            }
         }
     }
 }
