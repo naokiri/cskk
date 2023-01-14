@@ -115,11 +115,7 @@ impl Dictionary for UserDictionary {
         }
     }
 
-    fn select_candidate(
-        &mut self,
-        composite_key: &CompositeKey,
-        candidate: &Candidate,
-    ) -> Result<bool, CskkError> {
+    fn select_candidate(&mut self, candidate: &Candidate) -> Result<bool, CskkError> {
         let midashi = &candidate.midashi;
         log::debug!("Select midashi: {:?}", midashi);
         let dictionary = if candidate.okuri {
@@ -131,12 +127,12 @@ impl Dictionary for UserDictionary {
         let entry = dictionary.get_mut(midashi);
         match entry {
             Some(dict_entry) => {
-                dict_entry.prioritize_candidate(composite_key, candidate);
+                dict_entry.prioritize_candidate(candidate);
             }
             None => {
                 dictionary.push(
                     candidate.midashi.to_owned(),
-                    DictEntry::new(&candidate.midashi, composite_key, candidate),
+                    DictEntry::new(&candidate.midashi, candidate),
                 );
             }
         }
@@ -234,13 +230,14 @@ mod test {
         let mut user_dictionary = UserDictionary::new(filename, "utf-8")?;
         let candidate = Candidate::new(
             "あああ".to_string(),
+            None,
             false,
             "アアア".to_string(),
             Some("wow".to_string()),
             "アアア".to_string(),
         );
         let composite_key = CompositeKey::new("あああ", None);
-        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        user_dictionary.select_candidate(&candidate)?;
         user_dictionary.save_dictionary()?;
         user_dictionary.purge_candidate(&composite_key, &candidate)?;
         user_dictionary.save_dictionary()?;
@@ -255,43 +252,43 @@ mod test {
         let mut user_dictionary = UserDictionary::new(filename, "utf-8")?;
         let candidate = Candidate::new(
             "あ".to_string(),
+            None,
             false,
             "候補".to_string(),
             None,
             "候補".to_string(),
         );
-        let composite_key = CompositeKey::new("あ", None);
-        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        user_dictionary.select_candidate(&candidate)?;
         let candidate = Candidate::new(
             "い".to_string(),
+            None,
             false,
             "候補".to_string(),
             None,
             "候補".to_string(),
         );
-        let composite_key = CompositeKey::new("い", None);
-        user_dictionary.select_candidate(&composite_key, &candidate)?;
+        user_dictionary.select_candidate(&candidate)?;
 
         let ab_candidate = Candidate::new(
             "あb".to_string(),
+            Some("ば".to_string()),
             true,
             "候補".to_string(),
             None,
             "候補".to_string(),
         );
-        let ab_composite_key = CompositeKey::new("あ", Some("ば".to_string()));
-        user_dictionary.select_candidate(&ab_composite_key, &ab_candidate)?;
+        user_dictionary.select_candidate(&ab_candidate)?;
 
         let ib_candidate = Candidate::new(
             "いb".to_string(),
+            Some("ば".to_string()),
             true,
             "候補".to_string(),
             None,
             "候補".to_string(),
         );
-        let ib_composite_key = CompositeKey::new("い", Some("ば".to_string()));
-        user_dictionary.select_candidate(&ib_composite_key, &ib_candidate)?;
-        user_dictionary.select_candidate(&ab_composite_key, &ab_candidate)?;
+        user_dictionary.select_candidate(&ib_candidate)?;
+        user_dictionary.select_candidate(&ab_candidate)?;
         user_dictionary.save_dictionary()?;
 
         let saved_file = File::open(filename)?;
@@ -304,22 +301,22 @@ mod test {
             if let Ok(line) = line {
                 match i {
                     0 => {
-                        assert!(line.contains(";; okuri-ari entries"))
+                        assert_eq!(line, ";; okuri-ari entries.");
                     }
                     1 => {
-                        assert!(line.contains("あb /候補/[ば/候補/]/"))
+                        assert_eq!(line, "あb /候補/[ば/候補/]/");
                     }
                     2 => {
-                        assert!(line.contains("いb /候補/[ば/候補/]/"))
+                        assert_eq!(line, "いb /候補/[ば/候補/]/");
                     }
                     3 => {
-                        assert!(line.contains(";; okuri-nasi entries"))
+                        assert_eq!(line, ";; okuri-nasi entries.");
                     }
                     4 => {
-                        assert!(line.contains("い /候補/"))
+                        assert_eq!(line, "い /候補/");
                     }
                     5 => {
-                        assert!(line.contains("あ /候補/"))
+                        assert_eq!(line, "あ /候補/");
                     }
                     _ => {}
                 }

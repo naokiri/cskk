@@ -24,13 +24,9 @@ impl DictEntry {
     /// Create new DictEntry that has single candidate
     /// This is for registration of new composition.
     ///
-    pub(in crate::dictionary) fn new(
-        midashi: &str,
-        composite_key: &CompositeKey,
-        candidate: &Candidate,
-    ) -> Self {
+    pub(in crate::dictionary) fn new(midashi: &str, candidate: &Candidate) -> Self {
         let mut new_map = BTreeMap::new();
-        if let Some(strict_okuri) = composite_key.get_okuri() {
+        if let Some(strict_okuri) = &candidate.strict_okuri {
             new_map.insert(
                 strict_okuri.to_owned(),
                 vec![DictionaryCandidate::from_candidate(candidate)],
@@ -44,7 +40,7 @@ impl DictEntry {
 
         Self {
             midashi: midashi.to_string(),
-            has_okuri: composite_key.has_okuri(),
+            has_okuri: candidate.okuri,
             strict_okuri_candidate_map: new_map,
         }
     }
@@ -52,12 +48,8 @@ impl DictEntry {
     /// candidateが含まれなかった場合はこのdictentryの先頭に追加する。
     /// candidateがこのdictentryに含まれる場合は与えられたcandidateを先頭にする。
     /// composite_keyが送り仮名を含む場合、厳密な送り仮名なしのエントリと有りのエントリの両方について先頭にする。
-    pub(in crate::dictionary) fn prioritize_candidate(
-        &mut self,
-        composite_key: &CompositeKey,
-        candidate: &Candidate,
-    ) {
-        if let Some(okuri) = composite_key.get_okuri() {
+    pub(in crate::dictionary) fn prioritize_candidate(&mut self, candidate: &Candidate) {
+        if let Some(okuri) = &candidate.strict_okuri {
             self.prioritize_candidate_for_okuri(okuri, candidate);
         }
 
@@ -396,6 +388,7 @@ mod test {
         let mut dict_entry = DictEntry::from_skkjisyo_line(jisyo).unwrap();
         let candidate = Candidate::new(
             "あい".to_string(),
+            None,
             false,
             "愛".to_string(),
             None,

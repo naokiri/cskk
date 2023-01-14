@@ -3,6 +3,11 @@ use crate::dictionary::dictionary_parser::CandidatePrototype;
 use crate::Candidate;
 use std::fmt::{Display, Formatter};
 
+pub(in crate::dictionary) trait DictionaryEntry {
+    fn get_kouho_text(&self) -> &str;
+    fn get_annotation(&self) -> &Option<String>;
+}
+
 // Candidateの辞書内のデータ。
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub(in crate::dictionary) struct DictionaryCandidate {
@@ -55,5 +60,50 @@ impl Display for DictionaryCandidate {
                 DictEntry::escape_dictionary_string(&self.kouho_text)
             )
         }
+    }
+}
+
+impl DictionaryEntry for DictionaryCandidate {
+    fn get_kouho_text(&self) -> &str {
+        &self.kouho_text
+    }
+
+    fn get_annotation(&self) -> &Option<String> {
+        &self.annotation
+    }
+}
+
+// 補完データ
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub(in crate::dictionary) struct CompletionCandidate {
+    pub(in crate::dictionary) midashi: String,
+    pub(in crate::dictionary) okuri: Option<String>,
+    // Raw kouho_text that might include "#0回" etc
+    pub(in crate::dictionary) kouho_text: String,
+    pub(in crate::dictionary) annotation: Option<String>,
+}
+
+impl CompletionCandidate {
+    pub fn from_dictionary_candidate(
+        midashi: &str,
+        okuri: &Option<String>,
+        dictionary_candidate: &DictionaryCandidate,
+    ) -> Self {
+        Self {
+            midashi: midashi.to_string(),
+            okuri: okuri.to_owned(),
+            kouho_text: dictionary_candidate.kouho_text.to_owned(),
+            annotation: dictionary_candidate.annotation.to_owned(),
+        }
+    }
+}
+
+impl DictionaryEntry for CompletionCandidate {
+    fn get_kouho_text(&self) -> &str {
+        &self.kouho_text
+    }
+
+    fn get_annotation(&self) -> &Option<String> {
+        &self.annotation
     }
 }

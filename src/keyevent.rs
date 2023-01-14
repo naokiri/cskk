@@ -436,6 +436,13 @@ mod tests {
     }
 
     #[test]
+    fn shift_tab() {
+        let result = CskkKeyEvent::from_string_representation("(shift Tab)").unwrap();
+        assert_eq!(result.symbol, keysyms::KEY_Tab, "equals small a");
+        assert_eq!(result.modifiers, SkkKeyModifier::SHIFT, "No modifier for a");
+    }
+
+    #[test]
     fn keyevent_to_string() {
         let a = CskkKeyEvent::from_string_representation("a").unwrap();
         assert_eq!("a", a.to_string());

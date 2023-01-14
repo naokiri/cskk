@@ -1,4 +1,5 @@
 use crate::candidate_list::CandidateList;
+use crate::cskkstate::CskkStateInfo::Complete;
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::CompositeKey;
 use crate::form_changer::KanaFormChanger;
@@ -11,6 +12,7 @@ use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
 // FIXME: 全てのフィールドが共用のステートで作ってしまったが、compositionmodeごとに保持したい情報は異なるのでわかりづらい。リファクタリング候補。
+// candidate_listをcompositionでも共用してしまっている。こういった変数の区別を付けたい。
 /// Rough prototype yet.
 ///
 pub(crate) struct CskkState {
@@ -53,6 +55,7 @@ pub enum CskkStateInfo {
     PreCompositionOkurigana(PreCompositionData),
     CompositionSelection(CompositionSelectionData),
     Register(RegisterData),
+    Complete(CompleteData),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -105,6 +108,18 @@ pub struct RegisterData {
     pub okuri: Option<String>,
     /// 漢字変換時に変換対象の後に付ける部分。auto-start-henkanの時の「。」類
     pub postfix: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct CompleteData {
+    /// 現在の入力かな
+    pub complete_origin: String,
+    /// 現在選択されている変換候補
+    pub composited: String,
+    /// 現在の変換候補に付く送り仮名
+    pub okuri: Option<String>,
+    /// 現在の候補のアノテーション
+    pub annotation: Option<String>,
 }
 
 impl CskkState {
@@ -251,7 +266,7 @@ impl CskkState {
                 self.converted_kana_to_composite.push_str(letter_or_word);
                 self.raw_to_composite.push_str(letter_or_word);
             }
-            CompositionMode::CompositionSelection => {
+            CompositionMode::CompositionSelection | CompositionMode::Completion => {
                 self.confirmed.push_str(letter_or_word);
             }
             _ => {
@@ -326,6 +341,12 @@ impl CskkState {
                         + &register_data.kana_to_composite
                         + &register_data.postfix.unwrap_or_default()
                 }
+            }
+            Complete(complete_data) => {
+                // この関数ではただ補完候補を表示するだけに留める
+                "□".to_string()
+                    + &complete_data.composited
+                    + &complete_data.okuri.unwrap_or_default()
             }
         }
     }
@@ -403,6 +424,20 @@ impl CskkState {
                 let composited = candidate.output;
                 let annotation = candidate.annotation;
                 CompositionSelection(CompositionSelectionData {
+                    composited,
+                    okuri,
+                    annotation,
+                })
+            }
+            CompositionMode::Completion => {
+                let complete_origin = self.converted_kana_to_composite.to_owned();
+                let current_candidate = self.candidate_list.get_current_candidate();
+                let fallback_candidate = Candidate::default();
+                let candidate = current_candidate.unwrap_or(&fallback_candidate).to_owned();
+                let composited = candidate.output;
+                let annotation = candidate.annotation;
+                Complete(CompleteData {
+                    complete_origin,
                     composited,
                     okuri,
                     annotation,

@@ -9,6 +9,7 @@ mod lru_ordered_map;
 pub mod static_dict;
 pub mod user_dictionary;
 
+use crate::dictionary::dictionary_candidate::{CompletionCandidate, DictionaryEntry};
 use crate::error::CskkError;
 use crate::form_changer::numeric_form_changer::{
     numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
@@ -93,22 +94,15 @@ impl CskkDictionary {
 /// Returns true if updated the dictionary.
 pub(crate) fn confirm_candidate(
     dictionary: &mut Arc<CskkDictionary>,
-    composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
-        CskkDictionaryType::UserFile(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
-        CskkDictionaryType::EmptyDict(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
+        CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
     }
 }
 
@@ -143,14 +137,22 @@ pub(crate) fn get_all_candidates(
     get_all_candidates_inner(dictionaries, composite_key, false)
 }
 
+///
+/// 補完候補となる辞書のエントリ列を返す。
+///
+/// [Dictionary]の[complete]に準じて、composite_keyが送りなしのみを想定し、先頭一致する送りなし候補を返す。
+///
 pub(crate) fn get_all_complete(
     dictionaries: &[Arc<CskkDictionary>],
     composite_key: &CompositeKey,
 ) -> Vec<Candidate> {
     let dict_candidates = get_all_complete_inner(dictionaries, composite_key);
-    let deduped = dedup_candidates(composite_key, dict_candidates);
+    let deduped_completion_candidate = dedup_candidates(dict_candidates);
 
-    deduped
+    deduped_completion_candidate
+        .into_iter()
+        .map(|x| Candidate::from_completion_candidate(&x))
+        .collect()
 }
 ///
 /// 補完候補となる辞書のエントリ列を返す。
@@ -162,7 +164,7 @@ pub(crate) fn get_all_complete(
 fn get_all_complete_inner(
     dictionaries: &[Arc<CskkDictionary>],
     composite_key: &CompositeKey,
-) -> Vec<DictionaryCandidate> {
+) -> Vec<CompletionCandidate> {
     let mut result = Vec::new();
 
     for cskkdict in dictionaries.iter() {
@@ -174,16 +176,17 @@ fn get_all_complete_inner(
                 CskkDictionaryType::EmptyDict(dict) => dict.complete(composite_key),
             };
             for dict_entry in dict_entries {
-                if composite_key.has_okuri() {
-                    let strict_okuri_cands = dict_entry.get_candidates(composite_key.get_okuri());
-                    if let Some(candidates) = strict_okuri_cands {
-                        result.extend(candidates.to_owned());
-                    }
-                } else {
-                    let non_okuri_cands = dict_entry.get_candidates(&None);
-                    if let Some(candidates) = non_okuri_cands {
-                        result.extend(candidates.to_owned());
-                    }
+                let candidates = dict_entry.get_candidates(composite_key.get_okuri());
+
+                if let Some(candidates) = candidates {
+                    // result.extend(candidates.to_owned())
+                    result.extend(candidates.into_iter().map(|x| {
+                        CompletionCandidate::from_dictionary_candidate(
+                            &dict_entry.midashi,
+                            composite_key.get_okuri(),
+                            x,
+                        )
+                    }));
                 }
             }
         }
@@ -209,14 +212,24 @@ fn get_all_candidates_inner(
     }
 
     let candidates = get_candidates_in_order(dictionaries, &composite_key);
-    let mut deduped_candidates = dedup_candidates(&composite_key, candidates);
-    if !is_numeric_re_lookup {
-        deduped_candidates = deduped_candidates
-            .iter_mut()
-            .map(|candidate| replace_numeric_match(candidate, &matched_numbers, dictionaries))
+    let deduped_candidates = dedup_candidates(candidates);
+    let deduped_candidates: Vec<Candidate> = if !is_numeric_re_lookup {
+        deduped_candidates
+            .into_iter()
+            .map(|dictionary_candidate| {
+                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+            })
+            .map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
             .flatten()
-            .collect();
-    }
+            .collect()
+    } else {
+        deduped_candidates
+            .into_iter()
+            .map(|dictionary_candidate| {
+                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+            })
+            .collect()
+    };
 
     deduped_candidates
 }
@@ -224,15 +237,15 @@ fn get_all_candidates_inner(
 ///
 /// dictionary_candidatesの内容からその順番にcandidateを作り、重複を除いて返す。
 ///
-fn dedup_candidates(
-    composite_key: &CompositeKey,
-    dictionary_candidates: Vec<DictionaryCandidate>,
-) -> Vec<Candidate> {
+fn dedup_candidates<T>(dictionary_candidates: Vec<T>) -> Vec<T>
+where
+    T: DictionaryEntry + Ord + Clone,
+{
     let mut deduped_candidates = vec![];
     let mut ordered_candidates = vec![];
 
-    ordered_candidates.extend(dictionary_candidates.to_owned());
-    deduped_candidates.extend(dictionary_candidates);
+    deduped_candidates.extend(dictionary_candidates.to_owned());
+    ordered_candidates.extend(dictionary_candidates);
 
     if deduped_candidates.is_empty() {
         return vec![];
@@ -240,7 +253,7 @@ fn dedup_candidates(
     deduped_candidates.sort_unstable();
     // Make Option == some come before None
     deduped_candidates.reverse();
-    deduped_candidates.dedup_by(|a, b| a.kouho_text == b.kouho_text);
+    deduped_candidates.dedup_by(|a, b| a.get_kouho_text() == b.get_kouho_text());
     // reverse back for faster iteration? maybe unneeded.
     deduped_candidates.reverse();
 
@@ -249,7 +262,7 @@ fn dedup_candidates(
         let mut matched_index = usize::MAX;
         for (pos, deduped) in deduped_candidates.iter().enumerate() {
             if (*deduped).eq(&candidate) {
-                result.push(Candidate::from_dictionary_candidate(composite_key, deduped));
+                result.push(deduped.to_owned());
                 matched_index = pos;
             }
         }
@@ -514,11 +527,7 @@ pub(crate) trait Dictionary {
     /// Select that candidate.
     /// Supporting dictionary will add and move that candidate to the first place so that next time it comes to candidate early.
     /// Safe to call to read_only dictionary.
-    fn select_candidate(
-        &mut self,
-        _composite_key: &CompositeKey,
-        _candidate: &Candidate,
-    ) -> Result<bool, CskkError> {
+    fn select_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
         Ok(false)
     }
     /// Remove that candidate if dictionary supports editing.

@@ -56,6 +56,8 @@ pub enum CompositionMode {
     // Implies that state stack has at least one more deeper state for registration input
     // ▼たじゅうに【▼とうろくできる【こんなふうに】】
     Register,
+    // 補完モード
+    Completion,
 }
 
 impl FromStr for CompositionMode {
@@ -69,7 +71,7 @@ impl FromStr for CompositionMode {
             "CompositionSelection" => Ok(CompositionMode::CompositionSelection),
             "Abbreviation" => Ok(CompositionMode::Abbreviation),
             "Register" => Ok(CompositionMode::Register),
-
+            "Completion" => Ok(CompositionMode::Completion),
             s => Err(CskkError::ParseError(s.to_string())),
         }
     }
