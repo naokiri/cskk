@@ -554,18 +554,13 @@ impl CskkContext {
     /// Register modeの時のみRegister用のスタックをpopして以前の状態に復帰させる。
     /// Register modeでない時には何もしない。
     // TODO: configurable command handlerに以降してdelegateをなくすと、previous_composition_modeまわりはクリーンアップして単にスタック戻すだけで良くなる。
-    fn abort_register_mode(&mut self) {
+    fn abort_register_mode(&mut self) -> bool {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
-            if self.current_state_ref().previous_composition_mode
-                == CompositionMode::PreCompositionOkurigana
-            {
-                self.current_state().consolidate_converted_to_to_composite();
-                self.current_state().composition_mode = CompositionMode::PreComposition;
-            } else {
-                self.current_state().composition_mode =
-                    self.current_state_ref().previous_composition_mode;
-            }
+
+            true
+        } else {
+            false
         }
     }
 
@@ -1198,6 +1193,7 @@ impl CskkContext {
                     self.current_state().consolidate_converted_to_to_composite();
                     self.current_state().clear_candidate_list();
                     self.abort_register_mode();
+                    self.current_state().abort_to_previous_mode();
                 }
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
@@ -1293,7 +1289,6 @@ impl CskkContext {
             self.enter_register_mode(initial_composition_mode);
         } else {
             self.current_state().forward_candidate();
-            self.set_composition_mode(CompositionMode::CompositionSelection);
         }
     }
 

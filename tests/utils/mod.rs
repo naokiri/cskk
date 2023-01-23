@@ -20,7 +20,7 @@ pub fn transition_check(
     skk_context_set_input_mode_rs(context, initial_input_mode);
     context.process_key_events_string(key_inputs);
     //skk_context_process_key_events_rs(context, key_inputs);
-    let output = context.poll_output().unwrap();
+    let output = context.poll_output().unwrap_or_default();
     let preedit = context.get_preedit().unwrap();
     let input_mode = skk_context_get_input_mode_rs(context);
     assert_eq!(

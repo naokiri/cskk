@@ -92,3 +92,18 @@ fn delete_on_abbreviation_mode() {
         InputMode::Hiragana,
     );
 }
+
+#[test]
+fn abort_after_abbreviation_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h a l a z a space C-g",
+        "▽chalaza",
+        "",
+        InputMode::Hiragana,
+    );
+}

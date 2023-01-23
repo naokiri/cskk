@@ -151,7 +151,7 @@ pub fn backspace() {
 }
 
 #[test]
-pub fn completion_mode_from_abbreb() {
+pub fn completion_mode_from_abbrev() {
     init_test_logger();
     let dict =
         CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8", true)
@@ -196,6 +196,24 @@ pub fn completion_mode_disabled_dictionary() {
         InputMode::Hiragana,
         "slash c h a Tab",
         "▽cha",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+pub fn completion_mode_abort_to_abbreviation() {
+    init_test_logger();
+    let dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8", true)
+            .unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash f a Tab C-g m Tab",
+        "□家族",
         "",
         InputMode::Hiragana,
     );

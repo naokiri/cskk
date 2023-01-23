@@ -469,6 +469,15 @@ impl CskkState {
     pub(crate) fn get_capital_transition(&self) -> bool {
         self.capital_transition
     }
+
+    pub(crate) fn abort_to_previous_mode(&mut self) {
+        if self.previous_composition_mode == CompositionMode::PreCompositionOkurigana {
+            self.consolidate_converted_to_to_composite();
+            self.composition_mode = CompositionMode::PreComposition;
+        } else {
+            self.composition_mode = self.previous_composition_mode;
+        }
+    }
 }
 
 // candidate_lists
