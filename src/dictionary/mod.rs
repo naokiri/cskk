@@ -180,7 +180,7 @@ fn get_all_complete_inner(
 
                 if let Some(candidates) = candidates {
                     // result.extend(candidates.to_owned())
-                    result.extend(candidates.into_iter().map(|x| {
+                    result.extend(candidates.iter().map(|x| {
                         CompletionCandidate::from_dictionary_candidate(
                             &dict_entry.midashi,
                             composite_key.get_okuri(),
@@ -219,8 +219,7 @@ fn get_all_candidates_inner(
             .map(|dictionary_candidate| {
                 Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
             })
-            .map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
-            .flatten()
+            .flat_map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
             .collect()
     } else {
         deduped_candidates

@@ -179,12 +179,7 @@ where
 
             debug_assert!(entry.is_some());
 
-            if let Some(entry) = entry {
-                Some((entry.key.as_ref(), entry.val.as_ref()))
-            } else {
-                // Something really bad happening if reached here.
-                None
-            }
+            entry.map(|entry| (entry.key.as_ref(), entry.val.as_ref()))
         } else {
             None
         }
@@ -210,12 +205,7 @@ where
 
             debug_assert!(entry.is_some());
 
-            if let Some(entry) = entry {
-                Some((entry.key.as_ref(), entry.val.as_ref()))
-            } else {
-                // Something really bad happening if reached here.
-                None
-            }
+            entry.map(|entry| (entry.key.as_ref(), entry.val.as_ref()))
         } else {
             None
         }
@@ -312,6 +302,7 @@ where
 
     /// When k exists, make that entry most recently used and returns value ref
     /// When k does not exist, returns None
+    #[allow(dead_code)]
     pub fn get(&mut self, k: &K) -> Option<&V> {
         let node_ref = self.value_map.get_mut(k);
         match node_ref {
@@ -338,6 +329,7 @@ where
 
     /// When k exists, remove from the this map and returns the value.
     /// When k does not exist, returns None
+    #[allow(dead_code)]
     pub fn remove(&mut self, k: K) -> Option<V> {
         let node_ref = self.value_map.remove(&k);
         match node_ref {

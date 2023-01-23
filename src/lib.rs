@@ -1425,8 +1425,8 @@ impl CskkContext {
         &self.command_handler
     }
 
-    /// Mainly for test purpose, but exposed to test as library.
-    fn process_key_events_string(&mut self, key_event_string: &str) -> bool {
+    /// Exposed for testing purpose. Recommended not to use.
+    pub fn process_key_events_string(&mut self, key_event_string: &str) -> bool {
         self.process_key_events(&CskkKeyEvent::deserialize_seq(key_event_string).unwrap())
     }
 

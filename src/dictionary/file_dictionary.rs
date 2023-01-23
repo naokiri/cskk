@@ -54,9 +54,7 @@ pub(in crate::dictionary) trait FileDictionary: Dictionary {
                                 .unwrap()
                                 .starts_with(&midashi_head.get_dict_key())
                     })
-                    .map(|(_k, v)| v)
-                    .filter(|x| x.is_some())
-                    .map(|x| x.unwrap()),
+                    .filter_map(|(_k, v)| v),
             )
         } else {
             Box::new(
@@ -74,9 +72,7 @@ pub(in crate::dictionary) trait FileDictionary: Dictionary {
                                 .unwrap()
                                 .starts_with(&midashi_head.get_dict_key())
                     })
-                    .map(|(_k, v)| v)
-                    .filter(|x| x.is_some())
-                    .map(|x| x.unwrap()),
+                    .filter_map(|(_k, v)| v),
             )
         }
     }
