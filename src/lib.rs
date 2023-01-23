@@ -71,6 +71,10 @@ pub struct CskkContext {
 }
 
 /// Test purpose only.
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
     context.process_key_events_string(keyevents)
 }
@@ -79,6 +83,10 @@ pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &
 /// Testing purpose? Use `CskkContext.poll_output()` instead. this interface might be deleted at any update.
 /// 現在のoutputをpollingする。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
     if let Some(str) = context.poll_output() {
         return str;
@@ -89,6 +97,10 @@ pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
 /// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
 /// This interface might be deleted at any update. Use `CskkContext.get_preedit()` instead.
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
@@ -137,6 +149,10 @@ pub fn skk_context_set_input_mode_rs(context: &mut CskkContext, input_mode: Inpu
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはsave_dictionaryを使用する。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_save_dictionaries_rs(context: &mut CskkContext) {
     context.save_dictionary();
 }
@@ -146,6 +162,10 @@ pub fn skk_context_save_dictionaries_rs(context: &mut CskkContext) {
 /// For integration test purpose.ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはreload_dictionaryを代わりに用いる
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
     context.reload_dictionary();
 }
@@ -154,6 +174,10 @@ pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはset_dictionariesを使用する。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_set_dictionaries_rs(
     context: &mut CskkContext,
     dictionaries: Vec<Arc<CskkDictionary>>,
@@ -165,6 +189,10 @@ pub fn skk_context_set_dictionaries_rs(
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// 内部状態なので、Rust libが使用することを想定しない。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String {
     context
         .current_state_ref()
@@ -177,6 +205,11 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String 
 /// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
 /// 将来的にはcontextのmethodに置き換える。
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
     context.current_state_ref().get_candidate_list().len()
 }
@@ -184,6 +217,11 @@ pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usiz
 ///
 /// 現在の候補リストを返す。
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Candidate> {
     context
         .current_state_ref()
@@ -194,6 +232,11 @@ pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Cand
 ///
 /// Get candidate cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidate_cursor_position_rs(
     context: &mut CskkContext,
 ) -> Result<usize, CskkError> {
@@ -212,6 +255,11 @@ pub fn skk_context_get_current_candidate_cursor_position_rs(
 ///
 /// Set candidate cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> bool {
     let len = context
         .current_state_ref()
@@ -242,6 +290,11 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
 ///
 /// Confirm candidate at the cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
     if context.current_state().set_candidate_pointer_index(i) {
         context.confirm_current_composition_candidate();
@@ -327,6 +380,7 @@ impl CskkContext {
     /// # Deprecated
     ///
     /// Fancy formatting will be delegated to IMEs in favor of [get_preedit_detail]
+    #[deprecated(since = "1.0.0")]
     pub fn get_preedit_underline(&self) -> (isize, isize) {
         (0, 0)
     }

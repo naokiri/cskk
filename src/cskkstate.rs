@@ -114,8 +114,10 @@ pub struct RegisterData {
 pub struct CompleteData {
     /// 現在の入力かな
     pub complete_origin: String,
+    /// 現在の変換候補の見出し
+    pub completed_midashi: String,
     /// 現在選択されている変換候補
-    pub composited: String,
+    pub completed: String,
     /// 現在の変換候補に付く送り仮名
     pub okuri: Option<String>,
     /// 現在の候補のアノテーション
@@ -345,7 +347,7 @@ impl CskkState {
             Complete(complete_data) => {
                 // この関数ではただ補完候補を表示するだけに留める
                 "□".to_string()
-                    + &complete_data.composited
+                    + &complete_data.completed
                     + &complete_data.okuri.unwrap_or_default()
             }
         }
@@ -434,11 +436,13 @@ impl CskkState {
                 let current_candidate = self.candidate_list.get_current_candidate();
                 let fallback_candidate = Candidate::default();
                 let candidate = current_candidate.unwrap_or(&fallback_candidate).to_owned();
-                let composited = candidate.output;
+                let completed_midashi = candidate.midashi;
+                let completed = candidate.output;
                 let annotation = candidate.annotation;
                 Complete(CompleteData {
                     complete_origin,
-                    composited,
+                    completed_midashi,
+                    completed,
                     okuri,
                     annotation,
                 })
