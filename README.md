@@ -106,7 +106,7 @@ root権限がある場合、以下を実行する。
 ### 開発環境・デプロイ環境
 
 - [ ] github projects board や issue にこれらのリストを移す
-- [ ] changelog
+- [x] changelog
 
 ## 著作権表示
 

@@ -17,8 +17,18 @@ pub fn completion_mode_from_direct() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "H o k k a i Tab",
-        "□北海道",
+        "■北海道",
         "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o k k a i Tab Return",
+        "",
+        "北海道",
         InputMode::Hiragana,
     );
 }
@@ -47,7 +57,7 @@ pub fn completion_mode_multiple_candidates() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "M a k u Tab Tab",
-        "□幕",
+        "■幕",
         "",
         InputMode::Hiragana,
     );
@@ -57,7 +67,7 @@ pub fn completion_mode_multiple_candidates() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "M a k u Tab Tab Tab",
-        "□枕",
+        "■枕",
         "",
         InputMode::Hiragana,
     );
@@ -67,7 +77,7 @@ pub fn completion_mode_multiple_candidates() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "M a k u Tab Tab Tab Tab period",
-        "□枕",
+        "■枕",
         "",
         InputMode::Hiragana,
     );
@@ -82,7 +92,7 @@ pub fn previous_completion() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "S h u u Tab Tab",
-        "□修",
+        "■修",
         "",
         InputMode::Hiragana,
     );
@@ -92,7 +102,7 @@ pub fn previous_completion() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "S h u u Tab Tab Tab",
-        "□週",
+        "■週",
         "",
         InputMode::Hiragana,
     );
@@ -102,7 +112,7 @@ pub fn previous_completion() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "S h u u Tab Tab Tab (shift Tab) comma",
-        "□集",
+        "■集",
         "",
         InputMode::Hiragana,
     );
@@ -162,7 +172,7 @@ pub fn completion_mode_from_abbrev() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "slash c h a Tab",
-        "□カラザ",
+        "■カラザ",
         "",
         InputMode::Hiragana,
     );
@@ -213,7 +223,7 @@ pub fn completion_mode_abort_to_abbreviation() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "slash f a Tab C-g m Tab",
-        "□家族",
+        "■家族",
         "",
         InputMode::Hiragana,
     );

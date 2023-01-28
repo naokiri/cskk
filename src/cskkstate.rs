@@ -346,7 +346,7 @@ impl CskkState {
             }
             Complete(complete_data) => {
                 // この関数ではただ補完候補を表示するだけに留める
-                "□".to_string()
+                "■".to_string()
                     + &complete_data.completed
                     + &complete_data.okuri.unwrap_or_default()
             }
@@ -471,11 +471,13 @@ impl CskkState {
     }
 
     pub(crate) fn abort_to_previous_mode(&mut self) {
-        if self.previous_composition_mode == CompositionMode::PreCompositionOkurigana {
-            self.consolidate_converted_to_to_composite();
-            self.composition_mode = CompositionMode::PreComposition;
-        } else {
-            self.composition_mode = self.previous_composition_mode;
+        if self.composition_mode != CompositionMode::Direct {
+            if self.previous_composition_mode == CompositionMode::PreCompositionOkurigana {
+                self.consolidate_converted_to_to_composite();
+                self.composition_mode = CompositionMode::PreComposition;
+            } else {
+                self.composition_mode = self.previous_composition_mode;
+            }
         }
     }
 }

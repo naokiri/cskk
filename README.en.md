@@ -97,7 +97,7 @@ To install to non-standard directories, append following options like this. See
 ### Better development env, publish env
 
 - [ ] github projects board や issue にこれらのリストを移す
-- [ ] changelog
+- [x] changelog
 
 ## Copyright
 
