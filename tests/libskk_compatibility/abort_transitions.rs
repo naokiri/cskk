@@ -68,7 +68,7 @@ fn abort_transitions_from_register_direct() {
 }
 
 #[test]
-fn abort_multiple() {
+fn abort_multiple_from_composition() {
     init_test_logger();
     let mut context = default_test_context();
     transition_check(
@@ -86,6 +86,21 @@ fn abort_multiple() {
         CompositionMode::Direct,
         InputMode::Hiragana,
         "A i space C-g C-g C-g",
+        "",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn abort_multiple_from_register() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H o k a space space space C-g C-g",
         "",
         "",
         InputMode::Hiragana,
