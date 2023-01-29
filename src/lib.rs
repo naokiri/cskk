@@ -532,14 +532,17 @@ impl CskkContext {
     /// Set the current composition mode.
     /// If changing to Register mode, recoomend using enter_register_mode to set the stack properly.
     fn set_composition_mode(&mut self, composition_mode: CompositionMode) {
-        let mut current_state = self.current_state();
-        current_state.previous_composition_mode = current_state.composition_mode;
-        current_state.composition_mode = composition_mode;
+        self.current_state()
+            .change_composition_mode(composition_mode);
     }
 
+    /// Registerモードに入る。
+    /// その前のモードはprevious_composition_modeであったとみなす。
     fn enter_register_mode(&mut self, previous_composition_mode: CompositionMode) {
-        self.current_state().previous_composition_mode = previous_composition_mode;
-        self.current_state().composition_mode = CompositionMode::Register;
+        self.current_state().change_composition_mode_from_old_mode(
+            CompositionMode::Register,
+            previous_composition_mode,
+        );
         self.state_stack
             .push(CskkState::new(InputMode::Hiragana, CompositionMode::Direct))
     }
@@ -570,8 +573,7 @@ impl CskkContext {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
             if confirmed.is_empty() {
-                self.current_state().composition_mode =
-                    self.current_state_ref().previous_composition_mode;
+                self.current_state().back_to_previous_composition_mode();
             } else {
                 // FIXME: refactoring. Candidate::new here looks too much...?
                 let current_state = self.current_state();

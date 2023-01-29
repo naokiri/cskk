@@ -18,8 +18,8 @@ use xkbcommon::xkb::{keysym_get_name, Keysym};
 pub(crate) struct CskkState {
     pub(crate) input_mode: InputMode,
     pub(crate) composition_mode: CompositionMode,
-    // 直前のCompositionMode。Abort時に元に戻すmode。
-    pub(crate) previous_composition_mode: CompositionMode,
+    // DirectモードからのCompositionMode遷移。Abort時に元に戻すmode。
+    compositon_mode_stack: Vec<CompositionMode>,
     // 入力文字で、かな確定済みでないものすべて
     pub(crate) pre_conversion: Vec<Keysym>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。
@@ -129,7 +129,7 @@ impl CskkState {
         CskkState {
             input_mode,
             composition_mode,
-            previous_composition_mode: composition_mode,
+            compositon_mode_stack: Vec::new(),
             pre_conversion: vec![],
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
@@ -471,14 +471,41 @@ impl CskkState {
     }
 
     pub(crate) fn abort_to_previous_mode(&mut self) {
-        if self.composition_mode != CompositionMode::Direct {
-            if self.previous_composition_mode == CompositionMode::PreCompositionOkurigana {
+        if let Some(previous_mode) = self.compositon_mode_stack.pop() {
+            if CompositionMode::PreCompositionOkurigana.eq(&previous_mode) {
                 self.consolidate_converted_to_to_composite();
                 self.composition_mode = CompositionMode::PreComposition;
             } else {
-                self.composition_mode = self.previous_composition_mode;
+                self.composition_mode = previous_mode;
             }
         }
+    }
+
+    pub(crate) fn change_composition_mode(&mut self, new_mode: CompositionMode) {
+        if new_mode == CompositionMode::Direct {
+            self.compositon_mode_stack.clear();
+            self.composition_mode = new_mode;
+        } else {
+            self.compositon_mode_stack.push(self.composition_mode);
+            self.composition_mode = new_mode;
+        }
+    }
+
+    pub(crate) fn back_to_previous_composition_mode(&mut self) {
+        if let Some(previous_mode) = self.compositon_mode_stack.pop() {
+            self.composition_mode = previous_mode;
+        }
+    }
+
+    /// new_modeにモードを変えるが、その時直前のモードをold_modeであったとして記録する。
+    /// 変換候補が見つからない時の多重遷移に用いられる想定
+    pub(crate) fn change_composition_mode_from_old_mode(
+        &mut self,
+        new_mode: CompositionMode,
+        old_mode: CompositionMode,
+    ) {
+        self.compositon_mode_stack.push(old_mode);
+        self.composition_mode = new_mode;
     }
 }
 
@@ -533,7 +560,7 @@ impl Debug for CskkState {
             .collect();
         f.debug_struct("CskkState")
             .field("Mode", &(&self.composition_mode, &self.input_mode))
-            .field("previous_composition_mode", &self.previous_composition_mode)
+            .field("previous_modes stack", &self.compositon_mode_stack)
             .field("pre_conversion", &keysyms)
             .field("raw_to_composite", &self.raw_to_composite)
             .field(
