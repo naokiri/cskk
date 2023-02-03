@@ -18,6 +18,8 @@ use xkbcommon::xkb::{keysym_get_name, Keysym};
 pub(crate) struct CskkState {
     pub(crate) input_mode: InputMode,
     pub(crate) composition_mode: CompositionMode,
+    // State作成時のCompositionMode。fallback先。
+    default_composition_mode: CompositionMode,
     // DirectモードからのCompositionMode遷移。Abort時に元に戻すmode。
     compositon_mode_stack: Vec<CompositionMode>,
     // 入力文字で、かな確定済みでないものすべて
@@ -129,6 +131,7 @@ impl CskkState {
         CskkState {
             input_mode,
             composition_mode,
+            default_composition_mode: composition_mode,
             compositon_mode_stack: Vec::new(),
             pre_conversion: vec![],
             raw_to_composite: "".to_string(),
@@ -478,22 +481,18 @@ impl CskkState {
             } else {
                 self.composition_mode = previous_mode;
             }
+        } else {
+            self.composition_mode = self.default_composition_mode;
         }
     }
 
     pub(crate) fn change_composition_mode(&mut self, new_mode: CompositionMode) {
-        if new_mode == CompositionMode::Direct {
+        if new_mode == self.default_composition_mode {
             self.compositon_mode_stack.clear();
             self.composition_mode = new_mode;
         } else {
             self.compositon_mode_stack.push(self.composition_mode);
             self.composition_mode = new_mode;
-        }
-    }
-
-    pub(crate) fn back_to_previous_composition_mode(&mut self) {
-        if let Some(previous_mode) = self.compositon_mode_stack.pop() {
-            self.composition_mode = previous_mode;
         }
     }
 

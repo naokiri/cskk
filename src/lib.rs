@@ -573,7 +573,7 @@ impl CskkContext {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
             if confirmed.is_empty() {
-                self.current_state().back_to_previous_composition_mode();
+                self.current_state().abort_to_previous_mode();
             } else {
                 // FIXME: refactoring. Candidate::new here looks too much...?
                 let current_state = self.current_state();
