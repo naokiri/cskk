@@ -103,7 +103,6 @@ impl CskkKeyEvent {
             modifiers.set(SkkKeyModifier::RELEASE, true);
         }
 
-
         // Somehow, Tab -> Tab but Shift+Tab -> Shift + ISO_Left_Tab in raw keyevent.
         // Normalize it.
         let keysym = if keysym == keysyms::KEY_ISO_Left_Tab {
