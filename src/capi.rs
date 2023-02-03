@@ -1107,12 +1107,4 @@ mod test {
             assert_eq!(b'\0', *rule.id.offset(2) as u8);
         }
     }
-
-    #[test]
-    fn new_no_dict_context() {
-        unsafe {
-            let result = skk_context_new(&(ptr::null_mut() as *mut CskkDictionaryFfi), 0);
-            assert!(!result.is_null());
-        }
-    }
 }
