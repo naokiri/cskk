@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - 補完機能の追加。補完に用いると指定した辞書の送りがな無しエントリを補完候補として出す。
+- AZIKのrulesファイルにSKK向け独自拡張の「っ」の入力方法を追加
 
 ### Changed
 

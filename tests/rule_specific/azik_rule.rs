@@ -241,3 +241,65 @@ fn hankaku_precomposition_input() {
         InputMode::HankakuKatakana,
     );
 }
+
+// Issue#227
+// 「買った」の変換を開始できない問題
+#[test]
+fn original_small_tu() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a T U",
+        "▼勝っ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "K a t U",
+        "▽かっ",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "t U",
+        "",
+        "っ",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "T U",
+        "▽っ",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn original_small_tu_longer() {
+    init_test_logger();
+    let mut context = azik_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "x x t u",
+        "",
+        "っ",
+        InputMode::Hiragana,
+    );
+}
