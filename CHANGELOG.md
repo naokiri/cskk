@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+
+## [3.0.0] - 2023-02-05
+
 ### Added
 
 - 補完機能の追加。補完に用いると指定した辞書の送りがな無しエントリを補完候補として出す。
