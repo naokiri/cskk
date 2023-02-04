@@ -91,6 +91,10 @@ impl CskkKeyEvent {
         }
     }
 
+    ///
+    /// Make KeyEvent from fcitx5's keyevent.
+    /// Expecting rawKey for input not to lose lowercase/uppercase difference.
+    ///
     #[cfg(feature = "capi")]
     pub(crate) fn from_fcitx_keyevent(keysym: u32, raw_modifier: u32, is_release: bool) -> Self {
         let mut modifiers: SkkKeyModifier = SkkKeyModifier::from_bits_truncate(raw_modifier);
@@ -98,6 +102,15 @@ impl CskkKeyEvent {
         if is_release {
             modifiers.set(SkkKeyModifier::RELEASE, true);
         }
+
+        // Somehow, Tab -> Tab but Shift+Tab -> Shift + ISO_Left_Tab in raw keyevent.
+        // Normalize it.
+        let keysym = if keysym == keysyms::KEY_ISO_Left_Tab {
+            keysyms::KEY_Tab
+        } else {
+            keysym
+        };
+
         Self {
             symbol: keysym,
             modifiers,
@@ -433,6 +446,13 @@ mod tests {
 
         let period = CskkKeyEvent::from_string_representation("period").unwrap();
         assert_eq!(period.symbol, keysyms::KEY_period);
+    }
+
+    #[test]
+    fn shift_tab() {
+        let result = CskkKeyEvent::from_string_representation("(shift Tab)").unwrap();
+        assert_eq!(result.symbol, keysyms::KEY_Tab, "equals small a");
+        assert_eq!(result.modifiers, SkkKeyModifier::SHIFT, "No modifier for a");
     }
 
     #[test]

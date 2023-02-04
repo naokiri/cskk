@@ -68,6 +68,7 @@ pub enum CskkStateInfoFfi {
     PreCompositionOkuriganaStateInfo(PreCompositionDataFfi),
     CompositionSelectionStateInfo(CompositionSelectionDataFfi),
     RegisterStateInfo(RegisterDataFfi),
+    CompleteStateInfo(CompleteDataFfi),
 }
 
 #[repr(C)]
@@ -191,6 +192,44 @@ impl Drop for RegisterDataFfi {
     }
 }
 
+#[repr(C)]
+pub struct CompleteDataFfi {
+    /// 補完に用いようとしている元の部分
+    pub complete_origin: *mut c_char,
+    /// 補完の送り仮名として用いようとしている部分。v3.0.0では送り仮名付きからの補完は未実装。
+    pub origin_okuri: *mut c_char,
+    /// 現在選択されている変換候補の見出し。
+    pub completed_midashi: *mut c_char,
+    /// 現在選択されている変換候補。見出しの候補ではなく変換候補そのもの。
+    pub completed: *mut c_char,
+    /// 現在の変換候補に付く送り仮名。v3.0.0では送り仮名付きからの補完は未実装。
+    pub okuri: *mut c_char,
+    /// 現在の候補のアノテーション
+    pub annotation: *mut c_char,
+}
+
+impl Drop for CompleteDataFfi {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.complete_origin.is_null() {
+                drop(CString::from_raw(self.complete_origin));
+            }
+            if !self.origin_okuri.is_null() {
+                drop(CString::from_raw(self.origin_okuri));
+            }
+            if !self.completed.is_null() {
+                drop(CString::from_raw(self.completed));
+            }
+            if !self.okuri.is_null() {
+                drop(CString::from_raw(self.okuri));
+            }
+            if !self.annotation.is_null() {
+                drop(CString::from_raw(self.annotation));
+            }
+        }
+    }
+}
+
 ///
 /// Returns newly allocated CSKKContext.
 /// On error, returns NULL.
@@ -256,11 +295,12 @@ pub unsafe extern "C" fn skk_context_new_with_empty_fallback(
 pub unsafe extern "C" fn skk_file_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
+    use_for_completion: bool,
 ) -> *mut CskkDictionaryFfi {
     let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
         let path = CStr::from_ptr(c_path_string).to_str()?;
         let encoding = CStr::from_ptr(c_encoding).to_str()?;
-        let dictionary = CskkDictionary::new_static_dict(path, encoding)?;
+        let dictionary = CskkDictionary::new_static_dict(path, encoding, use_for_completion)?;
         Ok(CskkDictionaryFfi {
             dictionary: Arc::new(dictionary),
         })
@@ -287,11 +327,12 @@ pub unsafe extern "C" fn skk_file_dict_new(
 pub unsafe extern "C" fn skk_user_dict_new(
     c_path_string: *const c_char,
     c_encoding: *const c_char,
+    use_for_completion: bool,
 ) -> *mut CskkDictionaryFfi {
     let maybe_dictionary = (|| -> anyhow::Result<CskkDictionaryFfi> {
         let path = CStr::from_ptr(c_path_string).to_str()?;
         let encoding = CStr::from_ptr(c_encoding).to_str()?;
-        let dictionary = CskkDictionary::new_user_dict(path, encoding)?;
+        let dictionary = CskkDictionary::new_user_dict(path, encoding, use_for_completion)?;
         Ok(CskkDictionaryFfi {
             dictionary: Arc::new(dictionary),
         })
@@ -582,6 +623,28 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
             CskkStateInfoFfi::CompositionSelectionStateInfo(CompositionSelectionDataFfi {
                 composited,
                 okuri,
+                annotation,
+            })
+        }
+        CskkStateInfo::Complete(complete_data) => {
+            let complete_origin = CString::new(complete_data.complete_origin)
+                .unwrap()
+                .into_raw();
+            let completed_midashi = CString::new(complete_data.completed_midashi)
+                .unwrap()
+                .into_raw();
+            let completed = CString::new(complete_data.completed).unwrap().into_raw();
+            let annotation = if let Some(annotation) = complete_data.annotation {
+                CString::new(annotation).unwrap().into_raw()
+            } else {
+                ptr::null_mut()
+            };
+            CskkStateInfoFfi::CompleteStateInfo(CompleteDataFfi {
+                complete_origin,
+                origin_okuri: ptr::null_mut(),
+                completed_midashi,
+                completed,
+                okuri: ptr::null_mut(),
                 annotation,
             })
         }

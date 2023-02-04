@@ -1,4 +1,4 @@
-use crate::dictionary::dictionary_candidate::DictionaryCandidate;
+use crate::dictionary::dictionary_candidate::{CompletionCandidate, DictionaryCandidate};
 use crate::dictionary::CompositeKey;
 
 // CandidateListに持たせる情報。
@@ -7,6 +7,9 @@ use crate::dictionary::CompositeKey;
 pub struct Candidate {
     // 取り回しの都合上DictEntryと重複して持つ
     pub(crate) midashi: String,
+    // 厳密な送り仮名のある場合、その送り仮名を持つ。
+    pub(crate) strict_okuri: Option<String>,
+    // 送り仮名の有無。strict_okuriがNoneでも送りありエントリはtrueとなる。
     pub(crate) okuri: bool,
     // Raw kouho_text that might include "#0回" etc
     pub(crate) kouho_text: String,
@@ -19,6 +22,7 @@ impl Default for Candidate {
     fn default() -> Self {
         Candidate {
             midashi: "エラー".to_string(),
+            strict_okuri: None,
             okuri: false,
             kouho_text: "エラー".to_string(),
             annotation: None,
@@ -39,6 +43,7 @@ impl PartialEq for Candidate {
 impl Candidate {
     pub(crate) fn new(
         midashi: String,
+        strict_okuri: Option<String>,
         okuri: bool,
         kouho_text: String,
         annotation: Option<String>,
@@ -46,6 +51,7 @@ impl Candidate {
     ) -> Self {
         Candidate {
             midashi,
+            strict_okuri,
             okuri,
             kouho_text,
             annotation,
@@ -54,7 +60,7 @@ impl Candidate {
     }
 
     ///
-    /// 辞書の候補からそのままの内容で候補リスト用のcandidateを返す。
+    /// 辞書の候補からそのままの内容で候補リスト用のcandidateを返す。辞書登録等にも使われるため、入力されたcomposite_keyベースで見出し等を作る。
     ///
     pub(in crate::dictionary) fn from_dictionary_candidate(
         composite_key: &CompositeKey,
@@ -62,10 +68,27 @@ impl Candidate {
     ) -> Self {
         Self {
             midashi: composite_key.get_dict_key(),
+            strict_okuri: composite_key.get_okuri().to_owned(),
             okuri: composite_key.has_okuri(),
             kouho_text: dictionary_cand.kouho_text.to_owned(),
             annotation: dictionary_cand.annotation.to_owned(),
             output: dictionary_cand.kouho_text.to_owned(),
+        }
+    }
+
+    ///
+    /// 補完のため、辞書から与えられた内容から候補を作る。
+    ///
+    pub(in crate::dictionary) fn from_completion_candidate(
+        completion_candidate: &CompletionCandidate,
+    ) -> Self {
+        Self {
+            midashi: completion_candidate.midashi.to_string(),
+            strict_okuri: completion_candidate.okuri.to_owned(),
+            okuri: completion_candidate.okuri.is_some(),
+            kouho_text: completion_candidate.kouho_text.to_owned(),
+            annotation: completion_candidate.annotation.to_owned(),
+            output: completion_candidate.kouho_text.to_owned(),
         }
     }
 }

@@ -11,7 +11,8 @@ use std::sync::Arc;
 fn simple_check() {
     init_test_logger();
     let dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "utf-8").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "utf-8", false)
+            .unwrap();
     let mut context = CskkContext::new_empty(
         InputMode::Hiragana,
         CompositionMode::Direct,

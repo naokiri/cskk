@@ -15,52 +15,20 @@ github workflowでartifactがアップロードされる。
 
 という手順を踏む。
 
-## libskk
+## ローカルで試用する
+cskkで何かを変えてIMEで確認したい時、静的リンクでない場合ビルド時と実行時両方に指定する。
 
-libskkを真似てazik等設定可能にしたい
+fcitx5を例にすると
+    
+    # cskkを別ディレクトリにインストール
+    cargo cinstall --prefix=/tmp/cskkdir
+    # fctix5-cskkでビルド時
+    PKG_CONFIG_PATH=/tmp/cskkdir/lib/pkgconfig cmake -B ./build && cd build && make
+    # fcitx5 の実行時
+    LD_LIBRARY_PATH=/tmp/cskkdir/lib/cskk FCITX_ADDON_DIRS=/home/naoaki/src/fcitx5-cskk/build/src:/usr/lib/x86_64-linux-gnu/fcitx5 fcitx5 --verbose=*=5 
 
-### 設定ファイル
-metadata
-rom-kana/
-keymap/
-metadataを探してよみ、rom-kana,keymapを読めるようにしている。
-ファイルを分けているのは読む時の利便性か。実際には干渉しないようにディレクトリごとに設定自体は不可分。
-metadata分けておくのは採用し、cskkではrom-kanaもkeymap(command)も同一ファイルとしてしまう。
-
-
-
-rom-kana
-rom-kana converterがファイルを読むようにして終わり
-
-command
-#### libskk
-1. Stateごとにcommandの文字列を探して、存在し、かつ現在Stateが処理できればcommandとして処理
-    1.1. ただし、コマンドによってrom_kana_converterが処理できない場合のみ処理等アドホックに無視されたりする。
-2. commandとして処理できなかったらstateに応じたinputmodeの素の入力として処理できれば処理 (Stateによる)
-3. stateが変更されており、キー処理が終了していなければ再度キー入力を新しいstateのハンドラで処理するため、ループする。実際のコードではStartStateから'next-candidate'の時のみSelectStateハンドラへ処理が移譲されている。 cskkと同様で、PreComposition->CompositionSelection->Registerの二段飛ばしを実装するため？
-
-#### handler
-- NoneStateHandler
-
-preeditが存在しうる(=かなconvertがある)入力時全般。かな入力や変換登録のための入力。
-■モード(Directモード)にあたる？
-
-- KutenStatehandler
-
-\コマンドのkuten変換時。コードポイントからなんか出している。詳細不明。
-
-- AbbrevStateHandler
-
-/コマンドのAbbrev変換State。ラテン文字の見出しから変換するモード。
-
-- StartStateHandler
-
-▽モード(PrecompositionとPrecompositionOkurigana)にあたる？
-libskkでは送り仮名の有無も含めて同一ハンドラ。
-
-- SelectStateHandler
-
-▼モード
+このようにしてローカルビルドのlibcskkとfcitx5-cskkを試用できる。
+ただし、XDG_BASE_DIR等の環境変数を変えない限りassets以下のrules類は通常のものを読みとる。
 
 #### cskk
 cskk v0.4では徐々に機能追加をしてしまったせいでprocess_key_event_innerのコメントの通り

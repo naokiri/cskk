@@ -39,6 +39,8 @@ pub(crate) struct CskkCommandRule {
     composition_selection: CskkCommandRuleInner,
     #[serde(default)]
     abbreviation: CskkCommandRuleInner,
+    #[serde(default)]
+    completion: CskkCommandRuleInner,
 }
 
 impl CskkCommandRule {
@@ -49,6 +51,7 @@ impl CskkCommandRule {
             pre_compisition_okurigana: CskkCommandRuleInner::new_empty(),
             composition_selection: CskkCommandRuleInner::new_empty(),
             abbreviation: CskkCommandRuleInner::new_empty(),
+            completion: CskkCommandRuleInner::new_empty(),
         }
     }
 
@@ -62,7 +65,12 @@ impl CskkCommandRule {
             CompositionMode::PreCompositionOkurigana => Some(&self.pre_compisition_okurigana),
             CompositionMode::CompositionSelection => Some(&self.composition_selection),
             CompositionMode::Abbreviation => Some(&self.abbreviation),
-            _ => None,
+            CompositionMode::Completion => Some(&self.completion),
+            _ => {
+                // Shouldn't reach here but safe to not to stop on release.
+                debug_assert!(false);
+                None
+            }
         }
     }
 }

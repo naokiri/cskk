@@ -1,4 +1,5 @@
 use crate::candidate_list::CandidateList;
+use crate::cskkstate::CskkStateInfo::Complete;
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::CompositeKey;
 use crate::form_changer::KanaFormChanger;
@@ -11,13 +12,16 @@ use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 // FIXME: 全部1ファイルで収めていた頃の名残りで多くのステートのみ操作系メソッドがcontext内のままなので、できれば移してフィールドをpub(crate)からprivateにして何がステート操作かわかりやすくする
 // FIXME: 全てのフィールドが共用のステートで作ってしまったが、compositionmodeごとに保持したい情報は異なるのでわかりづらい。リファクタリング候補。
+// candidate_listをcompositionでも共用してしまっている。こういった変数の区別を付けたい。
 /// Rough prototype yet.
 ///
 pub(crate) struct CskkState {
     pub(crate) input_mode: InputMode,
     pub(crate) composition_mode: CompositionMode,
-    // 直前のCompositionMode。Abort時に元に戻すmode。
-    pub(crate) previous_composition_mode: CompositionMode,
+    // State作成時のCompositionMode。fallback先。
+    default_composition_mode: CompositionMode,
+    // DirectモードからのCompositionMode遷移。Abort時に元に戻すmode。
+    compositon_mode_stack: Vec<CompositionMode>,
     // 入力文字で、かな確定済みでないものすべて
     pub(crate) pre_conversion: Vec<Keysym>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。
@@ -53,6 +57,7 @@ pub enum CskkStateInfo {
     PreCompositionOkurigana(PreCompositionData),
     CompositionSelection(CompositionSelectionData),
     Register(RegisterData),
+    Complete(CompleteData),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -107,12 +112,27 @@ pub struct RegisterData {
     pub postfix: Option<String>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct CompleteData {
+    /// 現在の入力かな
+    pub complete_origin: String,
+    /// 現在の変換候補の見出し
+    pub completed_midashi: String,
+    /// 現在選択されている変換候補
+    pub completed: String,
+    /// 現在の変換候補に付く送り仮名
+    pub okuri: Option<String>,
+    /// 現在の候補のアノテーション
+    pub annotation: Option<String>,
+}
+
 impl CskkState {
     pub fn new(input_mode: InputMode, composition_mode: CompositionMode) -> Self {
         CskkState {
             input_mode,
             composition_mode,
-            previous_composition_mode: composition_mode,
+            default_composition_mode: composition_mode,
+            compositon_mode_stack: Vec::new(),
             pre_conversion: vec![],
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
@@ -251,7 +271,7 @@ impl CskkState {
                 self.converted_kana_to_composite.push_str(letter_or_word);
                 self.raw_to_composite.push_str(letter_or_word);
             }
-            CompositionMode::CompositionSelection => {
+            CompositionMode::CompositionSelection | CompositionMode::Completion => {
                 self.confirmed.push_str(letter_or_word);
             }
             _ => {
@@ -326,6 +346,12 @@ impl CskkState {
                         + &register_data.kana_to_composite
                         + &register_data.postfix.unwrap_or_default()
                 }
+            }
+            Complete(complete_data) => {
+                // この関数ではただ補完候補を表示するだけに留める
+                "■".to_string()
+                    + &complete_data.completed
+                    + &complete_data.okuri.unwrap_or_default()
             }
         }
     }
@@ -408,6 +434,22 @@ impl CskkState {
                     annotation,
                 })
             }
+            CompositionMode::Completion => {
+                let complete_origin = self.converted_kana_to_composite.to_owned();
+                let current_candidate = self.candidate_list.get_current_candidate();
+                let fallback_candidate = Candidate::default();
+                let candidate = current_candidate.unwrap_or(&fallback_candidate).to_owned();
+                let completed_midashi = candidate.midashi;
+                let completed = candidate.output;
+                let annotation = candidate.annotation;
+                Complete(CompleteData {
+                    complete_origin,
+                    completed_midashi,
+                    completed,
+                    okuri,
+                    annotation,
+                })
+            }
         }
     }
 
@@ -429,6 +471,40 @@ impl CskkState {
 
     pub(crate) fn get_capital_transition(&self) -> bool {
         self.capital_transition
+    }
+
+    pub(crate) fn abort_to_previous_mode(&mut self) {
+        if let Some(previous_mode) = self.compositon_mode_stack.pop() {
+            if CompositionMode::PreCompositionOkurigana.eq(&previous_mode) {
+                self.consolidate_converted_to_to_composite();
+                self.composition_mode = CompositionMode::PreComposition;
+            } else {
+                self.composition_mode = previous_mode;
+            }
+        } else {
+            self.composition_mode = self.default_composition_mode;
+        }
+    }
+
+    pub(crate) fn change_composition_mode(&mut self, new_mode: CompositionMode) {
+        if new_mode == self.default_composition_mode {
+            self.compositon_mode_stack.clear();
+            self.composition_mode = new_mode;
+        } else {
+            self.compositon_mode_stack.push(self.composition_mode);
+            self.composition_mode = new_mode;
+        }
+    }
+
+    /// new_modeにモードを変えるが、その時直前のモードをold_modeであったとして記録する。
+    /// 変換候補が見つからない時の多重遷移に用いられる想定
+    pub(crate) fn change_composition_mode_from_old_mode(
+        &mut self,
+        new_mode: CompositionMode,
+        old_mode: CompositionMode,
+    ) {
+        self.compositon_mode_stack.push(old_mode);
+        self.composition_mode = new_mode;
     }
 }
 
@@ -483,7 +559,7 @@ impl Debug for CskkState {
             .collect();
         f.debug_struct("CskkState")
             .field("Mode", &(&self.composition_mode, &self.input_mode))
-            .field("previous_composition_mode", &self.previous_composition_mode)
+            .field("previous_modes stack", &self.compositon_mode_stack)
             .field("pre_conversion", &keysyms)
             .field("raw_to_composite", &self.raw_to_composite)
             .field(

@@ -271,7 +271,8 @@ zz = ["z", "っ"]
 # command: 各モードのコマンド
 # 各モードごとにコマンドのマッピングをする。
 # keyは1つのKeyEvent
-# 前置詞としてC-,A-,M-,G-がそれぞれCtrl,Mod1(Alt)、Meta, Mod5モディファイアとして解釈される。
+# 短い前置詞としてC-,A-,M-,G-がそれぞれCtrl,Mod1(Alt)、Meta, Mod5モディファイアとして解釈される。
+# 長い前置詞として()で括った時に"control" | "meta" | "alt" | "lshift" | "rshift" | "shift" がモディファイアとして解釈される。
 # 本体は上記conversionと同じKeysym
 #
 # valueはコマンドの配列。
@@ -295,13 +296,16 @@ zz = ["z", "っ"]
 # NextCandidatePointer - 次の変換候補を選択する。候補がないと何もしない。
 # PreviousCandidatePointer - 前の変換候補を選択する。候補がないと何もしない。
 # Purge - 現在選択している変換候補を消去する。
-# Abort - 現在の漢字変換を中止する。
+# Abort - 現在の変換を中止し、直前のモードに戻る。
+#
+# TryNextCompletion - 次の補完候補を選択する。候補がない場合モード変更等なく何もしない。
+# TryPreviousCompletion- 前の補完候補を選択する。候補がない場合モード変更等なく何もしない。
 #
 # FinishKeyEvent - コマンドで処理がない場合に明示的にCSKKで入力処理を終える。(IME実装に依るが、アプリケーション等にキーを渡さない)
 # PassthroughKeyEvent - コマンドで処理があっても明示的に入力処理を終えない。(IME実装に依るが、アプリケーション等にキーを渡す。)
 
 # InputMode := (Hiragana|Katakana|HankakuKatakana|Zenkaku|Ascii)
-# CompositionMode := (Direct|PreComposition|PreCompositionOkurigana|CompositionSelection|Abbreviation|Register)
+# CompositionMode := (Direct|PreComposition|PreCompositionOkurigana|CompositionSelection|Abbreviation|Register|Completion)
 
 [command]
 # Hiraganaモード時のコマンド
@@ -322,7 +326,6 @@ zz = ["z", "っ"]
 "slash" = ["ChangeCompositionMode(Abbreviation)"]
 # Katakanaモード時のコマンド
 [direct.katakana]
-"C-g" = ["Abort"]
 "l" = ["ForceKanaConvert(Katakana)", "ChangeInputMode(Ascii)", "ClearUnconfirmedInputs"]
 "L" = ["ForceKanaConvert(Katakana)", "ChangeInputMode(Zenkaku)", "ClearUnconfirmedInputs"]
 "C-q" = ["ForceKanaConvert(Hiragana)", "ChangeInputMode(HankakuKatakana)", "ClearUnconfirmedInputs"]
@@ -339,7 +342,6 @@ zz = ["z", "っ"]
 "slash" = ["ChangeCompositionMode(Abbreviation)"]
 # 半角カナ(JIS X 0201 カナ)モード時のコマンド
 [direct.hankakukatakana]
-"C-g" = ["Abort"]
 "l" = ["ForceKanaConvert(HankakuKatakana)", "ChangeInputMode(Ascii)", "ClearUnconfirmedInputs"]
 "L" = ["ForceKanaConvert(HankakuKatakana)", "ChangeInputMode(Zenkaku)", "ClearUnconfirmedInputs"]
 "C-q" = ["ForceKanaConvert(HankakuKatakana)", "ChangeInputMode(Katakana)", "ClearUnconfirmedInputs"]
@@ -382,6 +384,7 @@ zz = ["z", "っ"]
 "C-j" = ["ForceKanaConvert(Hiragana)", "ConfirmAs(Hiragana)", "ChangeCompositionMode(Direct)"]
 "BackSpace" = ["Delete"]
 "C-h" = ["Delete"]
+"Tab" = ["TryNextCompletion"]
 [pre_composition.katakana]
 "space" = ["TryNextCandidate"]
 "q" = ["ForceKanaConvert(Hiragana)", "ConfirmAs(Hiragana)", "ChangeCompositionMode(Direct)"]
@@ -391,6 +394,7 @@ zz = ["z", "っ"]
 "C-j" = ["ForceKanaConvert(Katakana)", "ConfirmAs(Katakana)", "ChangeCompositionMode(Direct)"]
 "BackSpace" = ["Delete"]
 "C-h" = ["Delete"]
+"Tab" = ["TryNextCompletion"]
 [pre_composition.hankakukatakana]
 "space" = ["TryNextCandidate"]
 "q" = ["ForceKanaConvert(Hiragana)", "ConfirmAs(Hiragana)", "ChangeCompositionMode(Direct)"]
@@ -400,6 +404,7 @@ zz = ["z", "っ"]
 "C-j" = ["ForceKanaConvert(HankakuKatakana)", "ConfirmAs(HankakuKatakana)", "ChangeCompositionMode(Direct)"]
 "BackSpace" = ["Delete"]
 "C-h" = ["Delete"]
+"Tab" = ["TryNextCompletion"]
 
 [pre_compisition_okurigana.hiragana]
 "space" = ["TryNextCandidate"]
@@ -435,24 +440,27 @@ zz = ["z", "っ"]
 "C-h" = ["Delete"]
 "C-j" = ["ConfirmAs(Ascii)", "ChangeCompositionMode(Direct)"]
 "C-q" = ["ConfirmAs(Zenkaku)", "ChangeCompositionMode(Direct)"]
+"Tab" = ["TryNextCompletion"]
 [abbreviation.katakana]
 "space" = ["TryNextCandidate"]
 "BackSpace" = ["Delete"]
 "C-h" = ["Delete"]
 "C-j" = ["ConfirmAs(Ascii)", "ChangeCompositionMode(Direct)"]
 "C-q" = ["ConfirmAs(Zenkaku)", "ChangeCompositionMode(Direct)"]
+"Tab" = ["TryNextCompletion"]
 [abbreviation.hankakukatakana]
 "space" = ["TryNextCandidate"]
 "BackSpace" = ["Delete"]
 "C-h" = ["Delete"]
 "C-j" = ["ConfirmAs(Ascii)", "ChangeCompositionMode(Direct)"]
 "C-q" = ["ConfirmAs(Zenkaku)", "ChangeCompositionMode(Direct)"]
+"Tab" = ["TryNextCompletion"]
 
 [composition_selection.hiragana]
 "Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
 "C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
-"Escape" = ["Abort", "ChangeCompositionMode(PreComposition)"]
-"C-g" = ["Abort", "ChangeCompositionMode(PreComposition)"]
+"Escape" = ["Abort"]
+"C-g" = ["Abort"]
 "X" = ["Purge", "ChangeCompositionMode(Direct)"]
 "space" = ["TryNextCandidate"]
 "x" = ["TryPreviousCandidate"]
@@ -463,10 +471,11 @@ zz = ["z", "っ"]
 [composition_selection.katakana]
 "Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
 "C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
-"Escape" = ["Abort", "ChangeCompositionMode(PreComposition)"]
-"C-g" = ["Abort", "ChangeCompositionMode(PreComposition)"]
+"Escape" = ["Abort"]
+"C-g" = ["Abort"]
 "X" = ["Purge", "ChangeCompositionMode(Direct)"]
 "space" = ["TryNextCandidate"]
+"x" = ["TryPreviousCandidate"]
 "BackSpace" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
 "C-h" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
 "q" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "ChangeInputMode(Hiragana)"]
@@ -474,11 +483,43 @@ zz = ["z", "っ"]
 [composition_selection.hankakukatakana]
 "Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
 "C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
-"Escape" = ["Abort", "ChangeCompositionMode(PreComposition)"]
-"C-g" = ["Abort", "ChangeCompositionMode(PreComposition)"]
+"Escape" = ["Abort"]
+"C-g" = ["Abort"]
 "X" = ["Purge", "ChangeCompositionMode(Direct)"]
 "space" = ["TryNextCandidate"]
+"x" = ["TryPreviousCandidate"]
 "BackSpace" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
 "C-h" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
 "q" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "ChangeInputMode(Hiragana)"]
 "C-q" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "ChangeInputMode(Katakana)"]
+
+[completion.hiragana]
+"Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"Tab" = ["NextCandidatePointer"]
+"period" = ["NextCandidatePointer"]
+"(shift Tab)" = ["PreviousCandidatePointer"]
+"comma" = ["PreviousCandidatePointer"]
+"C-g" = ["Abort"]
+"Escape" = ["Abort"]
+"BackSpace" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
+[completion.katakana]
+"Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"Tab" = ["NextCandidatePointer"]
+"period" = ["NextCandidatePointer"]
+"(shift Tab)" = ["PreviousCandidatePointer"]
+"comma" = ["PreviousCandidatePointer"]
+"C-g" = ["Abort"]
+"Escape" = ["Abort"]
+"BackSpace" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]
+[completion.hankakukatakana]
+"Return" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"C-j" = ["ConfirmComposition", "ChangeCompositionMode(Direct)"]
+"Tab" = ["NextCandidatePointer"]
+"period" = ["NextCandidatePointer"]
+"(shift Tab)" = ["PreviousCandidatePointer"]
+"comma" = ["PreviousCandidatePointer"]
+"C-g" = ["Abort"]
+"Escape" = ["Abort"]
+"BackSpace" = ["ConfirmComposition", "ChangeCompositionMode(Direct)", "Delete"]

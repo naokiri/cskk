@@ -5,9 +5,11 @@ mod dictionary_candidate;
 mod dictionary_parser;
 pub mod empty_dict;
 pub(crate) mod file_dictionary;
+mod lru_ordered_map;
 pub mod static_dict;
 pub mod user_dictionary;
 
+use crate::dictionary::dictionary_candidate::{CompletionCandidate, DictionaryEntry};
 use crate::error::CskkError;
 use crate::form_changer::numeric_form_changer::{
     numeric_to_daiji_as_number, numeric_to_kanji_each, numeric_to_simple_kanji_as_number,
@@ -35,12 +37,14 @@ pub(crate) enum CskkDictionaryType {
 // FIXME: Not sure if this is the correct inner type. Maybe we can remove Arc on other places?
 #[derive(Debug)]
 pub struct CskkDictionary {
+    is_completable: bool,
     pub(crate) mutex: Mutex<CskkDictionaryType>,
 }
 
 impl CskkDictionary {
-    fn new(dictionary: CskkDictionaryType) -> Self {
+    fn new(dictionary: CskkDictionaryType, is_completable: bool) -> Self {
         Self {
+            is_completable,
             mutex: Mutex::new(dictionary),
         }
     }
@@ -48,29 +52,40 @@ impl CskkDictionary {
     /// Library user interface for creating new static read-only dictionary.
     /// file_path: path string
     /// encode: label of encoding that encoding_rs can recognize. "utf-8", "euc-jp", "cp866" etc.
-    pub fn new_static_dict(file_path: &str, encode: &str) -> Result<CskkDictionary, CskkError> {
+    pub fn new_static_dict(
+        file_path: &str,
+        encode: &str,
+        is_completable: bool,
+    ) -> Result<CskkDictionary, CskkError> {
         let dictionary = StaticFileDict::new(file_path, encode)?;
-        Ok(CskkDictionary::new(CskkDictionaryType::StaticFile(
-            dictionary,
-        )))
+        Ok(CskkDictionary::new(
+            CskkDictionaryType::StaticFile(dictionary),
+            is_completable,
+        ))
     }
 
     /// Library user interface for creating new user readable and writable dictionary
     /// file_path: path string
     /// encode: label of encoding that encoding_rs can recognize. "utf-8", "euc-jp", "cp866" etc.
-    pub fn new_user_dict(file_path: &str, encode: &str) -> Result<CskkDictionary, CskkError> {
+    pub fn new_user_dict(
+        file_path: &str,
+        encode: &str,
+        is_completable: bool,
+    ) -> Result<CskkDictionary, CskkError> {
         let dictionary = UserDictionary::new(file_path, encode)?;
-        Ok(CskkDictionary::new(CskkDictionaryType::UserFile(
-            dictionary,
-        )))
+        Ok(CskkDictionary::new(
+            CskkDictionaryType::UserFile(dictionary),
+            is_completable,
+        ))
     }
 
     /// Library user interface for creating fallback dictionary.
     /// Dictionary is required to create the context, so this dictionary is useful when no dictionary file is available.
     pub fn new_empty_dict() -> Result<CskkDictionary, CskkError> {
-        Ok(CskkDictionary::new(CskkDictionaryType::EmptyDict(
-            EmptyDictionary::default(),
-        )))
+        Ok(CskkDictionary::new(
+            CskkDictionaryType::EmptyDict(EmptyDictionary::default()),
+            false,
+        ))
     }
 }
 
@@ -79,22 +94,15 @@ impl CskkDictionary {
 /// Returns true if updated the dictionary.
 pub(crate) fn confirm_candidate(
     dictionary: &mut Arc<CskkDictionary>,
-    composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
     // Using mutex in match on purpose, never acquiring lock again.
     #[allow(clippy::significant_drop_in_scrutinee)]
     match *dictionary.mutex.lock().unwrap() {
-        CskkDictionaryType::StaticFile(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
-        CskkDictionaryType::UserFile(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
-        CskkDictionaryType::EmptyDict(ref mut dict) => {
-            dict.select_candidate(composite_key, candidate)
-        }
+        CskkDictionaryType::StaticFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::UserFile(ref mut dict) => dict.select_candidate(candidate),
+        CskkDictionaryType::EmptyDict(ref mut dict) => dict.select_candidate(candidate),
     }
 }
 
@@ -129,8 +137,62 @@ pub(crate) fn get_all_candidates(
     get_all_candidates_inner(dictionaries, composite_key, false)
 }
 
-lazy_static! {
-    static ref NUM_REGEX: Regex = Regex::new(r"\d+").unwrap();
+///
+/// 補完候補となる辞書のエントリ列を返す。
+///
+/// [Dictionary]の[complete]に準じて、composite_keyが送りなしのみを想定し、先頭一致する送りなし候補を返す。
+///
+pub(crate) fn get_all_complete(
+    dictionaries: &[Arc<CskkDictionary>],
+    composite_key: &CompositeKey,
+) -> Vec<Candidate> {
+    let dict_candidates = get_all_complete_inner(dictionaries, composite_key);
+    let deduped_completion_candidate = dedup_candidates(dict_candidates);
+
+    deduped_completion_candidate
+        .into_iter()
+        .map(|x| Candidate::from_completion_candidate(&x))
+        .collect()
+}
+///
+/// 補完候補となる辞書のエントリ列を返す。
+///
+/// [Dictionary]の[complete]に準じて、composite_keyが送りなしのみを想定し、先頭一致する送りなし候補を返す。
+///
+/// 使われない想定ではあるが、composite_keyが送りありだと送り仮名まで一致する候補を返すので先頭一致が完全一致と同じになる。
+///
+fn get_all_complete_inner(
+    dictionaries: &[Arc<CskkDictionary>],
+    composite_key: &CompositeKey,
+) -> Vec<CompletionCandidate> {
+    let mut result = Vec::new();
+
+    for cskkdict in dictionaries.iter() {
+        if cskkdict.is_completable {
+            let lock = cskkdict.mutex.lock().unwrap();
+            let dict_entries = match &*lock {
+                CskkDictionaryType::StaticFile(dict) => dict.complete(composite_key),
+                CskkDictionaryType::UserFile(dict) => dict.complete(composite_key),
+                CskkDictionaryType::EmptyDict(dict) => dict.complete(composite_key),
+            };
+            for dict_entry in dict_entries {
+                let candidates = dict_entry.get_candidates(composite_key.get_okuri());
+
+                if let Some(candidates) = candidates {
+                    // result.extend(candidates.to_owned())
+                    result.extend(candidates.iter().map(|x| {
+                        CompletionCandidate::from_dictionary_candidate(
+                            &dict_entry.midashi,
+                            composite_key.get_okuri(),
+                            x,
+                        )
+                    }));
+                }
+            }
+        }
+    }
+
+    result
 }
 
 ///
@@ -142,22 +204,47 @@ fn get_all_candidates_inner(
     composite_key: &CompositeKey,
     is_numeric_re_lookup: bool,
 ) -> Vec<Candidate> {
-    let mut deduped_candidates = vec![];
-    let mut ordered_candidates = vec![];
-
     let mut composite_key = composite_key.to_owned();
     let mut matched_numbers = vec![];
 
     if !is_numeric_re_lookup {
-        // FIXME: destructuring-bind is unstable yet in current Rust. Fix in future Rust.
-        let pair = to_composite_to_numeric_dict_key(&composite_key);
-        composite_key = pair.0;
-        matched_numbers = pair.1;
+        (composite_key, matched_numbers) = to_composite_to_numeric_dict_key(&composite_key);
     }
 
     let candidates = get_candidates_in_order(dictionaries, &composite_key);
-    ordered_candidates.extend(candidates.to_owned());
-    deduped_candidates.extend(candidates);
+    let deduped_candidates = dedup_candidates(candidates);
+    let deduped_candidates: Vec<Candidate> = if !is_numeric_re_lookup {
+        deduped_candidates
+            .into_iter()
+            .map(|dictionary_candidate| {
+                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+            })
+            .flat_map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
+            .collect()
+    } else {
+        deduped_candidates
+            .into_iter()
+            .map(|dictionary_candidate| {
+                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+            })
+            .collect()
+    };
+
+    deduped_candidates
+}
+
+///
+/// dictionary_candidatesの内容からその順番にcandidateを作り、重複を除いて返す。
+///
+fn dedup_candidates<T>(dictionary_candidates: Vec<T>) -> Vec<T>
+where
+    T: DictionaryEntry + Ord + Clone,
+{
+    let mut deduped_candidates = vec![];
+    let mut ordered_candidates = vec![];
+
+    deduped_candidates.extend(dictionary_candidates.to_owned());
+    ordered_candidates.extend(dictionary_candidates);
 
     if deduped_candidates.is_empty() {
         return vec![];
@@ -165,7 +252,7 @@ fn get_all_candidates_inner(
     deduped_candidates.sort_unstable();
     // Make Option == some come before None
     deduped_candidates.reverse();
-    deduped_candidates.dedup_by(|a, b| a.kouho_text == b.kouho_text);
+    deduped_candidates.dedup_by(|a, b| a.get_kouho_text() == b.get_kouho_text());
     // reverse back for faster iteration? maybe unneeded.
     deduped_candidates.reverse();
 
@@ -174,18 +261,7 @@ fn get_all_candidates_inner(
         let mut matched_index = usize::MAX;
         for (pos, deduped) in deduped_candidates.iter().enumerate() {
             if (*deduped).eq(&candidate) {
-                if is_numeric_re_lookup {
-                    result.push(Candidate::from_dictionary_candidate(
-                        &composite_key,
-                        deduped,
-                    ));
-                } else {
-                    result.append(&mut replace_numeric_match(
-                        &Candidate::from_dictionary_candidate(&composite_key, deduped),
-                        &matched_numbers,
-                        dictionaries,
-                    ));
-                }
+                result.push(deduped.to_owned());
                 matched_index = pos;
             }
         }
@@ -236,6 +312,9 @@ fn get_candidates_in_order(
     result
 }
 
+lazy_static! {
+    static ref NUM_REGEX: Regex = Regex::new(r"\d+").unwrap();
+}
 ///
 /// 数字が含まれていた場合#に置きかえて数字と共にかえす。
 ///
@@ -425,12 +504,19 @@ pub(crate) trait Dictionary {
     fn is_read_only(&self) -> bool {
         true
     }
-    //
-    // TODO: midashi から始まるエントリを全て返す。i.e. skkserv 4 command
-    // e.g.
-    // complete('あ') -> ["あい", "あいさつ"]
-    //
-    // fn complete(&self, _midashi: &str) /* -> Option<&Vec<&str>>?*/
+    ///
+    /// `midashi_head`が送り仮名なしの場合、これから始まる送り仮名なしエントリの列を返す。送りありエントリは無視される。
+    ///
+    /// 補完として利用されない想定だが、この関数の実装としては`midashi_head`が送り仮名ありの場合、一致するエントリを返す。
+    /// 送り仮名の仕組み上一致エントリしか存在できないため。
+    ///
+    /// e.g.
+    /// complete(("あい", None)) -> (("あい", "/愛/相/"), ("あいさつ", "/挨拶/"), ...)
+    /// complete(("あ", Some("い")) -> (("あi", "/開/合/\[い/合/開/\]/"), ...)
+    fn complete<'a>(
+        &'a self,
+        midashi_head: &'a CompositeKey,
+    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a>;
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
@@ -440,11 +526,7 @@ pub(crate) trait Dictionary {
     /// Select that candidate.
     /// Supporting dictionary will add and move that candidate to the first place so that next time it comes to candidate early.
     /// Safe to call to read_only dictionary.
-    fn select_candidate(
-        &mut self,
-        _composite_key: &CompositeKey,
-        _candidate: &Candidate,
-    ) -> Result<bool, CskkError> {
+    fn select_candidate(&mut self, _candidate: &Candidate) -> Result<bool, CskkError> {
         Ok(false)
     }
     /// Remove that candidate if dictionary supports editing.

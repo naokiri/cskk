@@ -13,8 +13,9 @@ mod utils;
 #[test]
 fn basic_abbreviation_mode() {
     init_test_logger();
-    let dict = CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8")
-        .unwrap();
+    let dict =
+        CskkDictionary::new_static_dict("tests/data/dictionaries/abbreviation.dat", "utf-8", false)
+            .unwrap();
     let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
     transition_check(
         &mut context,
@@ -87,6 +88,21 @@ fn delete_on_abbreviation_mode() {
         InputMode::Hiragana,
         "slash c h BackSpace",
         "▽c",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn abort_after_abbreviation_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash c h a l a z a space C-g",
+        "▽chalaza",
         "",
         InputMode::Hiragana,
     );

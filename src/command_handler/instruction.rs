@@ -41,6 +41,10 @@ pub(crate) enum Instruction {
     Purge,
     // 一文字消去する。消去可能時のみキー入力処理を終わる。
     Delete,
+    // 次の補完候補を指そうとする、無ければ何もしない。
+    TryNextCompletion,
+    // 前のの補完候補を指そうとする、無ければ何もしない。
+    TryPreviousCompletion,
 }
 //
 impl FromStr for Instruction {
@@ -62,6 +66,8 @@ impl FromStr for Instruction {
             "TryNextCandidate" => Some(Instruction::TryNextCandidate),
             "TryPreviousCandidate" => Some(Instruction::TryPreviousCandidate),
             "PassthroughKeyEvent" => Some(Instruction::PassthroughKeyEvent),
+            "TryNextCompletion" => Some(Instruction::TryNextCompletion),
+            "TryPreviousCompletion" => Some(Instruction::TryPreviousCompletion),
             // 以下旧版の互換性維持のため。メジャーバージョンアップで消しうる。
             "ConfirmAsHiragana" => Some(Instruction::ConfirmAs(InputMode::Hiragana)),
             "ConfirmAsKatakana" => Some(Instruction::ConfirmAs(InputMode::Katakana)),
@@ -97,7 +103,7 @@ impl FromStr for Instruction {
 
         lazy_static! {
             static ref COMPOSITION_MODE_REGEX: Regex =
-                Regex::new(r"(.*)\((Direct|PreComposition|PreCompositionOkurigana|CompositionSelection|Abbreviation|Register)\)")
+                Regex::new(r"(.*)\((Direct|PreComposition|PreCompositionOkurigana|CompositionSelection|Abbreviation|Register|Completion)\)")
                     .expect("Instruction deserializer bug.");
         }
         let maybe_capture = COMPOSITION_MODE_REGEX.captures(s);

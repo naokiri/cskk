@@ -1,9 +1,8 @@
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
-    skk_context_get_input_mode_rs, skk_context_get_preedit_rs, skk_context_poll_output_rs,
-    skk_context_process_key_events_rs, skk_context_set_composition_mode,
-    skk_context_set_input_mode_rs, CskkContext,
+    skk_context_get_input_mode_rs, skk_context_set_composition_mode, skk_context_set_input_mode_rs,
+    CskkContext,
 };
 use std::sync::Arc;
 use tempfile::{NamedTempFile, TempPath};
@@ -19,9 +18,10 @@ pub fn transition_check(
 ) {
     skk_context_set_composition_mode(context, initial_composition_mode);
     skk_context_set_input_mode_rs(context, initial_input_mode);
-    skk_context_process_key_events_rs(context, key_inputs);
-    let output = skk_context_poll_output_rs(context);
-    let preedit = skk_context_get_preedit_rs(context);
+    context.process_key_events_string(key_inputs);
+    //skk_context_process_key_events_rs(context, key_inputs);
+    let output = context.poll_output().unwrap_or_default();
+    let preedit = context.get_preedit().unwrap();
     let input_mode = skk_context_get_input_mode_rs(context);
     assert_eq!(
         output, expected_output,
@@ -46,7 +46,8 @@ pub fn make_temp_file() -> anyhow::Result<TempPath> {
 
 pub fn default_test_context() -> CskkContext {
     let dict =
-        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp").unwrap();
+        CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", true)
+            .unwrap();
     test_context_with_dictionaries(vec![Arc::new(dict)])
 }
 

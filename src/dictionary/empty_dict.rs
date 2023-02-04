@@ -11,4 +11,12 @@ impl Dictionary for EmptyDictionary {
     fn lookup(&self, _composite_key: &CompositeKey) -> Option<&DictEntry> {
         None
     }
+
+    fn complete<'a>(
+        &'a self,
+        _midashi_head: &CompositeKey,
+    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+        let a = std::iter::empty();
+        Box::new(a)
+    }
 }

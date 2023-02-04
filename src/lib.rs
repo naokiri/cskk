@@ -13,12 +13,12 @@ use crate::command_handler::ConfigurableCommandHandler;
 use crate::command_handler::Instruction;
 use crate::config::CskkConfig;
 use crate::cskkstate::{CskkState, CskkStateInfo};
-use crate::dictionary::Candidate;
 use crate::dictionary::{
     confirm_candidate, get_all_candidates, numeric_entry_count, numeric_string_count,
     purge_candidate, replace_numeric_string, to_composite_to_numeric_dict_key, CskkDictionary,
     CskkDictionaryType, Dictionary,
 };
+use crate::dictionary::{get_all_complete, Candidate};
 use crate::error::CskkError;
 use crate::kana_builder::KanaBuilder;
 use crate::keyevent::KeyEventSeq;
@@ -71,6 +71,10 @@ pub struct CskkContext {
 }
 
 /// Test purpose only.
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &str) -> bool {
     context.process_key_events_string(keyevents)
 }
@@ -79,6 +83,10 @@ pub fn skk_context_process_key_events_rs(context: &mut CskkContext, keyevents: &
 /// Testing purpose? Use `CskkContext.poll_output()` instead. this interface might be deleted at any update.
 /// 現在のoutputをpollingする。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
     if let Some(str) = context.poll_output() {
         return str;
@@ -89,6 +97,10 @@ pub fn skk_context_poll_output_rs(context: &mut CskkContext) -> String {
 /// テスト用途？。preedit文字列と同じ内容の文字列を取得する。
 /// This interface might be deleted at any update. Use `CskkContext.get_preedit()` instead.
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
     context.get_preedit().unwrap()
 }
@@ -137,6 +149,10 @@ pub fn skk_context_set_input_mode_rs(context: &mut CskkContext, input_mode: Inpu
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはsave_dictionaryを使用する。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_save_dictionaries_rs(context: &mut CskkContext) {
     context.save_dictionary();
 }
@@ -146,6 +162,10 @@ pub fn skk_context_save_dictionaries_rs(context: &mut CskkContext) {
 /// For integration test purpose.ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはreload_dictionaryを代わりに用いる
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
     context.reload_dictionary();
 }
@@ -154,6 +174,10 @@ pub fn skk_context_reload_dictionary(context: &mut CskkContext) {
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// Rust libとしてはset_dictionariesを使用する。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_set_dictionaries_rs(
     context: &mut CskkContext,
     dictionaries: Vec<Arc<CskkDictionary>>,
@@ -165,6 +189,10 @@ pub fn skk_context_set_dictionaries_rs(
 /// 元capiテスト用途。ABI変更を明示しないバージョンアップデートにより公開を止めうる。
 /// 内部状態なので、Rust libが使用することを想定しない。
 ///
+#[deprecated(
+    since = "2.0.0",
+    note = "Not proper for Rust interface. See rustdoc for details."
+)]
 pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String {
     context
         .current_state_ref()
@@ -177,6 +205,11 @@ pub fn skk_context_get_current_to_composite_rs(context: &CskkContext) -> String 
 /// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
 /// 将来的にはcontextのmethodに置き換える。
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usize {
     context.current_state_ref().get_candidate_list().len()
 }
@@ -184,6 +217,11 @@ pub fn skk_context_get_current_candidate_count_rs(context: &CskkContext) -> usiz
 ///
 /// 現在の候補リストを返す。
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Candidate> {
     context
         .current_state_ref()
@@ -194,6 +232,11 @@ pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Cand
 ///
 /// Get candidate cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_get_current_candidate_cursor_position_rs(
     context: &mut CskkContext,
 ) -> Result<usize, CskkError> {
@@ -212,6 +255,11 @@ pub fn skk_context_get_current_candidate_cursor_position_rs(
 ///
 /// Set candidate cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> bool {
     let len = context
         .current_state_ref()
@@ -242,6 +290,11 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
 ///
 /// Confirm candidate at the cursor position.
 ///
+// TODO: Rust interface としてはcontextのメソッドにする。
+// #[deprecated(
+//     since = "2.0.0",
+//     note = "Not proper for Rust interface. See rustdoc for details."
+// )]
 pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
     if context.current_state().set_candidate_pointer_index(i) {
         context.confirm_current_composition_candidate();
@@ -327,6 +380,7 @@ impl CskkContext {
     /// # Deprecated
     ///
     /// Fancy formatting will be delegated to IMEs in favor of [get_preedit_detail]
+    #[deprecated(since = "1.0.0")]
     pub fn get_preedit_underline(&self) -> (isize, isize) {
         (0, 0)
     }
@@ -396,6 +450,15 @@ impl CskkContext {
         self.current_state().set_new_candidate_list(candidates);
     }
 
+    ///
+    /// 現在のraw_to_compositeから補完候補をリストにして、候補ポインタを0にする。
+    ///
+    fn update_completion_list(&mut self) {
+        let composite_key = self.current_state_ref().get_composite_key();
+        let candidates = get_all_complete(&self.dictionaries, &composite_key);
+        self.current_state().set_new_candidate_list(candidates);
+    }
+
     #[allow(unused_must_use)]
     fn purge_current_composition_candidate(&mut self) {
         if let Ok(current_candidate) = self
@@ -430,13 +493,9 @@ impl CskkContext {
             .get_current_candidate()
         {
             let current_candidate = current_candidate.to_owned();
-            let composite_key = self
-                .current_state_ref()
-                .get_candidate_list()
-                .get_current_to_composite()
-                .to_owned();
+
             for cskkdict in self.dictionaries.iter_mut() {
-                confirm_candidate(cskkdict, &composite_key, &current_candidate);
+                confirm_candidate(cskkdict, &current_candidate);
             }
 
             let composited_okuri = self.kana_form_changer.adjust_kana_string(
@@ -473,14 +532,17 @@ impl CskkContext {
     /// Set the current composition mode.
     /// If changing to Register mode, recoomend using enter_register_mode to set the stack properly.
     fn set_composition_mode(&mut self, composition_mode: CompositionMode) {
-        let mut current_state = self.current_state();
-        current_state.previous_composition_mode = current_state.composition_mode;
-        current_state.composition_mode = composition_mode;
+        self.current_state()
+            .change_composition_mode(composition_mode);
     }
 
+    /// Registerモードに入る。
+    /// その前のモードはprevious_composition_modeであったとみなす。
     fn enter_register_mode(&mut self, previous_composition_mode: CompositionMode) {
-        self.current_state().previous_composition_mode = previous_composition_mode;
-        self.current_state().composition_mode = CompositionMode::Register;
+        self.current_state().change_composition_mode_from_old_mode(
+            CompositionMode::Register,
+            previous_composition_mode,
+        );
         self.state_stack
             .push(CskkState::new(InputMode::Hiragana, CompositionMode::Direct))
     }
@@ -495,18 +557,13 @@ impl CskkContext {
     /// Register modeの時のみRegister用のスタックをpopして以前の状態に復帰させる。
     /// Register modeでない時には何もしない。
     // TODO: configurable command handlerに以降してdelegateをなくすと、previous_composition_modeまわりはクリーンアップして単にスタック戻すだけで良くなる。
-    fn abort_register_mode(&mut self) {
+    fn abort_register_mode(&mut self) -> bool {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
-            if self.current_state_ref().previous_composition_mode
-                == CompositionMode::PreCompositionOkurigana
-            {
-                self.current_state().consolidate_converted_to_to_composite();
-                self.current_state().composition_mode = CompositionMode::PreComposition;
-            } else {
-                self.current_state().composition_mode =
-                    self.current_state_ref().previous_composition_mode;
-            }
+
+            true
+        } else {
+            false
         }
     }
 
@@ -516,8 +573,7 @@ impl CskkContext {
         if self.state_stack.len() > 1 {
             self.state_stack.pop();
             if confirmed.is_empty() {
-                self.current_state().composition_mode =
-                    self.current_state_ref().previous_composition_mode;
+                self.current_state().abort_to_previous_mode();
             } else {
                 // FIXME: refactoring. Candidate::new here looks too much...?
                 let current_state = self.current_state();
@@ -536,19 +592,17 @@ impl CskkContext {
                 {
                     // 変換する文字列の数字が確定文字列の数字代理と同数含まれる場合(numeric entry)を辞書登録する。
                     // to_composite:"1かい" confirmed:"#3回" 等。
-                    // FIXME: destructuring-bind is unstable yet in current Rust. Fix in future Rust.
-                    let pair = to_composite_to_numeric_dict_key(
+                    let (dict_key, numbers) = to_composite_to_numeric_dict_key(
                         current_state
                             .get_candidate_list()
                             .get_current_to_composite(),
                     );
-                    let dict_key = pair.0;
-                    let numbers = pair.1;
                     let outputs = replace_numeric_string(&confirmed, &numbers, &self.dictionaries);
                     let mut candidates = vec![];
                     for output in outputs {
                         candidates.push(Candidate::new(
                             dict_key.get_to_composite().to_string(),
+                            dict_key.get_okuri().to_owned(),
                             !self.current_state_ref().get_okuri_string().is_empty(),
                             confirmed.to_owned(),
                             None,
@@ -559,12 +613,12 @@ impl CskkContext {
                         .add_new_candidates_for_existing_string_to_composite(candidates);
                 } else {
                     // numeric entryではない普通の変換候補としてconfirmedを追加する。
+                    let registring_compsite_key = current_state
+                        .get_candidate_list()
+                        .get_current_to_composite();
                     let candidates = vec![Candidate::new(
-                        current_state
-                            .get_candidate_list()
-                            .get_current_to_composite()
-                            .get_to_composite()
-                            .to_string(),
+                        registring_compsite_key.get_to_composite().to_string(),
+                        registring_compsite_key.get_okuri().to_owned(),
                         !self.current_state_ref().get_okuri_string().is_empty(),
                         confirmed.to_owned(),
                         None,
@@ -838,7 +892,7 @@ impl CskkContext {
 
         // ここ以降がコマンドではない通常のキー入力扱い
 
-        // CompositionSelectionModeで、入力っぽいと現在の選択肢で確定をしてDirectモードとして処理させる
+        // CompositionSelectionModeやCompletionModeで、入力っぽいと現在の選択肢で確定をしてDirectモードとして処理させる
         let will_be_processed = key_event.is_modifierless_input()
             && (has_rom2kana_conversion(
                 &self.current_state_ref().input_mode,
@@ -851,7 +905,11 @@ impl CskkContext {
                 &self.current_state_ref().input_mode,
                 &self.current_state_ref().composition_mode,
             ) && key_event.is_ascii_inputtable());
-        if initial_composition_mode == CompositionMode::CompositionSelection && will_be_processed {
+        if matches!(
+            initial_composition_mode,
+            CompositionMode::CompositionSelection | CompositionMode::Completion
+        ) && will_be_processed
+        {
             self.confirm_current_composition_candidate();
             self.set_composition_mode(CompositionMode::Direct);
         }
@@ -1137,6 +1195,7 @@ impl CskkContext {
                     self.current_state().consolidate_converted_to_to_composite();
                     self.current_state().clear_candidate_list();
                     self.abort_register_mode();
+                    self.current_state().abort_to_previous_mode();
                 }
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
@@ -1186,6 +1245,18 @@ impl CskkContext {
                         self.current_state().backward_candidate();
                     }
                 }
+                Instruction::TryNextCompletion => {
+                    self.try_next_completion(initial_composition_mode, initial_input_mode);
+                }
+                Instruction::TryPreviousCompletion => {
+                    if self.current_state_ref().composition_mode != CompositionMode::Completion {
+                        log::debug!(
+                            "Trying previous completion on not completion selection mode. Ignore."
+                        )
+                    } else if self.current_state_ref().get_candidate_list().has_previous() {
+                        self.current_state().backward_candidate();
+                    } // Do nothing when no previous
+                }
                 #[allow(unreachable_patterns)]
                 _ => {
                     log::debug!("unimplemented instruction: {:?}", &instruction);
@@ -1220,7 +1291,33 @@ impl CskkContext {
             self.enter_register_mode(initial_composition_mode);
         } else {
             self.current_state().forward_candidate();
-            self.set_composition_mode(CompositionMode::CompositionSelection);
+        }
+    }
+
+    // 次の補完候補があれば指す、そうでなければ何もしない。
+    fn try_next_completion(
+        &mut self,
+        initial_composition_mode: CompositionMode,
+        initial_input_mode: InputMode,
+    ) {
+        if initial_composition_mode != CompositionMode::Completion {
+            self.output_converted_kana_if_any(initial_input_mode, initial_composition_mode);
+            self.update_completion_list();
+            if !self
+                .current_state_ref()
+                .get_to_composite_string()
+                .is_empty()
+                && self.current_state_ref().get_candidate_list().is_empty()
+            {
+                // 何もしない。
+            } else if !self.current_state_ref().get_candidate_list().is_empty() {
+                self.set_composition_mode(CompositionMode::Completion);
+            }
+        } else if !self.current_state_ref().get_candidate_list().has_next() {
+            // 何もしない
+        } else {
+            self.current_state().forward_candidate();
+            self.set_composition_mode(CompositionMode::Completion);
         }
     }
 
@@ -1325,8 +1422,8 @@ impl CskkContext {
         &self.command_handler
     }
 
-    /// Mainly for test purpose, but exposed to test as library.
-    fn process_key_events_string(&mut self, key_event_string: &str) -> bool {
+    /// Exposed for testing purpose. Recommended not to use.
+    pub fn process_key_events_string(&mut self, key_event_string: &str) -> bool {
         self.process_key_events(&CskkKeyEvent::deserialize_seq(key_event_string).unwrap())
     }
 
@@ -1495,7 +1592,7 @@ mod unit_tests {
 
     fn new_test_context(input_mode: InputMode, composition_mode: CompositionMode) -> CskkContext {
         let dict = Arc::new(
-            CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp")
+            CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
                 .unwrap(),
         );
         let dictionaries = vec![dict];

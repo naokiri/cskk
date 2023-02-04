@@ -16,7 +16,7 @@ int main() {
   skk_free_string(version);
 
   CskkDictionaryFfi *dict[1];
-  dict[0] = skk_file_dict_new("./tests/data/SKK-JISYO.S", "euc-jp");
+  dict[0] = skk_file_dict_new("./tests/data/SKK-JISYO.S", "euc-jp", false);
   CskkContext *context;
 
   context = skk_context_new(dict, 1);
