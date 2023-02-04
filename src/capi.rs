@@ -96,6 +96,8 @@ impl Drop for DirectDataFfi {
 
 #[repr(C)]
 pub struct CompositionSelectionDataFfi {
+    /// 通常、pollされた時に返す確定済み文字列。
+    pub confirmed: *mut c_char,
     /// 現在選択されている変換候補
     pub composited: *mut c_char,
     /// 現在の変換候補に付く送り仮名
@@ -107,6 +109,9 @@ pub struct CompositionSelectionDataFfi {
 impl Drop for CompositionSelectionDataFfi {
     fn drop(&mut self) {
         unsafe {
+            if !self.confirmed.is_null() {
+                drop(CString::from_raw(self.composited));
+            }
             if !self.composited.is_null() {
                 drop(CString::from_raw(self.composited));
             }
@@ -194,6 +199,8 @@ impl Drop for RegisterDataFfi {
 
 #[repr(C)]
 pub struct CompleteDataFfi {
+    /// 通常、pollされた時に返す確定済み文字列。
+    pub confirmed: *mut c_char,
     /// 補完に用いようとしている元の部分
     pub complete_origin: *mut c_char,
     /// 補完の送り仮名として用いようとしている部分。v3.0.0では送り仮名付きからの補完は未実装。
@@ -211,6 +218,9 @@ pub struct CompleteDataFfi {
 impl Drop for CompleteDataFfi {
     fn drop(&mut self) {
         unsafe {
+            if !self.confirmed.is_null() {
+                drop(CString::from_raw(self.complete_origin));
+            }
             if !self.complete_origin.is_null() {
                 drop(CString::from_raw(self.complete_origin));
             }
@@ -604,6 +614,9 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
             })
         }
         CskkStateInfo::CompositionSelection(composition_selection_data) => {
+            let confirmed = CString::new(composition_selection_data.confirmed)
+                .unwrap()
+                .into_raw();
             let composited = CString::new(composition_selection_data.composited)
                 .unwrap()
                 .into_raw();
@@ -621,12 +634,14 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
                 ptr::null_mut()
             };
             CskkStateInfoFfi::CompositionSelectionStateInfo(CompositionSelectionDataFfi {
+                confirmed,
                 composited,
                 okuri,
                 annotation,
             })
         }
         CskkStateInfo::Complete(complete_data) => {
+            let confirmed = CString::new(complete_data.confirmed).unwrap().into_raw();
             let complete_origin = CString::new(complete_data.complete_origin)
                 .unwrap()
                 .into_raw();
@@ -640,6 +655,7 @@ fn convert_state_info(state_info: CskkStateInfo) -> CskkStateInfoFfi {
                 ptr::null_mut()
             };
             CskkStateInfoFfi::CompleteStateInfo(CompleteDataFfi {
+                confirmed,
                 complete_origin,
                 origin_okuri: ptr::null_mut(),
                 completed_midashi,

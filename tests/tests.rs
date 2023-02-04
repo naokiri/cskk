@@ -1414,3 +1414,38 @@ fn auto_start_henkan_register_not_includes_period() {
         }
     }
 }
+
+#[test]
+fn confirmed_in_register() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "W a w a w a space A i space U e space",
+        "▼わわわ【愛▼上】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "W a w a w a space A i space U e Tab",
+        "▼わわわ【愛■上】",
+        "",
+        InputMode::Hiragana,
+    );
+    skk_context_reset_rs(&mut context);
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "W a w a w a space A i space U",
+        "▼わわわ【愛▽う】",
+        "",
+        InputMode::Hiragana,
+    );
+}
