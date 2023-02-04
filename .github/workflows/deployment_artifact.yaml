@@ -22,6 +22,9 @@ jobs:
           echo major-version=`bin/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: Check tag matches version
         run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
+      - name: Check changelog includes version
+        run: |
+          grep -F "[${{ steps.versions.outputs.version }}]" CHANGELOG.md
       - name: Install cargo
         uses: actions-rs/toolchain@v1
         with:
