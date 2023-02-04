@@ -27,7 +27,8 @@ fcitx5を例にすると
     # fcitx5 の実行時
     LD_LIBRARY_PATH=/tmp/cskkdir/lib/cskk FCITX_ADDON_DIRS=/home/naoaki/src/fcitx5-cskk/build/src:/usr/lib/x86_64-linux-gnu/fcitx5 fcitx5 --verbose=*=5 
 
-このようにしてローカルビルドのlibcskkとfcitx5-cskkを試用できる。assets
+このようにしてローカルビルドのlibcskkとfcitx5-cskkを試用できる。
+ただし、XDG_BASE_DIR等の環境変数を変えない限りassets以下のrules類は通常のものを読みとる。
 
 #### cskk
 cskk v0.4では徐々に機能追加をしてしまったせいでprocess_key_event_innerのコメントの通り
