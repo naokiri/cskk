@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - 補完機能のためAPIインタフェース変更。
+- 一部モードの状態に確定済み文字列を返すように変更。
 - Abortコマンドの挙動変更、単体で直前のモードに戻すように。
 - rulesファイルのAbortを使っていた部分の修正。
 - rulesファイルに補完モード関連のキーを追加。

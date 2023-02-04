@@ -72,6 +72,10 @@ pub struct DirectData {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompositionSelectionData {
+    /// pollされた時に返す確定済み文字列。
+    ///
+    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    pub confirmed: String,
     /// 現在選択されている変換候補
     pub composited: String,
     /// 現在の変換候補に付く送り仮名
@@ -100,9 +104,7 @@ pub struct PreCompositionData {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RegisterData {
-    /// pollされた時に返す確定済み文字列。
-    ///
-    /// 通常のIMEでは[CskkContext::poll_output]で都度取り出して確定文字列として渡すので空である。
+    /// 通常、pollされた時に返す確定済み文字列。
     pub confirmed: String,
     /// 漢字変換に用いようとしている部分
     pub kana_to_composite: String,
@@ -114,6 +116,8 @@ pub struct RegisterData {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompleteData {
+    /// 通常、pollされた時に返す確定済み文字列。
+    pub confirmed: String,
     /// 現在の入力かな
     pub complete_origin: String,
     /// 現在の変換候補の見出し
@@ -313,24 +317,25 @@ impl CskkState {
         let stateinfo = self.preedit_detail(kana_form_changer, current_input_mode);
         match stateinfo {
             Direct(direct_data) => {
-                direct_data.confirmed + &direct_data.unconverted.unwrap_or_default()
+                direct_data.confirmed.to_owned() + &direct_data.unconverted.unwrap_or_default()
             }
             PreComposition(precomposition_data) => {
-                "▽".to_string()
-                    + &precomposition_data.confirmed
+                precomposition_data.confirmed.to_owned()
+                    + "▽"
                     + &precomposition_data.kana_to_composite
                     + &precomposition_data.unconverted.unwrap_or_default()
             }
             PreCompositionOkurigana(precomposition_data) => {
-                "▽".to_string()
-                    + &precomposition_data.confirmed
+                precomposition_data.confirmed.to_owned()
+                    + "▽"
                     + &precomposition_data.kana_to_composite
                     + "*"
                     + &precomposition_data.okuri.unwrap_or_default()
                     + &precomposition_data.unconverted.unwrap_or_default()
             }
             CompositionSelection(composition_selection_data) => {
-                "▼".to_string()
+                composition_selection_data.confirmed.to_owned()
+                    + "▼"
                     + &composition_selection_data.composited
                     + &composition_selection_data.okuri.unwrap_or_default()
             }
@@ -349,7 +354,8 @@ impl CskkState {
             }
             Complete(complete_data) => {
                 // この関数ではただ補完候補を表示するだけに留める
-                "■".to_string()
+                complete_data.confirmed.to_owned()
+                    + "■"
                     + &complete_data.completed
                     + &complete_data.okuri.unwrap_or_default()
             }
@@ -429,6 +435,7 @@ impl CskkState {
                 let composited = candidate.output;
                 let annotation = candidate.annotation;
                 CompositionSelection(CompositionSelectionData {
+                    confirmed: self.confirmed.to_owned(),
                     composited,
                     okuri,
                     annotation,
@@ -443,6 +450,7 @@ impl CskkState {
                 let completed = candidate.output;
                 let annotation = candidate.annotation;
                 Complete(CompleteData {
+                    confirmed: self.confirmed.to_owned(),
                     complete_origin,
                     completed_midashi,
                     completed,
