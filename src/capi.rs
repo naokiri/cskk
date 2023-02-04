@@ -110,7 +110,7 @@ impl Drop for CompositionSelectionDataFfi {
     fn drop(&mut self) {
         unsafe {
             if !self.confirmed.is_null() {
-                drop(CString::from_raw(self.composited));
+                drop(CString::from_raw(self.confirmed));
             }
             if !self.composited.is_null() {
                 drop(CString::from_raw(self.composited));
@@ -219,7 +219,7 @@ impl Drop for CompleteDataFfi {
     fn drop(&mut self) {
         unsafe {
             if !self.confirmed.is_null() {
-                drop(CString::from_raw(self.complete_origin));
+                drop(CString::from_raw(self.confirmed));
             }
             if !self.complete_origin.is_null() {
                 drop(CString::from_raw(self.complete_origin));

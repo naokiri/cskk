@@ -395,7 +395,7 @@ impl CskkContext {
             .state_stack
             .get_mut(0)
             .expect("State would never be empty");
-        let confirmed = topmost_state.get_confirmed_string().to_string();
+        let confirmed = topmost_state.get_confirmed_string().to_owned();
         if confirmed.is_empty() {
             None
         } else {
