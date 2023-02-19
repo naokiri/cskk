@@ -1,13 +1,11 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::fmt::{Debug, Display};
-
-use serde::de::Error;
-use serde::{Deserialize, Deserializer};
 use xkbcommon::xkb;
 use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms};
 // Hidden by bitflags macro
 use crate::error::CskkError;
+use serde_with::DeserializeFromStr;
 #[allow(unused_imports)]
 use std::ops::BitAndAssign;
 use std::str::FromStr;
@@ -76,7 +74,7 @@ pub type KeyEventSeq = Vec<CskkKeyEvent>;
 /// e.g.
 /// "(control a)" "C-a" "M-Left" "l" "space"
 ///
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, DeserializeFromStr)]
 pub struct CskkKeyEvent {
     symbol: xkb::Keysym,
     modifiers: SkkKeyModifier,
@@ -384,16 +382,6 @@ impl Debug for CskkKeyEvent {
             .field("key_name", &name)
             .field("modifiers", &self.modifiers)
             .finish()
-    }
-}
-
-impl<'de> Deserialize<'de> for CskkKeyEvent {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        CskkKeyEvent::from_str(s).map_err(D::Error::custom)
     }
 }
 

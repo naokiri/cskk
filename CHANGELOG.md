@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- AZIKモードの重複したかな変換ルールを削除
 
 ## [3.0.0] - 2023-02-05
 

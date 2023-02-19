@@ -1,11 +1,11 @@
 use crate::CskkError;
-use serde::Deserialize;
+use serde_with::DeserializeFromStr;
 use std::str::FromStr;
 
 /// Rough design prototype yet
 /// SKKの入力モード
 /// DDSKK 16.2 マニュアル 4.2 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize, DeserializeFromStr)]
 #[repr(C)]
 pub enum InputMode {
     // かなモード
@@ -39,7 +39,7 @@ impl FromStr for InputMode {
 /// Rough design prototype yet
 /// SKKの変換モード
 /// DDSKK 16.2 マニュアル 4.3 に依る
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize, DeserializeFromStr)]
 #[repr(C)]
 pub enum CompositionMode {
     // ■モード 確定入力モード
@@ -113,11 +113,24 @@ pub enum CommaStyle {
 mod test {
     use super::*;
 
+    #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+    struct InputModeStruct {
+        value: InputMode,
+    }
+
     #[test]
     fn serde_check() {
-        let result = toml::to_string::<InputMode>(&InputMode::Hiragana).unwrap();
-        assert_eq!(r#""Hiragana""#, result);
-        let result = toml::from_str::<InputMode>(r#""Katakana""#).unwrap();
-        assert_eq!(InputMode::Katakana, result);
+        let result = toml::to_string::<InputModeStruct>(&InputModeStruct {
+            value: InputMode::Hiragana,
+        })
+        .unwrap();
+        assert_eq!("value = \"Hiragana\"\n", result);
+        let result = toml::from_str::<InputModeStruct>("value = \"Katakana\"").unwrap();
+        assert_eq!(
+            InputModeStruct {
+                value: InputMode::Katakana
+            },
+            result
+        );
     }
 }
