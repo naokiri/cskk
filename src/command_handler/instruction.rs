@@ -1,13 +1,12 @@
 use crate::{CompositionMode, CskkError, InputMode};
 use regex::Regex;
-use serde::de::{Error, Unexpected};
-use serde::{Deserialize, Deserializer};
+use serde_with::DeserializeFromStr;
 use std::str::FromStr;
 
 ///
 ///
 // FIXME: FinishKeyEvent, PassThroughKeyEvent, ConfirmDirect, DeleteDirect の4つのみキー処理を終わる可能性があるのを設定を書く時に間違えないよう明示的にしたい
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, DeserializeFromStr)]
 pub(crate) enum Instruction {
     // Abort current composition selection, registration
     Abort,
@@ -120,17 +119,6 @@ impl FromStr for Instruction {
         }
 
         Err(CskkError::ParseError(s.to_string()))
-    }
-}
-
-impl<'de> Deserialize<'de> for Instruction {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        let result = Instruction::from_str(s);
-        result.map_err(|_| Error::invalid_value(Unexpected::Str(s), &"invalid string"))
     }
 }
 
