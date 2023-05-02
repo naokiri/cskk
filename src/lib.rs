@@ -634,7 +634,7 @@ impl CskkContext {
     }
 
     fn set_input_mode(&mut self, input_mode: InputMode) {
-        let mut current_state = self.current_state();
+        let current_state = self.current_state();
         current_state.input_mode = input_mode
     }
 
