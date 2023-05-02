@@ -239,18 +239,18 @@ where
     K: Eq + Hash + Ord,
 {
     pub fn new() -> Self {
-        let mut initital_map = LruOrderedMap {
+        let initial_map = LruOrderedMap {
             value_map: HashMap::new(),
             keys: Vec::new(),
             lru_head: Box::into_raw(Box::new(LruEntry::new_marker())),
             lru_tail: Box::into_raw(Box::new(LruEntry::new_marker())),
         };
         unsafe {
-            (*initital_map.lru_head).next = initital_map.lru_tail;
-            (*initital_map.lru_tail).prev = initital_map.lru_head;
+            (*initial_map.lru_head).next = initial_map.lru_tail;
+            (*initial_map.lru_tail).prev = initial_map.lru_head;
         }
 
-        initital_map
+        initial_map
     }
 
     ///
