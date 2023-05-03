@@ -1,3 +1,4 @@
+use cskk::cskkstate::CskkStateInfo;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
 use cskk::{
@@ -7,6 +8,8 @@ use cskk::{
 use std::sync::Arc;
 use tempfile::{NamedTempFile, TempPath};
 
+// Test function to directly use the test cases from libskk.
+// TODO: libskk互換のフォーマッタに依存しない[transition_test]に漸次おきかえる
 pub fn transition_check(
     context: &mut CskkContext,
     initial_composition_mode: CompositionMode,
@@ -19,10 +22,9 @@ pub fn transition_check(
     skk_context_set_composition_mode(context, initial_composition_mode);
     skk_context_set_input_mode_rs(context, initial_input_mode);
     context.process_key_events_string(key_inputs);
-    //skk_context_process_key_events_rs(context, key_inputs);
     let output = context.poll_output().unwrap_or_default();
     let preedit = context.get_preedit().unwrap();
-    let input_mode = skk_context_get_input_mode_rs(context);
+    let input_mode = context.get_current_input_mode();
     assert_eq!(
         output, expected_output,
         "(output == expected) failed for '{key_inputs}' starting from '{initial_composition_mode:?},{initial_input_mode:?}'"
@@ -34,6 +36,37 @@ pub fn transition_check(
     assert_eq!(
         input_mode, expected_input_mode,
         "(input_mode == expected) failed for '{key_inputs}' starting from '{initial_composition_mode:?},{initial_input_mode:?}'"
+    );
+}
+
+pub fn transition_test(
+    context: &mut CskkContext,
+    initial_composition_mode: CompositionMode,
+    initial_input_mode: InputMode,
+    key_inputs: &str,
+    expected_composition_mode: CompositionMode,
+    expected_input_mode: InputMode,
+    expected_state: CskkStateInfo,
+) {
+    skk_context_set_composition_mode(context, initial_composition_mode);
+    skk_context_set_input_mode_rs(context, initial_input_mode);
+    context.process_key_events_string(key_inputs);
+    let preedit_detail = context.get_preedit_detail();
+    let actual_state = preedit_detail.first().unwrap();
+    let actual_composition_mode = context.get_current_composition_mode();
+    let actual_input_mode = context.get_current_input_mode();
+
+    assert_eq!(
+        actual_composition_mode, expected_composition_mode,
+        "(composition_mode == expected) failed for '{key_inputs}' starting from '{initial_composition_mode:?},{initial_input_mode:?}'"
+    );
+    assert_eq!(
+        actual_input_mode, expected_input_mode,
+        "(input_mode == expected) failed for '{key_inputs}' starting from '{initial_composition_mode:?},{initial_input_mode:?}'"
+    );
+    assert_eq!(
+        *actual_state, expected_state,
+        "(state == expected) failed for '{key_inputs}' starting from '{initial_composition_mode:?},{initial_input_mode:?}'"
     );
 }
 

@@ -391,7 +391,7 @@ pub extern "C" fn skk_context_set_input_mode(context: &mut CskkContext, input_mo
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> InputMode {
-    skk_context_get_input_mode_rs(context)
+    context.get_current_input_mode()
 }
 
 ///
@@ -399,7 +399,7 @@ pub extern "C" fn skk_context_get_input_mode(context: &mut CskkContext) -> Input
 ///
 #[no_mangle]
 pub extern "C" fn skk_context_get_composition_mode(context: &mut CskkContext) -> CompositionMode {
-    skk_context_get_composition_mode_rs(context)
+    context.get_current_composition_mode()
 }
 
 ///

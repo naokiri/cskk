@@ -7,8 +7,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- モード遷移を修正し、無限に深いモード遷移をできないように修正。Registerの入れ子を10回までに制限する。
+- Abortで変換確定前の状態に戻ってstateがおかしい状態になることを修正するため、変換確定時に自動的にデフォルトのモードに戻るように"Abort"
+  の処理を変更。それに応じてルールファイルを修正。
+
 ### Fixed
-- AZIKモードの重複したかな変換ルールを削除
+
+- AZIKモードの重複したかな変換ルールを削除。
+- default,AZIKモードの送り仮名時のC-gのルールを修正。
 
 ## [3.0.0] - 2023-02-05
 
