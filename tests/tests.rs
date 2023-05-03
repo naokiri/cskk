@@ -4,8 +4,9 @@ mod utils;
 
 use crate::utils::{
     default_test_context, init_test_logger, make_temp_file, test_context_with_dictionaries,
-    transition_check,
+    transition_check, transition_test,
 };
+use cskk::cskkstate::{CskkStateInfo, DirectData};
 use cskk::dictionary::CskkDictionary;
 use cskk::keyevent::CskkKeyEvent;
 use cskk::skk_modes::{CompositionMode, InputMode};
@@ -1447,5 +1448,23 @@ fn confirmed_in_register() {
         "▼わわわ【愛▽う】",
         "",
         InputMode::Hiragana,
+    );
+}
+
+#[test]
+fn abort() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_test(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space Return A C-g C-g",
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        CskkStateInfo::Direct(DirectData {
+            confirmed: "阿".to_string(),
+            unconverted: None,
+        }),
     );
 }

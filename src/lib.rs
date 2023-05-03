@@ -39,7 +39,7 @@ mod candidate_list;
 pub mod capi;
 mod command_handler;
 mod config;
-mod cskkstate;
+pub mod cskkstate;
 pub mod dictionary;
 mod env;
 pub mod error;
@@ -50,6 +50,9 @@ mod rule;
 pub mod skk_modes;
 #[cfg(test)]
 mod testhelper;
+
+// 実用上5でも問題なかった。安全率2で。
+const REGISTER_MODE_STACK_MAX: usize = 10;
 
 ///
 /// CSKK のメインの構造体。このcontextをに対しキー入力を行って変換された状態を得る。
@@ -109,6 +112,7 @@ pub fn skk_context_get_preedit_rs(context: &CskkContext) -> String {
 /// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
 /// 将来的にはcontextのmethodに置き換える。
 ///
+#[deprecated(since = "3.1.0", note = "Use CskkContext.get_current_input_mode()")]
 pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
     context.current_state_ref().input_mode
 }
@@ -117,6 +121,10 @@ pub fn skk_context_get_input_mode_rs(context: &CskkContext) -> InputMode {
 /// 元capiテスト用途だが、libで公開してしまったうえに代理メソッドがないので当面残す。
 /// 将来的にはcontextのmethodに置き換える。
 ///
+#[deprecated(
+    since = "3.0.1",
+    note = "Use CskkContext.get_current_composition_mode()"
+)]
 pub fn skk_context_get_composition_mode_rs(context: &CskkContext) -> CompositionMode {
     context.current_state_ref().composition_mode
 }
@@ -126,9 +134,7 @@ pub fn skk_context_get_composition_mode_rs(context: &CskkContext) -> Composition
 /// 将来的にはcontextのmethodに置き換える。
 ///
 pub fn skk_context_reset_rs(context: &mut CskkContext) {
-    context.poll_output();
     context.reset_state_stack();
-    context.set_composition_mode(CompositionMode::Direct);
 }
 
 /// テスト用途
@@ -298,7 +304,6 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
 pub fn skk_context_confirm_candidate_at_rs(context: &mut CskkContext, i: usize) -> bool {
     if context.current_state().set_candidate_pointer_index(i) {
         context.confirm_current_composition_candidate();
-        context.set_composition_mode(CompositionMode::Direct);
         return true;
     }
     false
@@ -328,6 +333,20 @@ pub fn get_available_rules() -> Result<BTreeMap<String, CskkRuleMetadataEntry>, 
 }
 
 impl CskkContext {
+    ///
+    /// 現在のInputModeを返す
+    ///
+    pub fn get_current_input_mode(&self) -> InputMode {
+        self.current_state_ref().input_mode
+    }
+
+    ///
+    /// 現在のCompositionModeを返す
+    ///
+    pub fn get_current_composition_mode(&self) -> CompositionMode {
+        self.current_state_ref().composition_mode
+    }
+
     ///
     /// Retrieve and remove the current output string
     ///
@@ -507,6 +526,7 @@ impl CskkContext {
             let current_state = self.current_state();
             current_state.push_string(&composited_kanji_and_okuri);
             current_state.clear_unconfirmed();
+            current_state.reset_to_default_composition_mode();
         } else {
             log::warn!(
                 "Tried to confirm candidate when current candidate is not available. Skipping."
@@ -538,13 +558,16 @@ impl CskkContext {
 
     /// Registerモードに入る。
     /// その前のモードはprevious_composition_modeであったとみなす。
+    /// Registerモードに入れなかった場合は何もしない。
     fn enter_register_mode(&mut self, previous_composition_mode: CompositionMode) {
-        self.current_state().change_composition_mode_from_old_mode(
-            CompositionMode::Register,
-            previous_composition_mode,
-        );
-        self.state_stack
-            .push(CskkState::new(InputMode::Hiragana, CompositionMode::Direct))
+        if self.state_stack.len() < REGISTER_MODE_STACK_MAX {
+            self.current_state().change_composition_mode_from_old_mode(
+                CompositionMode::Register,
+                previous_composition_mode,
+            );
+            self.state_stack
+                .push(CskkState::new(InputMode::Hiragana, CompositionMode::Direct))
+        }
     }
 
     fn reset_state_stack(&mut self) {
@@ -642,7 +665,7 @@ impl CskkContext {
     /// 他の変換規則の部分列となっている規則でも変換し、入力する。
     /// return true if output such converted input.
     ///
-    /// ローマ字ベースの入力規則の例ではnが残っている時に別の状態に切り替わる時に以前の状態の'ん'を入力することが多いので、'ん'を入力する際のmodeを引数に取る。
+    /// ローマ字ベースの入力規則の例ではnが残っている時に別の状態に切り替わる時に以前の状態の'ん'を入力することが多い。それを例にすると'ん'を入力する際のmodeを引数に取る。
     /// On Direct, output style is defined by given inputmode。 (ん,ン,...)
     ///
     fn output_converted_kana_if_any(
@@ -911,7 +934,6 @@ impl CskkContext {
         ) && will_be_processed
         {
             self.confirm_current_composition_candidate();
-            self.set_composition_mode(CompositionMode::Direct);
         }
 
         if has_rom2kana_conversion(
@@ -1191,11 +1213,7 @@ impl CskkContext {
                     self.current_state().clear_unconfirmed();
                 }
                 Instruction::Abort => {
-                    self.current_state().clear_preconverted_kanainputs();
-                    self.current_state().consolidate_converted_to_to_composite();
-                    self.current_state().clear_candidate_list();
-                    self.abort_register_mode();
-                    self.current_state().abort_to_previous_mode();
+                    self.abort();
                 }
                 Instruction::ConfirmComposition => {
                     self.confirm_current_composition_candidate();
@@ -1556,6 +1574,26 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::from_file(ascii_from_changer_filepath),
             dictionaries,
             config: CskkConfig::default(),
+        }
+    }
+
+    /// Abort処理をする。
+    /// Direct時はRegisterモードを止め、それ以外は直前のモードに戻す。
+    /// PreCompositionOkuriganaは一気にCompositionモードよりも前に戻す。
+    fn abort(&mut self) {
+        self.current_state().clear_preconverted_kanainputs();
+        self.current_state().consolidate_converted_to_to_composite();
+        self.current_state().clear_candidate_list();
+        let before_composition_mode = self.current_state_ref().composition_mode;
+        if before_composition_mode == CompositionMode::Direct {
+            self.abort_register_mode();
+        } // registerモード時でもcompositionmodeの復帰は必要なので、else不要
+
+        self.current_state().abort_to_previous_mode();
+        if before_composition_mode == CompositionMode::PreCompositionOkurigana
+            && self.current_state_ref().composition_mode == CompositionMode::PreComposition
+        {
+            self.current_state().abort_to_previous_mode();
         }
     }
 }
