@@ -1,14 +1,13 @@
+use crate::error::CskkError;
+use serde_with::DeserializeFromStr;
 use std::fmt;
 use std::fmt::Formatter;
 use std::fmt::{Debug, Display};
-use xkbcommon::xkb;
-use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms};
-// Hidden by bitflags macro
-use crate::error::CskkError;
-use serde_with::DeserializeFromStr;
 #[allow(unused_imports)]
 use std::ops::BitAndAssign;
 use std::str::FromStr;
+use xkbcommon::xkb;
+use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms};
 
 bitflags! {
     ///
@@ -18,6 +17,7 @@ bitflags! {
     ///
     /// Have to keep LShift and RShift distinguishable, and represent no key typing for a while as one of key event for NICOLA (yet unimplemented in cskk)
     ///
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
     pub(crate) struct SkkKeyModifier: u32 {
         const NONE = 0;
         const SHIFT = 1;
@@ -50,10 +50,10 @@ bitflags! {
 
         const REPEAT = 1 << 31;
 
-        /// Mask for bits that can be actually given from the fcitx ime
-        const NON_DUMMY_MASK = Self::SHIFT.bits | Self::CAPS_LOCK.bits | Self::CONTROL.bits | Self::ALT.bits
-        | Self::NUM_LOCK.bits | Self::HYPER.bits | Self::SUPER.bits | Self::MOUSE_PRESSED.bits | Self::SUPER2.bits | Self::HYPER2.bits
-        | Self::META.bits | Self::REPEAT.bits;
+        /// Mask for bits that can be actually given from ime
+        const NON_DUMMY_MASK = Self::SHIFT.bits() | Self::CAPS_LOCK.bits() | Self::CONTROL.bits() | Self::ALT.bits()
+        | Self::NUM_LOCK.bits() | Self::HYPER.bits() | Self::SUPER.bits() | Self::MOUSE_PRESSED.bits() | Self::SUPER2.bits() | Self::HYPER2.bits()
+        | Self::META.bits() | Self::REPEAT.bits();
     }
 }
 
