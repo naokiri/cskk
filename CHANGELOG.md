@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - モード遷移を修正し、無限に深いモード遷移をできないように修正。Registerの入れ子を10回までに制限する。
 - Abortで変換確定前の状態に戻ってstateがおかしい状態になることを修正するため、変換確定時に自動的にデフォルトのモードに戻るように"Abort"
   の処理を変更。それに応じてルールファイルを修正。
+- MSRVを1.60(2022-04)から1.64 (2022-09)に変更。
 
 ### Fixed
 
