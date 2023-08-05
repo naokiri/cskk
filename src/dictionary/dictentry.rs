@@ -193,11 +193,11 @@ impl DictEntry {
 
     fn process_lisp_fun_inner(entry: &str) -> anyhow::Result<String> {
         lazy_static! {
-            static ref CONCAT_REGEX: Regex = Regex::new(r#"\(concat .*\)"#).unwrap();
+            static ref CONCAT_REGEX: Regex = Regex::new(r"\(concat .*\)").unwrap();
             // If subsequent string is [0-7], octal code will end with slash.
             // See https://www.gnu.org/software/emacs/manual/html_node/elisp/Non_002dASCII-in-Strings.html
-            static ref OCTAL_REGEX: Regex = Regex::new(r#"\\[01234567]{1,3}\\?"#).unwrap();
-            static ref ESCAPE_REGEX: Regex = Regex::new(r#"\\([^0-7])"#).unwrap();
+            static ref OCTAL_REGEX: Regex = Regex::new(r"\\[01234567]{1,3}\\?").unwrap();
+            static ref ESCAPE_REGEX: Regex = Regex::new(r"\\([^0-7])").unwrap();
         }
         //let CONCAT_REGEX: Regex = Regex::new(r#"\(concat .*\)"#).unwrap();
         //let OCTAL_REGEX: Regex = Regex::new(r#"\\[01234567]{1,3}\\?"#).unwrap();

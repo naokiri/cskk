@@ -93,7 +93,7 @@ impl CskkDictionary {
 /// This updates writable dictionaries candidate order or add new entry which confirmed.
 /// Returns true if updated the dictionary.
 pub(crate) fn confirm_candidate(
-    dictionary: &mut Arc<CskkDictionary>,
+    dictionary: &Arc<CskkDictionary>,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {
     debug!("confirm: {:?}", candidate);
@@ -110,7 +110,7 @@ pub(crate) fn confirm_candidate(
 /// This updates writable dictionaries candidate order or add new entry which confirmed.
 /// Returns true if updated the dictionary.
 pub(crate) fn purge_candidate(
-    dictionary: &mut Arc<CskkDictionary>,
+    dictionary: &Arc<CskkDictionary>,
     composite_key: &CompositeKey,
     candidate: &Candidate,
 ) -> Result<bool, CskkError> {

@@ -244,7 +244,7 @@ pub fn skk_context_get_current_candidates_rs(context: &CskkContext) -> &Vec<Cand
 //     note = "Not proper for Rust interface. See rustdoc for details."
 // )]
 pub fn skk_context_get_current_candidate_cursor_position_rs(
-    context: &mut CskkContext,
+    context: &CskkContext,
 ) -> Result<usize, CskkError> {
     if context.current_state_ref().get_candidate_list().is_empty() {
         Err(CskkError::Error(
