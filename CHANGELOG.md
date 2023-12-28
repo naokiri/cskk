@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.0] - 2023-12-28
+
 ### Changed
 
 - モード遷移を修正し、無限に深いモード遷移をできないように修正。Registerの入れ子を10回までに制限する。
