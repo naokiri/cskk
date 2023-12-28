@@ -69,6 +69,7 @@ name = "libcskk"
 features = ["capi"]
 section = "libdevel"
 triggers-file = "deb_assets/triggers"
+revision= ""
 extended-description = """\
 Library to deal with Japanese input method.
 SKK stands for 'Simple Kana to Kanji conversion'.

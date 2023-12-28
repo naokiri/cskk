@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 - AZIKモードの重複したかな変換ルールを削除。
 - default,AZIKモードの送り仮名時のC-gのルールを修正。
+- cargo-deb のアップデートにともなって出力debファイル名が変わっていたものを修正
 
 ## [3.0.0] - 2023-02-05
 
