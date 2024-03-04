@@ -6,20 +6,20 @@ use nom::multi::many1;
 use nom::IResult;
 use std::collections::BTreeMap;
 
-///
-/// BNF風に表現
-///
-/// <entry> ::= <midashi> " "+ <candidates>
-/// <midashi> ::= (<char> except ' ')+
-/// <candidates> ::= "/" (<candidate>"/")+
-/// <candidate> ::= <no-strict-okuri-candidate> | <strict-okuri-candidates>
-/// <no-strict-okuri-candidate> ::= <kouho> (";"<annotation>)?
-/// <strict-okuri-candidates> ::= "[" <okuri> "/" (<no-strict-okuri-candidate> "/")+ "]"
-/// <kouho> ::= (<char> except '/',';','[',']' )+
-/// <annotation> ::= (<char> except '/',';')+
-/// <okuri> ::= <hiragana>+
-/// <hiragana> ::= U+3041..U+3096
-///
+//!
+//! BNF風に表現
+//!
+//! <entry> ::= <midashi> " "+ <candidates>
+//! <midashi> ::= (<char> except ' ')+
+//! <candidates> ::= "/" (<candidate>"/")+
+//! <candidate> ::= <no-strict-okuri-candidate> | <strict-okuri-candidates>
+//! <no-strict-okuri-candidate> ::= <kouho> (";"<annotation>)?
+//! <strict-okuri-candidates> ::= "[" <okuri> "/" (<no-strict-okuri-candidate> "/")+ "]"
+//! <kouho> ::= (<char> except '/',';','[',']' )+
+//! <annotation> ::= (<char> except '/',';')+
+//! <okuri> ::= <hiragana>+
+//! <hiragana> ::= U+3041..U+3096
+//!
 
 #[derive(PartialEq, Debug, Clone)]
 pub(in crate::dictionary) struct CandidatePrototype<'a> {
@@ -85,7 +85,7 @@ fn candidate(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype
             map(no_strict_okuri_candidate, |cand: CandidatePrototype| {
                 let mut map = BTreeMap::new();
                 map.insert("", vec![cand]);
-                return map;
+                map
             }),
         )),
         char('/'),
