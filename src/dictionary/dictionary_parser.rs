@@ -322,4 +322,130 @@ mod test {
         assert_eq!(rest, "");
         assert_eq!(result, expected)
     }
+
+    #[test]
+    fn github_issue244() {
+        let (rest, result) = entry("よし /由/葦/葭/葭/余資/余矢;[数学]versed cosine/好/良/美/吉/純/義/喜/善/佳/圭/慶/祥/芳/嘉/克/宜/淑/禎/禧/譱/縦/").unwrap();
+        let mut candidates = BTreeMap::new();
+        candidates.insert(
+            "",
+            vec![
+                CandidatePrototype {
+                    kouho: "由",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "葦",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "葭",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "葭",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "余資",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "余矢",
+                    annotation: Some("[数学]versed cosine"),
+                },
+                CandidatePrototype {
+                    kouho: "好",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "良",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "美",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "吉",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "純",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "義",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "喜",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "善",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "佳",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "圭",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "慶",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "祥",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "芳",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "嘉",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "克",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "宜",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "淑",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "禎",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "禧",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "譱",
+                    annotation: None,
+                },
+                CandidatePrototype {
+                    kouho: "縦",
+                    annotation: None,
+                },
+            ],
+        );
+        let expected = DictEntryPrototype {
+            midashi: "よし",
+            candidates,
+        };
+
+        assert_eq!(rest, "");
+        assert_eq!(result, expected)
+    }
 }
