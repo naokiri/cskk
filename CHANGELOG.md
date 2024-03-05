@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.1] - 2024-03-05
+
+### Fixed
+
+- 辞書内のアノテーションに角括弧 ('[',']')が含まれている時に正しく読み込まれない問題を修正
+
 ## [3.1.0] - 2023-12-28
 
 ### Changed
