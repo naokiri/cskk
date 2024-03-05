@@ -1,11 +1,3 @@
-use nom::branch::{alt, permutation};
-use nom::bytes::complete::{take_till1, take_while1};
-use nom::character::complete::char;
-use nom::combinator::{all_consuming, map, opt};
-use nom::multi::many1;
-use nom::IResult;
-use std::collections::BTreeMap;
-
 //!
 //! BNF風に表現
 //!
@@ -20,6 +12,18 @@ use std::collections::BTreeMap;
 //! <okuri> ::= <hiragana>+
 //! <hiragana> ::= U+3041..U+3096
 //!
+
+// 現在は見出しを空白文字以外としているが、ひらがなと末尾アルファベット以外は利用できないため制限するべきか？
+
+use nom::branch::{alt, permutation};
+use nom::bytes::complete::{take_till1, take_while1};
+use nom::character::complete::char;
+use nom::combinator::{all_consuming, map, opt};
+use nom::multi::many1;
+use nom::IResult;
+use std::collections::BTreeMap;
+
+
 
 #[derive(PartialEq, Debug, Clone)]
 pub(in crate::dictionary) struct CandidatePrototype<'a> {
@@ -58,8 +62,7 @@ fn midashi(input: &str) -> IResult<&str, &str> {
 /// 先頭の'/'を含む'/'で囲われた候補リスト全体からcandidate全部
 fn candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype>>> {
     // Make sure starts with '/'
-    //let (_, (_, parsed_cands)) = all_consuming(permutation((char('/'), many1(candidate))))(input)?;
-    let (_, (_, parsed_cands)) = permutation((char('/'), many1(candidate)))(input)?;
+    let (_, (_, parsed_cands)) = all_consuming(permutation((char('/'), many1(candidate))))(input)?;
 
     let mut result = BTreeMap::<&str, Vec<CandidatePrototype>>::new();
     for mut cand_map in parsed_cands {
@@ -114,8 +117,6 @@ fn strict_okuri_candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<Cand
 /// 先頭の'/'を含まない候補部分から候補と存在するならばアノテーションを解釈する。厳密な送り仮名の候補は解釈できない。
 /// 候補と次の'/'から始まる残りの部分を返す。
 fn no_strict_okuri_candidate(input: &str) -> IResult<&str, CandidatePrototype> {
-    //let (i, _) = verify(take(1usize), |c: &str| c == "/")(input)?;
-    // let (i, _) = char('/')(input)?;
     let (i, cand) = take_till1(|c: char| is_no_strict_okuri_candidate_illegal_char(&c))(input)?;
 
     let (i, annotation_opt) = opt(permutation((
