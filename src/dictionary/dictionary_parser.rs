@@ -23,8 +23,6 @@ use nom::multi::many1;
 use nom::IResult;
 use std::collections::BTreeMap;
 
-
-
 #[derive(PartialEq, Debug, Clone)]
 pub(in crate::dictionary) struct CandidatePrototype<'a> {
     pub(in crate::dictionary) kouho: &'a str,
