@@ -3,8 +3,6 @@ use regex::Regex;
 use serde_with::DeserializeFromStr;
 use std::str::FromStr;
 
-///
-///
 // FIXME: FinishKeyEvent, PassThroughKeyEvent, ConfirmDirect, DeleteDirect の4つのみキー処理を終わる可能性があるのを設定を書く時に間違えないよう明示的にしたい
 #[derive(Debug, PartialEq, Eq, Clone, DeserializeFromStr)]
 pub(crate) enum Instruction {

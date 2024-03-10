@@ -454,7 +454,7 @@ impl CskkContext {
 
     fn set_carry_over(&mut self, unconv: &[Keysym]) {
         let current_state = self.current_state();
-        current_state.pre_conversion = unconv.to_owned();
+        unconv.clone_into(&mut current_state.pre_conversion);
         if current_state.pre_conversion.is_empty() {
             self.current_state().set_capital_transition(false);
         }
