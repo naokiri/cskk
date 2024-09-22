@@ -57,7 +57,7 @@ impl Dictionary for UserDictionary {
     fn complete<'a>(
         &'a self,
         midashi_head: &'a CompositeKey,
-    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+    ) -> Box<dyn Iterator<Item = &'a DictEntry> + 'a> {
         FileDictionary::complete(self, midashi_head)
     }
 

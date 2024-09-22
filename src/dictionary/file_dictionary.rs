@@ -34,7 +34,7 @@ pub(in crate::dictionary) trait FileDictionary: Dictionary {
     fn complete<'a>(
         &'a self,
         midashi_head: &'a CompositeKey,
-    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+    ) -> Box<dyn Iterator<Item = &'a DictEntry> + 'a> {
         // iter_sortedから先頭一致する部分を返す。
         // starts_withが真となる要素はsortされていれば並んでいる。
         //let dict_key_head = midashi_head.get_dict_key();

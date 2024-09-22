@@ -15,7 +15,7 @@ impl Dictionary for EmptyDictionary {
     fn complete<'a>(
         &'a self,
         _midashi_head: &CompositeKey,
-    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a> {
+    ) -> Box<dyn Iterator<Item = &'a DictEntry> + 'a> {
         let a = std::iter::empty();
         Box::new(a)
     }
