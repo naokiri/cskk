@@ -71,7 +71,7 @@ jobs:
     name: library test
     strategy:
       matrix:
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
@@ -125,6 +125,11 @@ jobs:
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
+          echo brew path: `brew --prefix`
+          ls -l `brew --prefix`/lib
+          export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+          export LIBRARY_PATH="$(brew --prefix)/lib:$LIBRARY_PATH"
+          echo dyld_lib: $DYLD_FALLBACK_LIBRARY_PATH
       - name: Build library
         uses: actions-rs/cargo@v1
         with:
