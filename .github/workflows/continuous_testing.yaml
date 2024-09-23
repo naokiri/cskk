@@ -1,4 +1,4 @@
-name: Test
+name: Continuous branch tests before merge
 on: [push, workflow_dispatch]
 
 concurrency:
@@ -27,13 +27,10 @@ jobs:
           components: rustfmt, clippy
           rustflags: ""
           override: true
-      - name: Format check
-        run: cargo fmt -- --check
-      - name: Lint check
-        uses: giraffate/clippy-action@v1
+      - name: Lint and format
+        uses: ./.github/actions/lint_format
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          clippy_flags: -- -D warnings -A dead_code -A improper_ctypes_definitions
   rust_test:
     name: cargo test
     strategy:
@@ -93,22 +90,8 @@ jobs:
             ~/.cargo/git/db/
             target
           key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
-      - name: Check rustup toolchain
-        run: rustup default
-      - name: cbindgen-exists
-        id: cbindgenCheck
-        run: test -e ~/.cargo/bin/cbindgen
-        continue-on-error: true
-      - name: Install cbindgen
-        if: ${{ always() && steps.cbindgenCheck.outcome == 'failure' }}
-        run: cargo +stable install cbindgen
-      - name: cargo-c-exists
-        id: cargoCCheck
-        run: test -e ~/.cargo/bin/cargo-cbuild
-        continue-on-error: true
-      - name: Install cargo-c
-        if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
-        run: cargo +stable install cargo-c --version 0.9.12
+      - name: Install required rust tools
+        uses: ./.github/actions/install_required_cargo_bins
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev

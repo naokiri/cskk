@@ -1,0 +1,26 @@
+name: 'Install required cargo binaries'
+description: "install cargo binaries to build C ABI library. Requires cargo installed before use."
+runs:
+  using: "composite"
+  steps:
+    - name: Check rustup toolchain
+      run: rustup default
+      shell: bash
+    - name: cbindgen-exists
+      id: cbindgenCheck
+      run: test -e ~/.cargo/bin/cbindgen
+      continue-on-error: true
+      shell: bash
+    - name: Install cbindgen
+      if: ${{ always() && steps.cbindgenCheck.outcome == 'failure' }}
+      run: cargo +stable install cbindgen
+      shell: bash
+    - name: cargo-c-exists
+      id: cargoCCheck
+      run: test -e ~/.cargo/bin/cargo-cbuild
+      continue-on-error: true
+      shell: bash
+    - name: Install cargo-c
+      if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
+      run: cargo +stable install cargo-c --version 0.9.12
+      shell: bash

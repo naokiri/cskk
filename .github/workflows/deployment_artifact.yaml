@@ -26,44 +26,23 @@ jobs:
         run: |
           grep -F "[${{ steps.versions.outputs.version }}]" CHANGELOG.md
       - name: Install cargo
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          profile: minimal
+          toolchain: ${{ inputs.toolchain }}
+          rustflags: ""
           override: true
-      - name: Install cbindgen
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cbindgen
-      - name: cargo-c-exists
-        id: cargoCCheck
-        run: test -e ~/.cargo/bin/cargo-cbuild
-        continue-on-error: true
-      - name: Install cargo-c
-        if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-c
+      - name: Install required rust tools
+        uses: .github/actions/install_required_cargo_bins
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Build library
-        uses: actions-rs/cargo@v1
-        with:
-          command: cbuild
-          args: --release
+        run: cargo cbuild --release
       - name: Build symbolic links
         run: bin/generate_deb_symlinks.sh
       - name: Install cargo-deb
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-deb
+        run: cargo install cargo-deb --force
       - name: Prepare deb file
-        uses: actions-rs/cargo@v1
-        with:
-          command: deb
+        run: cargo deb
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
         with:
