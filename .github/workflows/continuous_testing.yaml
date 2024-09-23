@@ -100,7 +100,12 @@ jobs:
           key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
       - name: Check rustup toolchain
         run: rustup default
+      - name: cbindgen-exists
+        id: cbindgenCheck
+        run: test -e ~/.cargo/bin/cbindgen
+        continue-on-error: true
       - name: Install cbindgen
+        if: ${{ always() && steps.cbindgenCheck.outcome == 'failure' }}
         uses: actions-rs/cargo@v1
         with:
           toolchain: stable
