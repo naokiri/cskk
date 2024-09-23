@@ -71,7 +71,7 @@ jobs:
     name: library test
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest, macos-13 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
@@ -121,12 +121,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
       - name: Install required libs (MacOS)
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macos-latest'
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
-          echo brew path: `brew --prefix`
-          export LIBRARY_PATH="$(brew --prefix)/lib:$LIBRARY_PATH"
       - name: Build library
         uses: actions-rs/cargo@v1
         with:
@@ -157,22 +155,40 @@ jobs:
       - name: Run lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
-      - name: copy header file (MacOS)
-        if: matrix.os == 'macOS-latest'
+      - name: copy header file (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
-      - name: link lib versioning (MacOS)
-        if: matrix.os == 'macOS-latest'
+      - name: link lib versioning (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
-      - name: Show built file
-        if: matrix.os == 'macOS-latest'
+      - name: Show built file (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: ls -l ./target/*
-      - name: Show built file under debug
-        if: matrix.os == 'macOS-latest'
+      - name: Show built file under debug (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: ls -l ./target/x86_64-apple-darwin/debug/
-      - name: Build lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
+      - name: Build lib test (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
-      - name: Run lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
+      - name: Run lib test (MacOS intel)
+        if: matrix.os == 'macos-13'
         run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
+      - name: copy header file (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: cp ./target/aarch64-apple-darwin/debug/libcskk.h ./tests/
+      - name: link lib versioning (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/aarch64-apple-darwin/debug/libcskk.dylib
+      - name: Show built file (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: ls -l ./target/*
+      - name: Show built file under debug (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: ls -l ./target/aarch64-apple-darwin/debug/
+      - name: Build lib test (MacOS M1)
+        if: matrix.os == 'macOS-latest'
+        run: gcc ./tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
+      - name: Run lib test (MacOS M1)
+        if: matrix.os == 'macOS-latest'
+        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/ ./tests/lib_test
         
