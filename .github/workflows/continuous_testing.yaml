@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -21,22 +21,19 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cargo
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
           components: rustfmt, clippy
+          rustflags: ""
           override: true
       - name: Format check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        run: cargo fmt -- --check
       - name: Lint check
-        uses: actions-rs/clippy-check@v1
+        uses: giraffate/clippy-action@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings -A dead_code -A improper_ctypes_definitions
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          clippy_flags: -- -D warnings -A dead_code -A improper_ctypes_definitions
   rust_test:
     name: cargo test
     strategy:
@@ -45,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -57,21 +54,18 @@ jobs:
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Install cargo
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.channel }}
-          profile: minimal
+          rustflags: ""
           override: true
       - name: Run rust test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features capi
+        run: cargo test --features capi
   library_test:
     name: library test
     strategy:
       matrix:
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
@@ -85,11 +79,12 @@ jobs:
           echo Version: ${{ steps.versions.outputs.version }} 
           echo MajorVersion: ${{ steps.versions.outputs.major-version }}
       - name: Install cargo
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
+          rustflags: ""
           override: true
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -100,40 +95,31 @@ jobs:
           key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
       - name: Check rustup toolchain
         run: rustup default
+      - name: cbindgen-exists
+        id: cbindgenCheck
+        run: test -e ~/.cargo/bin/cbindgen
+        continue-on-error: true
       - name: Install cbindgen
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: stable
-          command: install
-          args: cbindgen
+        if: ${{ always() && steps.cbindgenCheck.outcome == 'failure' }}
+        run: cargo +stable install cbindgen
       - name: cargo-c-exists
         id: cargoCCheck
         run: test -e ~/.cargo/bin/cargo-cbuild
         continue-on-error: true
       - name: Install cargo-c
         if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: stable
-          command: install
-          args: cargo-c --version 0.9.12
+        run: cargo +stable install cargo-c --version 0.9.12
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
-      - name: Install required libs (MacOS)
-        if: matrix.os == 'macOS-latest'
+      - name: Install required libs (MacOS M1 and intel)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-12'
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
+          echo `brew --prefix`
       - name: Build library
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: stable
-          command: cbuild
-#      - name: Install library
-#        uses: actions-rs/cargo@v1
-#        with:
-#          command: cargo cinstall --prefix=/tmp --datadir=~/.local/share
+        run: cargo +stable cbuild
       - name: copy shared data
         run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.
@@ -155,22 +141,40 @@ jobs:
       - name: Run lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
-      - name: copy header file (MacOS)
-        if: matrix.os == 'macOS-latest'
-        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
-      - name: link lib versioning (MacOS)
-        if: matrix.os == 'macOS-latest'
-        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
-      - name: Show built file
-        if: matrix.os == 'macOS-latest'
+#      - name: copy header file (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+#      - name: link lib versioning (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+#      - name: Show built file (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ls -l ./target/*
+#      - name: Show built file under debug (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ls -l ./target/x86_64-apple-darwin/debug/
+#      - name: Build lib test (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
+#      - name: Run lib test (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
+      - name: copy header file (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: cp ./target/aarch64-apple-darwin/debug/libcskk.h ./tests/
+      - name: link lib versioning (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/aarch64-apple-darwin/debug/libcskk.dylib
+      - name: Show built file (MacOS M1)
+        if: matrix.os == 'macos-latest'
         run: ls -l ./target/*
-      - name: Show built file under debug
-        if: matrix.os == 'macOS-latest'
-        run: ls -l ./target/x86_64-apple-darwin/debug/
-      - name: Build lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
-      - name: Run lib test (MacOS)
-        if: matrix.os == 'macOS-latest'
-        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
+      - name: Show built file under debug (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: ls -l ./target/aarch64-apple-darwin/debug/
+      - name: Build lib test (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: gcc ./tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ "-L$(brew --prefix)/lib/" -lcskk -lxkbcommon -o ./tests/lib_test
+      - name: Run lib test (MacOS M1)
+        if: matrix.os == 'macos-latest'
+        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/:$(brew --prefix)/lib/ ./tests/lib_test
         

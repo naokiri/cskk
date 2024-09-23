@@ -516,7 +516,7 @@ pub(crate) trait Dictionary {
     fn complete<'a>(
         &'a self,
         midashi_head: &'a CompositeKey,
-    ) -> Box<dyn Iterator<Item = &DictEntry> + 'a>;
+    ) -> Box<dyn Iterator<Item = &'a DictEntry> + 'a>;
     /// Returns true if saved, false if kindly ignored.
     /// Safe to call to read_only dictionary.
     fn save_dictionary(&mut self) -> Result<bool, CskkError> {
