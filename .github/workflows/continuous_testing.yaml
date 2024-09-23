@@ -120,11 +120,12 @@ jobs:
       - name: Install required libs (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install libxkbcommon-dev
-      - name: Install required libs (MacOS)
-        if: matrix.os == 'macos-latest'
+      - name: Install required libs (MacOS M1 and intel)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
         run: |
           brew install --cask xquartz
           brew install libxkbcommon
+          echo `brew --prefix`
       - name: Build library
         uses: actions-rs/cargo@v1
         with:
@@ -186,9 +187,9 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: ls -l ./target/aarch64-apple-darwin/debug/
       - name: Build lib test (MacOS M1)
-        if: matrix.os == 'macOS-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
+        if: matrix.os == 'macos-latest'
+        run: gcc ./tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ "-L$(brew --prefix)/lib/" -lcskk -lxkbcommon -o ./tests/lib_test
       - name: Run lib test (MacOS M1)
-        if: matrix.os == 'macOS-latest'
-        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/ ./tests/lib_test
+        if: matrix.os == 'macos-latest'
+        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/:$(brew --prefix)/lib/ ./tests/lib_test
         
