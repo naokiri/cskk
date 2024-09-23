@@ -65,7 +65,7 @@ jobs:
     name: library test
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest, macos-12 ]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
@@ -119,11 +119,7 @@ jobs:
           brew install libxkbcommon
           echo `brew --prefix`
       - name: Build library
-        if: matrix.os != 'macos-12'
         run: cargo +stable cbuild
-      - name: Build library (macos intel)
-        if: matrix.os == 'macos-12'
-        run: $HOME/.cargo/bin/cargo +stable cbuild
       - name: copy shared data
         run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.
@@ -145,24 +141,24 @@ jobs:
       - name: Run lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
-      - name: copy header file (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
-      - name: link lib versioning (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
-      - name: Show built file (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: ls -l ./target/*
-      - name: Show built file under debug (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: ls -l ./target/x86_64-apple-darwin/debug/
-      - name: Build lib test (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
-      - name: Run lib test (MacOS intel)
-        if: matrix.os == 'macos-12'
-        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
+#      - name: copy header file (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+#      - name: link lib versioning (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
+#      - name: Show built file (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ls -l ./target/*
+#      - name: Show built file under debug (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: ls -l ./target/x86_64-apple-darwin/debug/
+#      - name: Build lib test (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
+#      - name: Run lib test (MacOS intel)
+#        if: matrix.os == 'macos-12'
+#        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
       - name: copy header file (MacOS M1)
         if: matrix.os == 'macos-latest'
         run: cp ./target/aarch64-apple-darwin/debug/libcskk.h ./tests/
