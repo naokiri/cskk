@@ -6,61 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    name: lint and format check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-nightly
-      - name: Install cargo
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
-      - name: Format check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
-      - name: Lint check
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings -A dead_code -A improper_ctypes_definitions
-  rust_test:
-    name: cargo test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-nightly
-      - name: Install required libs (Ubuntu)
-        run: sudo apt-get install libxkbcommon-dev
-      - name: Install cargo
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-      - name: Run rust test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features capi
+  basic_check:
+    uses: ./.github/workflows/basic_checks.yaml
+    with:
+      toolchain: "nightly"
+    secrets:
+      gh_token: "${{ secrets.GITHUB_TOKEN }}"

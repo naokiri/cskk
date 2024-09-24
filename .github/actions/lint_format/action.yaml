@@ -1,0 +1,17 @@
+name: 'Lint and Format'
+description: "Lint and format check. Requires cargo, rustfmt and clippy installed before use."
+inputs:
+  github_token:
+    description: 'github token'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Format check
+      run: cargo fmt -- --check
+      shell: bash
+    - name: Lint check
+      uses: giraffate/clippy-action@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+        clippy_flags: -- -D warnings -A dead_code -A improper_ctypes_definitions
