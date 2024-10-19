@@ -32,7 +32,7 @@ jobs:
           rustflags: ""
           override: true
       - name: Install required rust tools
-        uses: .github/actions/install_required_cargo_bins
+        uses: ./.github/actions/install_required_cargo_bins
       - name: Install required libs (Ubuntu)
         run: sudo apt-get install libxkbcommon-dev
       - name: Build library
