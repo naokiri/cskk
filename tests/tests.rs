@@ -1475,8 +1475,7 @@ fn maruichi() {
     let static_dict =
         CskkDictionary::new_static_dict("tests/data/dictionaries/maruichi.dat", "utf-8", false)
             .unwrap();
-    let mut context =
-        test_context_with_dictionaries(vec![Arc::new(static_dict)]);
+    let mut context = test_context_with_dictionaries(vec![Arc::new(static_dict)]);
     transition_test(
         &mut context,
         CompositionMode::Direct,

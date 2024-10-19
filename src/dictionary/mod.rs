@@ -207,27 +207,32 @@ fn get_all_candidates_inner(
     let mut matched_numbers = vec![];
 
     let exact_match_candidates = get_candidates_in_order(dictionaries, &composite_key);
-    let exact_match_candidates= dedup_candidates(exact_match_candidates);
-    let mut all_candidates: Vec<Candidate> = exact_match_candidates.into_iter()
+    let exact_match_candidates = dedup_candidates(exact_match_candidates);
+    let mut all_candidates: Vec<Candidate> = exact_match_candidates
+        .into_iter()
         .map(|dictionary_candidate| {
             Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
         })
         .collect();
 
-
     if !is_numeric_re_lookup {
         let replaced_key;
         (replaced_key, matched_numbers) = to_composite_to_numeric_dict_key(&composite_key);
         if replaced_key != *composite_key {
-            let numeric_replace_match_candidates= get_candidates_in_order(dictionaries, &replaced_key);
-            let numeric_replace_match_candidates = dedup_candidates(numeric_replace_match_candidates);
-            let mut numeric_replace_match_candidates: Vec<Candidate> = numeric_replace_match_candidates
-                .into_iter()
-                .map(|dictionary_candidate| {
-                    Candidate::from_dictionary_candidate(&replaced_key, &dictionary_candidate)
-                })
-                .flat_map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
-                .collect();
+            let numeric_replace_match_candidates =
+                get_candidates_in_order(dictionaries, &replaced_key);
+            let numeric_replace_match_candidates =
+                dedup_candidates(numeric_replace_match_candidates);
+            let mut numeric_replace_match_candidates: Vec<Candidate> =
+                numeric_replace_match_candidates
+                    .into_iter()
+                    .map(|dictionary_candidate| {
+                        Candidate::from_dictionary_candidate(&replaced_key, &dictionary_candidate)
+                    })
+                    .flat_map(|candidate| {
+                        replace_numeric_match(&candidate, &matched_numbers, dictionaries)
+                    })
+                    .collect();
             all_candidates.append(&mut numeric_replace_match_candidates);
         }
     }
@@ -563,22 +568,27 @@ mod test {
 
     #[test]
     fn get_all_candidates_basic() {
-        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
-            .unwrap();
+        let test_dictionary =
+            CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+                .unwrap();
         let dictionaries = vec![Arc::new(test_dictionary)];
         let key = CompositeKey::new("あい", None);
-        let result = get_all_candidates(&dictionaries,&key);
+        let result = get_all_candidates(&dictionaries, &key);
 
         assert_eq!(result[0].kouho_text, "愛");
     }
 
     #[test]
     fn get_all_candidates_numeric_match() {
-        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "utf-8", false)
-            .unwrap();
+        let test_dictionary = CskkDictionary::new_static_dict(
+            "tests/data/dictionaries/number_jisyo.dat",
+            "utf-8",
+            false,
+        )
+        .unwrap();
         let dictionaries = vec![Arc::new(test_dictionary)];
         let key = CompositeKey::new("5/1", None);
-        let result = get_all_candidates(&dictionaries,&key);
+        let result = get_all_candidates(&dictionaries, &key);
 
         assert_eq!(result[0].kouho_text, "#0月#0日");
         assert_eq!(result[0].midashi, "#/#");
@@ -587,11 +597,12 @@ mod test {
 
     #[test]
     fn get_all_candidates_numeric_exact_match() {
-        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/maruichi.dat", "utf-8", false)
-            .unwrap();
+        let test_dictionary =
+            CskkDictionary::new_static_dict("tests/data/dictionaries/maruichi.dat", "utf-8", false)
+                .unwrap();
         let dictionaries = vec![Arc::new(test_dictionary)];
         let key = CompositeKey::new("まる1", None);
-        let result = get_all_candidates(&dictionaries,&key);
+        let result = get_all_candidates(&dictionaries, &key);
 
         assert_eq!(result[0].kouho_text, "①"); // 0xE291A0 (U+02460)
         assert_eq!(result[1].kouho_text, "❶");
