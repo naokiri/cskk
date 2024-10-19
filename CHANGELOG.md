@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- 辞書の見出しに数字が含まれている時に#4を含むエントリ以外では変換候補にならない問題を修正
+
 ## [3.1.1] - 2024-03-05
 
 ### Fixed

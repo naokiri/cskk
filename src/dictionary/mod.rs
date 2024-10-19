@@ -196,41 +196,43 @@ fn get_all_complete_inner(
 }
 
 ///
-/// Usually, replace numerics to # and search the dict for numeric composition.
-/// If numeric-re-lookup, don't replace numerics for the "#4" type entries.
+/// First search the exact match, and then replace numerics to # and search the dict for numeric composition.
+/// If numeric-re-lookup, skip the latter don't replace numerics for the "#4" type entries.
 ///
 fn get_all_candidates_inner(
     dictionaries: &[Arc<CskkDictionary>],
     composite_key: &CompositeKey,
     is_numeric_re_lookup: bool,
 ) -> Vec<Candidate> {
-    let mut composite_key = composite_key.to_owned();
     let mut matched_numbers = vec![];
 
+    let exact_match_candidates = get_candidates_in_order(dictionaries, &composite_key);
+    let exact_match_candidates= dedup_candidates(exact_match_candidates);
+    let mut all_candidates: Vec<Candidate> = exact_match_candidates.into_iter()
+        .map(|dictionary_candidate| {
+            Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+        })
+        .collect();
+
+
     if !is_numeric_re_lookup {
-        (composite_key, matched_numbers) = to_composite_to_numeric_dict_key(&composite_key);
+        let replaced_key;
+        (replaced_key, matched_numbers) = to_composite_to_numeric_dict_key(&composite_key);
+        if replaced_key != *composite_key {
+            let numeric_replace_match_candidates= get_candidates_in_order(dictionaries, &replaced_key);
+            let numeric_replace_match_candidates = dedup_candidates(numeric_replace_match_candidates);
+            let mut numeric_replace_match_candidates: Vec<Candidate> = numeric_replace_match_candidates
+                .into_iter()
+                .map(|dictionary_candidate| {
+                    Candidate::from_dictionary_candidate(&replaced_key, &dictionary_candidate)
+                })
+                .flat_map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
+                .collect();
+            all_candidates.append(&mut numeric_replace_match_candidates);
+        }
     }
 
-    let candidates = get_candidates_in_order(dictionaries, &composite_key);
-    let deduped_candidates = dedup_candidates(candidates);
-    let deduped_candidates: Vec<Candidate> = if !is_numeric_re_lookup {
-        deduped_candidates
-            .into_iter()
-            .map(|dictionary_candidate| {
-                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
-            })
-            .flat_map(|candidate| replace_numeric_match(&candidate, &matched_numbers, dictionaries))
-            .collect()
-    } else {
-        deduped_candidates
-            .into_iter()
-            .map(|dictionary_candidate| {
-                Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
-            })
-            .collect()
-    };
-
-    deduped_candidates
+    all_candidates
 }
 
 ///
@@ -363,6 +365,7 @@ pub(crate) fn numeric_entry_count(entry: &str) -> usize {
     NUM_ENTRY_REGEX.find_iter(entry).count()
 }
 
+// もし候補に#0等の数値マッチが入るならば元の数字でおきかえる。
 fn replace_numeric_match(
     candidate: &Candidate,
     matched_numbers: &[String],
@@ -391,93 +394,95 @@ pub(crate) fn replace_numeric_string(
     }
     let mut current_output_texts = vec![kouho_text.to_string()];
     for (n, entry_match) in NUMERIC_ENTRY_REGEX.find_iter(kouho_text).enumerate() {
-        match entry_match.as_str() {
-            "#0" => {
-                let mut replaced_output_texts = vec![];
-                for output_text in &current_output_texts {
-                    replaced_output_texts.push(output_text.replacen("#0", &numbers[n], 1));
+        if n < numbers.len() {
+            match entry_match.as_str() {
+                "#0" => {
+                    let mut replaced_output_texts = vec![];
+                    for output_text in &current_output_texts {
+                        replaced_output_texts.push(output_text.replacen("#0", &numbers[n], 1));
+                    }
+                    current_output_texts = replaced_output_texts;
                 }
-                current_output_texts = replaced_output_texts;
-            }
-            "#1" => {
-                let mut replaced_output_texts = vec![];
-                for kouho_text in &current_output_texts {
-                    replaced_output_texts.push(kouho_text.replacen(
-                        "#1",
-                        &numeric_to_zenkaku(&numbers[n]),
-                        1,
-                    ));
-                }
-                current_output_texts = replaced_output_texts;
-            }
-            "#2" => {
-                let mut replaced_output_texts = vec![];
-                for kouho_text in &current_output_texts {
-                    replaced_output_texts.push(kouho_text.replacen(
-                        "#2",
-                        &numeric_to_kanji_each(&numbers[n]),
-                        1,
-                    ));
-                }
-                current_output_texts = replaced_output_texts;
-            }
-            "#3" => {
-                let mut replaced_output_texts = vec![];
-                for output_text in &current_output_texts {
-                    replaced_output_texts.push(output_text.replacen(
-                        "#3",
-                        &numeric_to_simple_kanji_as_number(&numbers[n]),
-                        1,
-                    ));
-                }
-                current_output_texts = replaced_output_texts;
-            }
-            "#4" => {
-                let mut replaced_output_texts = vec![];
-                let numeric_lookup_results = get_all_candidates_inner(
-                    dictionaries,
-                    &CompositeKey::new(&numbers[n], None),
-                    true,
-                );
-                for kouho_text in &current_output_texts {
-                    for numeric_lookup in &numeric_lookup_results {
+                "#1" => {
+                    let mut replaced_output_texts = vec![];
+                    for kouho_text in &current_output_texts {
                         replaced_output_texts.push(kouho_text.replacen(
-                            "#4",
-                            &numeric_lookup.kouho_text,
+                            "#1",
+                            &numeric_to_zenkaku(&numbers[n]),
                             1,
                         ));
                     }
+                    current_output_texts = replaced_output_texts;
                 }
-                current_output_texts = replaced_output_texts;
-            }
-            "#5" => {
-                let mut replaced_output_texts = vec![];
-                for kouho_text in &current_output_texts {
-                    replaced_output_texts.push(kouho_text.replacen(
-                        "#5",
-                        &numeric_to_daiji_as_number(&numbers[n], false),
-                        1,
-                    ));
-                    replaced_output_texts.push(kouho_text.replacen(
-                        "#5",
-                        &numeric_to_daiji_as_number(&numbers[n], true),
-                        1,
-                    ));
+                "#2" => {
+                    let mut replaced_output_texts = vec![];
+                    for kouho_text in &current_output_texts {
+                        replaced_output_texts.push(kouho_text.replacen(
+                            "#2",
+                            &numeric_to_kanji_each(&numbers[n]),
+                            1,
+                        ));
+                    }
+                    current_output_texts = replaced_output_texts;
                 }
-                current_output_texts = replaced_output_texts;
-            }
-            "#8" => {
-                let mut replaced_output_texts = vec![];
-                for kouho_text in &current_output_texts {
-                    replaced_output_texts.push(kouho_text.replacen(
-                        "#8",
-                        &numeric_to_thousand_separator(&numbers[n]),
-                        1,
-                    ));
+                "#3" => {
+                    let mut replaced_output_texts = vec![];
+                    for output_text in &current_output_texts {
+                        replaced_output_texts.push(output_text.replacen(
+                            "#3",
+                            &numeric_to_simple_kanji_as_number(&numbers[n]),
+                            1,
+                        ));
+                    }
+                    current_output_texts = replaced_output_texts;
                 }
-                current_output_texts = replaced_output_texts;
+                "#4" => {
+                    let mut replaced_output_texts = vec![];
+                    let numeric_lookup_results = get_all_candidates_inner(
+                        dictionaries,
+                        &CompositeKey::new(&numbers[n], None),
+                        true,
+                    );
+                    for kouho_text in &current_output_texts {
+                        for numeric_lookup in &numeric_lookup_results {
+                            replaced_output_texts.push(kouho_text.replacen(
+                                "#4",
+                                &numeric_lookup.kouho_text,
+                                1,
+                            ));
+                        }
+                    }
+                    current_output_texts = replaced_output_texts;
+                }
+                "#5" => {
+                    let mut replaced_output_texts = vec![];
+                    for kouho_text in &current_output_texts {
+                        replaced_output_texts.push(kouho_text.replacen(
+                            "#5",
+                            &numeric_to_daiji_as_number(&numbers[n], false),
+                            1,
+                        ));
+                        replaced_output_texts.push(kouho_text.replacen(
+                            "#5",
+                            &numeric_to_daiji_as_number(&numbers[n], true),
+                            1,
+                        ));
+                    }
+                    current_output_texts = replaced_output_texts;
+                }
+                "#8" => {
+                    let mut replaced_output_texts = vec![];
+                    for kouho_text in &current_output_texts {
+                        replaced_output_texts.push(kouho_text.replacen(
+                            "#8",
+                            &numeric_to_thousand_separator(&numbers[n]),
+                            1,
+                        ));
+                    }
+                    current_output_texts = replaced_output_texts;
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
     current_output_texts
@@ -554,5 +559,42 @@ mod test {
         assert_eq!(numeric_string_count("123つぶ"), 1);
         assert_eq!(numeric_string_count("1にち1かい"), 2);
         assert_eq!(numeric_string_count("1じつせんしゅう"), 1);
+    }
+
+    #[test]
+    fn get_all_candidates_basic() {
+        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/SKK-JISYO.S", "euc-jp", false)
+            .unwrap();
+        let dictionaries = vec![Arc::new(test_dictionary)];
+        let key = CompositeKey::new("あい", None);
+        let result = get_all_candidates(&dictionaries,&key);
+
+        assert_eq!(result[0].kouho_text, "愛");
+    }
+
+    #[test]
+    fn get_all_candidates_numeric_match() {
+        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/number_jisyo.dat", "utf-8", false)
+            .unwrap();
+        let dictionaries = vec![Arc::new(test_dictionary)];
+        let key = CompositeKey::new("5/1", None);
+        let result = get_all_candidates(&dictionaries,&key);
+
+        assert_eq!(result[0].kouho_text, "#0月#0日");
+        assert_eq!(result[0].midashi, "#/#");
+        assert_eq!(result[0].output, "5月1日");
+    }
+
+    #[test]
+    fn get_all_candidates_numeric_exact_match() {
+        let test_dictionary = CskkDictionary::new_static_dict("tests/data/dictionaries/maruichi.dat", "utf-8", false)
+            .unwrap();
+        let dictionaries = vec![Arc::new(test_dictionary)];
+        let key = CompositeKey::new("まる1", None);
+        let result = get_all_candidates(&dictionaries,&key);
+
+        assert_eq!(result[0].kouho_text, "①"); // 0xE291A0 (U+02460)
+        assert_eq!(result[1].kouho_text, "❶");
+        assert_eq!(result[2].kouho_text, "⓵"); // 0xE293B5 (U+024F5)
     }
 }
