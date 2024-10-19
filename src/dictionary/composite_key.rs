@@ -2,7 +2,7 @@ use crate::KanaFormChanger;
 
 /// 辞書を引くための情報
 /// 厳密な送り仮名マッチのため、送り仮名を複数文字含みうる。
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct CompositeKey {
     to_composite: String,
     // When Some(), should never be empty string.
