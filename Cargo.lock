@@ -524,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "cskk"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "anyhow",
  "bitflags 2.3.3",

@@ -204,7 +204,7 @@ fn get_all_candidates_inner(
     composite_key: &CompositeKey,
     is_numeric_re_lookup: bool,
 ) -> Vec<Candidate> {
-    let mut matched_numbers = vec![];
+    let mut matched_numbers: Vec<String>;
 
     let exact_match_candidates = get_candidates_in_order(dictionaries, &composite_key);
     let exact_match_candidates = dedup_candidates(exact_match_candidates);

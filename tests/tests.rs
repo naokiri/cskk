@@ -1490,3 +1490,22 @@ fn maruichi() {
         }),
     )
 }
+
+// Issue #257
+#[test]
+fn composition_select_with_command() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_test(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "H e n k a n space l",
+        CompositionMode::Direct,
+        InputMode::Ascii,
+        CskkStateInfo::Direct(DirectData {
+            confirmed: "変換".to_string(),
+            unconverted: None,
+        }),
+    );
+}
