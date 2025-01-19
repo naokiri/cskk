@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.3] - 2025-01-19
+
 ### Fixed
 - rulesファイルに変換選択状態から変換を確定しつつAsciiモードや全角英数モードへ遷移する処理を追加。 (Github Issue#257)
 
