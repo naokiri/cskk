@@ -20,7 +20,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 use std::sync::Arc;
-
 // TODO: Split into several files.
 
 #[test]
@@ -1508,4 +1507,23 @@ fn composition_select_with_command() {
             unconverted: None,
         }),
     );
+}
+
+// Issue #260
+#[test]
+fn reset_should_reset_composition_mode() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "J i space space space",
+        "▼自",
+        "",
+        InputMode::Hiragana,
+    );
+    
+    skk_context_reset_rs(&mut context);
+    assert_eq!(context.get_current_composition_mode(), CompositionMode::Direct);
 }
