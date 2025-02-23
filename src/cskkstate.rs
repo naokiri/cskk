@@ -135,6 +135,8 @@ pub struct CompleteData {
 }
 
 impl CskkState {
+    /// Creates a new CskkState.
+    /// This doesn't check the sanity of initial input_mode and composition_mode for testing purpose. Caller must set a proper composition mode that works for initial state on use.
     pub fn new(input_mode: InputMode, composition_mode: CompositionMode) -> Self {
         CskkState {
             input_mode,

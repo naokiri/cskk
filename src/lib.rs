@@ -570,11 +570,14 @@ impl CskkContext {
         }
     }
 
+    /// Reset the state stack.
+    /// The top compositionmode is reset to default, but inputmode remains.
     fn reset_state_stack(&mut self) {
         while self.state_stack.len() > 1 {
             self.state_stack.pop();
         }
         self.current_state().clear_all();
+        self.current_state().reset_to_default_composition_mode();
     }
 
     /// Register modeの時のみRegister用のスタックをpopして以前の状態に復帰させる。
@@ -1486,6 +1489,8 @@ impl CskkContext {
     }
 
     /// Create a new cskk context.
+    /// This doesn't check if the initial state is sane.
+    /// The caller must provide sane modes in params as an initial mode on use. e.g. Composition mode without any input doesn't make sense, so the user might see some error depending on IM engines.
     pub fn new(
         input_mode: InputMode,
         composition_mode: CompositionMode,
