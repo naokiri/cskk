@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.4] - 2025-02-23
+
 ### Fixed
 - stateのリセット時にcomposition modeがリセットされていない問題を修正。(Github Issue#260)
 
