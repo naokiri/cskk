@@ -1523,7 +1523,10 @@ fn reset_should_reset_composition_mode() {
         "",
         InputMode::Hiragana,
     );
-    
+
     skk_context_reset_rs(&mut context);
-    assert_eq!(context.get_current_composition_mode(), CompositionMode::Direct);
+    assert_eq!(
+        context.get_current_composition_mode(),
+        CompositionMode::Direct
+    );
 }
