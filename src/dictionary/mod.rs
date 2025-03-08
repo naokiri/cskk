@@ -242,6 +242,7 @@ fn get_all_candidates_inner(
 
 ///
 /// dictionary_candidatesの内容からその順番にcandidateを作り、重複を除いて返す。
+/// 候補が同じでもアノテーションが違えば別の候補として扱う。
 ///
 fn dedup_candidates<T>(dictionary_candidates: Vec<T>) -> Vec<T>
 where
@@ -259,7 +260,9 @@ where
     deduped_candidates.sort_unstable();
     // Make Option == some come before None
     deduped_candidates.reverse();
-    deduped_candidates.dedup_by(|a, b| a.get_kouho_text() == b.get_kouho_text());
+    deduped_candidates.dedup_by(|a, b| {
+        a.get_kouho_text() == b.get_kouho_text() && a.get_annotation() == b.get_annotation()
+    });
     // reverse back for faster iteration? maybe unneeded.
     deduped_candidates.reverse();
 

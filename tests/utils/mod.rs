@@ -1,10 +1,7 @@
 use cskk::cskkstate::CskkStateInfo;
 use cskk::dictionary::CskkDictionary;
 use cskk::skk_modes::{CompositionMode, InputMode};
-use cskk::{
-    skk_context_get_input_mode_rs, skk_context_set_composition_mode, skk_context_set_input_mode_rs,
-    CskkContext,
-};
+use cskk::{skk_context_set_composition_mode, skk_context_set_input_mode_rs, CskkContext};
 use std::sync::Arc;
 use tempfile::{NamedTempFile, TempPath};
 
