@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.5] - 2025-03-08
+
 ### Fixed
 - 見出し語が同じでアノテーションが違う候補が存在した場合、後から出現したものが後から得られた順番で使われるバグを修正。同見出し別アノテーションの候補は別候補として扱われる。 (Github Issue #261)
 
