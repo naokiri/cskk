@@ -38,7 +38,7 @@ jobs:
       - name: Build library
         run: cargo cbuild --release
       - name: Build symbolic links
-        run: bin/generate_deb_symlinks.sh
+        run: deploy_scripts/generate_deb_symlinks.sh
       - name: Install cargo-deb
         run: cargo install cargo-deb --force
       - name: Prepare deb file

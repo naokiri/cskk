@@ -1,4 +1,3 @@
-tests/data/**/*.BAK
 /target
 **/*.rs.bk
 **/libcskk.h

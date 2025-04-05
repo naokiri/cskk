@@ -1008,8 +1008,8 @@ fn using_capital_letter() {
         InputMode::Ascii,
         CompositionMode::Direct,
         vec![Arc::new(dict)],
-        "assets/rule/kana_form.toml",
-        "assets/rule/ascii_form.toml",
+        "../assets/rule/kana_form.toml",
+        "../assets/rule/ascii_form.toml",
         "tests/data/rules",
     );
 

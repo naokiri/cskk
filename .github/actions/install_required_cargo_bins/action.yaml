@@ -13,14 +13,14 @@ runs:
       shell: bash
     - name: Install cbindgen
       if: ${{ always() && steps.cbindgenCheck.outcome == 'failure' }}
-      run: cargo +stable install cbindgen
+      run: cargo install cbindgen
       shell: bash
     - name: cargo-c-exists
       id: cargoCCheck
-      run: test -e ~/.cargo/bin/cargo-cbuild
+      run: test -e ~/.cargo/bin/cargo-cbuild && test "$(cargo cbuild --version)" == "cargo-c 0.9.28+cargo-0.75.0"
       continue-on-error: true
       shell: bash
     - name: Install cargo-c
-      if: ${{ always() && steps.cargoCCheck.outcome == 'failure' }}
-      run: cargo +stable install cargo-c --version 0.9.12
+      if: ${{ always() && (steps.cargoCCheck.outcome == 'failure') }}
+      run: cargo install cargo-c --version 0.9.28+cargo-0.75.0
       shell: bash

@@ -1,0 +1,11 @@
+[package]
+name = "lru_ordered_map"
+version.workspace = true
+edition = "2018"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "LRU and ordered map data structure"
+
+[dependencies]

@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- 使用しているライブラリのアップデートに伴い、Minimum Supported Rust Version (MSRV) を1.72 (2023-08) に変更。 (Github Issue #269)
+- MSRVの更新に伴う一部ライブラリのアップデート
+
 ## [3.1.5] - 2025-03-08
 
 ### Fixed

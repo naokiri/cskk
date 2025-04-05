@@ -7,8 +7,6 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct LruEntry<K, V> {
-    // Noneはhead/tailのmarker entryのみ。
-    // FIXME: MaybeuninitのほうがOption分allocateしなくてよいうえにIterがわかりやすくなるか？ リファクタリング候補
     key: Option<Rc<K>>,
     val: Option<V>,
     prev: *mut LruEntry<K, V>,
@@ -38,7 +36,7 @@ impl<K, V> LruEntry<K, V> {
 ///
 /// LruOrderedMapのリストのイテレータ
 ///
-/// This `struct` is created by the [`iter_lru`] method on [`LruOrderedMap`]
+/// This `struct` is created by the [`LruOrderedMap::iter_lru`] method
 ///
 pub struct LinkedListIter<'a, K: 'a, V: 'a> {
     len: usize,
@@ -96,7 +94,8 @@ impl<'a, K, V> ExactSizeIterator for LinkedListIter<'a, K, V> {}
 ///
 /// LruOrderedMapのリストのイテレータ
 ///
-/// This `struct` is created by the [`iter_mut_lru`] method on [`LruOrderedMap`]
+/// This `struct` is designed to be created by the [`LruOrderedMap::iter_mut_lru`] method
+/// But not exposed as we didn't need in the cskk.
 ///
 pub struct LinkedListIterMut<'a, K: 'a, V: 'a> {
     len: usize,
@@ -154,7 +153,7 @@ impl<'a, K, V> ExactSizeIterator for LinkedListIterMut<'a, K, V> {}
 ///
 /// LruOrderedMapのリストのイテレータ
 ///
-/// This `struct` is created by the [`iter_sorted`] method on [`LruOrderedMap`]
+/// This `struct` is created by the [`LruOrderedMap::iter_sorted`] method
 ///
 pub struct SliceIter<'a, K: 'a, V: 'a>
 where
@@ -232,6 +231,39 @@ where
     lru_head: *mut LruEntry<K, V>,
     lru_tail: *mut LruEntry<K, V>,
     value_map: HashMap<Rc<K>, Box<LruEntry<K, V>>>,
+}
+
+impl<K, V> Drop for LruOrderedMap<K, V>
+where
+    K: Eq + Hash + Ord,
+{
+    fn drop(&mut self) {
+        // Clear the keys vector first to drop all Rc references
+        self.keys.clear();
+
+        // Clear the value_map to drop all entries
+        self.value_map.clear();
+
+        // Clean up the head marker node
+        if !self.lru_head.is_null() {
+            unsafe {
+                // Take ownership of the raw pointer and drop it
+                drop(Box::from_raw(self.lru_head));
+            }
+        }
+
+        // Clean up the tail marker node
+        if !self.lru_tail.is_null() {
+            unsafe {
+                // Take ownership of the raw pointer and drop it
+                drop(Box::from_raw(self.lru_tail));
+            }
+        }
+
+        // Set the pointers to null to prevent double-free if drop is somehow called again
+        self.lru_head = ptr::null_mut();
+        self.lru_tail = ptr::null_mut();
+    }
 }
 
 impl<K, V> LruOrderedMap<K, V>

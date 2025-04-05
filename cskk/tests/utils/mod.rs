@@ -86,9 +86,9 @@ pub fn test_context_with_dictionaries(dictionaries: Vec<Arc<CskkDictionary>>) ->
         InputMode::Hiragana,
         CompositionMode::Direct,
         dictionaries,
-        "assets/rule/kana_form.toml",
-        "assets/rule/ascii_form.toml",
-        "assets/rules",
+        "../assets/rule/kana_form.toml",
+        "../assets/rule/ascii_form.toml",
+        "../assets/rules",
     )
 }
 

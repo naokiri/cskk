@@ -211,14 +211,14 @@ mod tests {
 
     #[test]
     fn load_preset_file() {
-        let filepath = "assets/rules/default/rule.toml";
+        let filepath = "../assets/rules/default/rule.toml";
         let result = CskkRule::load_rule_file(Path::new(&filepath)).unwrap();
         println!("{:?}", result.command);
     }
 
     #[test]
     fn load_preset_metadata() {
-        let filepath = "assets/rules";
+        let filepath = "../assets/rules";
         let result = CskkRuleMetadata::load_metadata_from_directory(filepath).unwrap();
         println!("{:?}", result.rules);
         let rule_load = result.load_default_rule();
