@@ -1,86 +1,12 @@
-[package]
-name = "cskk"
-# Have to also change the deb package destination filename below
-version = "3.1.5"
-authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
-license = "GPL-3.0-or-later"
+[workspace]
+members = [
+    "cskk",
+]
+
+[workspace.package]
+version = "3.1.4"
 edition = "2018"
-readme = "README.md"
-description = "C ABIから使う事を目的とした SKK(Simple Kana Kanji henkan)方式のかな漢字変換ライブラリ"
+license = "GPL-3.0-or-later"
+authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 repository = "https://github.com/naokiri/cskk"
-categories = ["internationalization", "text-processing"]
 rust-version = "1.64"
-
-[lib]
-crate-type = ["cdylib", "lib"]
-
-[features]
-capi = []
-
-[dependencies]
-log = "^0.4.17"
-xkbcommon = "^0.5.0"
-bitflags = "2.2.1"
-enum-display-derive = "^0.1.0"
-serde = "^1.0"
-serde_derive = "^1.0"
-sequence_trie = { version = "^0.3.6", features = ["serde"] }
-encoding_rs = "0.8"
-encoding_rs_io = "0.1"
-toml = "0.7.1"
-thiserror = "^1.0"
-regex = "^1.5"
-lazy_static = "1.4"
-xdg = { version = "^2.4" }
-anyhow = { version = "^1.0.65" }
-nom = "^7.1"
-serde_with = { version = "3.0.0", features = ["macros"] }
-
-[dev-dependencies]
-env_logger = "0.10.0"
-tempfile = "^3.3"
-
-[build-dependencies]
-cargo-c = "^0.9.16"
-
-[profile.release]
-strip = "debuginfo"
-
-[package.metadata.capi]
-min_version = "0.9.6"
-
-[package.metadata.capi.library]
-install_subdir = "cskk"
-
-[package.metadata.capi.header]
-name = "libcskk"
-generation = true
-
-[package.metadata.capi.pkg_config]
-name = "libcskk"
-description = "SKK (Simple Kana Kanji) henkan library"
-
-[package.metadata.capi.install.data]
-subdirectory = "libcskk"
-asset = [{ from = "assets/**/*" }]
-
-[package.metadata.deb]
-name = "libcskk"
-features = ["capi"]
-section = "libdevel"
-triggers-file = "deb_assets/triggers"
-revision= ""
-extended-description = """\
-Library to deal with Japanese input method.
-SKK stands for 'Simple Kana to Kanji conversion'.
-"""
-preserve-symlinks = true
-# x86_64 specific, depends on cargo-c too.
-# Includes development things like static link lib and header files too.
-assets = [["assets/**/*", "usr/local/share/libcskk", "644"],
-    ["target/x86_64-unknown-linux-gnu/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.3.1.5", "755"],
-    ["deb_assets/libcskk.*", "usr/local/lib/cskk", "777"],
-    ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk/", "644"],
-    ["target/x86_64-unknown-linux-gnu/release/cskk.pc", "usr/local/lib/pkgconfig/", "644"],
-    ["target/x86_64-unknown-linux-gnu/release/libcskk.h", "usr/local/include/cskk/", "644"]]
-
