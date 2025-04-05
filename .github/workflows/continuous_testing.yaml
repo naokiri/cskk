@@ -35,7 +35,7 @@ jobs:
     name: cargo test
     strategy:
       matrix:
-        channel: [ stable, "1.65" ]
+        channel: [ stable, "1.72" ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -102,7 +102,7 @@ jobs:
           brew install libxkbcommon
           echo `brew --prefix`
       - name: Build library
-        run: cargo +stable cbuild
+        run: cargo --version; cargo cbuild
       - name: copy shared data
         run: mkdir -p ~/.local/share/libcskk && cp -r ./assets/* ~/.local/share/libcskk
       # TODO: Use variable in github actions? Only target directory is different here.

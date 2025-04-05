@@ -1,7 +1,7 @@
 [package]
 name = "cskk"
 # Have to also change the deb package destination filename below
-version = "3.1.4"
+version = "3.1.5"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 license = "GPL-3.0-or-later"
 edition = "2018"
@@ -27,21 +27,21 @@ serde_derive = "^1.0"
 sequence_trie = { version = "^0.3.6", features = ["serde"] }
 encoding_rs = "0.8"
 encoding_rs_io = "0.1"
-toml = "0.7.1"
-thiserror = "^1.0"
+toml = "0.8.20"
+thiserror = "2.0.12"
 regex = "^1.5"
 lazy_static = "1.4"
 xdg = { version = "^2.4" }
 anyhow = { version = "^1.0.65" }
-nom = "^7.1"
+nom = "^7.1.0"
 serde_with = { version = "3.0.0", features = ["macros"] }
 
 [dev-dependencies]
-env_logger = "0.10.0"
+env_logger = "0.11.8"
 tempfile = "^3.3"
 
 [build-dependencies]
-cargo-c = "^0.9.16"
+cargo-c = "^0.10.12+cargo-0.87.0"
 
 [profile.release]
 strip = "debuginfo"

@@ -9,4 +9,4 @@ edition = "2018"
 license = "GPL-3.0-or-later"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 repository = "https://github.com/naokiri/cskk"
-rust-version = "1.65"
+rust-version = "1.72"
