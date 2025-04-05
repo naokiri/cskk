@@ -1640,7 +1640,7 @@ mod unit_tests {
         );
         let dictionaries = vec![dict];
 
-        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("assets/rules")
+        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("../assets/rules")
             .expect("Failed to load metadata for test context");
         let default_rule = rule_metadata.load_default_rule().unwrap();
 

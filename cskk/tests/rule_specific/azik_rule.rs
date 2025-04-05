@@ -5,7 +5,7 @@ use cskk::{skk_context_reset_rs, CskkContext};
 fn azik_test_context() -> CskkContext {
     let mut context = default_test_context();
     context
-        .set_rule_from_directory("azik", "assets/rules")
+        .set_rule_from_directory("azik", "../assets/rules")
         .unwrap();
     context
 }

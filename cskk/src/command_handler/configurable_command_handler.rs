@@ -51,7 +51,8 @@ mod test {
     use std::str::FromStr;
 
     fn test_preset_handler() -> ConfigurableCommandHandler {
-        let rule_metadata = CskkRuleMetadata::load_metadata_from_directory("assets/rules").unwrap();
+        let rule_metadata =
+            CskkRuleMetadata::load_metadata_from_directory("../assets/rules").unwrap();
         let default_rule = rule_metadata.load_default_rule().unwrap();
         ConfigurableCommandHandler::new(&default_rule)
     }
