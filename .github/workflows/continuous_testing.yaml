@@ -69,8 +69,8 @@ jobs:
       - name: check version
         id: versions
         run: |
-          echo version=`bin/version.sh` >> ${GITHUB_OUTPUT}
-          echo major-version=`bin/major_version.sh` >> ${GITHUB_OUTPUT}
+          echo version=`deploy_scripts/version.sh` >> ${GITHUB_OUTPUT}
+          echo major-version=`deploy_scripts/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: output version
         run: | 
           echo Version: ${{ steps.versions.outputs.version }} 
@@ -89,7 +89,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target
-          key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.6
+          key: ${{ runner.os }}-cargo-libtest-v6-${{ hashFiles('**/Cargo.lock') }}-cargo-c-v0.9.28
       - name: Install required rust tools
         uses: ./.github/actions/install_required_cargo_bins
       - name: Install required libs (Ubuntu)
@@ -108,7 +108,7 @@ jobs:
       # TODO: Use variable in github actions? Only target directory is different here.
       - name: copy header file (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./tests/
+        run: cp ./target/x86_64-unknown-linux-gnu/debug/libcskk.h ./c_tests/
       - name: link lib versioning (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: ln -fs libcskk.so ./target/x86_64-unknown-linux-gnu/debug/libcskk.so.${{ steps.versions.outputs.major-version }}
@@ -120,13 +120,13 @@ jobs:
         run: ls -l ./target/x86_64-unknown-linux-gnu/debug/
       - name: Build lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o ./tests/lib_test
+        run: gcc ./c_tests/c_shared_lib_test.c -L ./target/x86_64-unknown-linux-gnu/debug/ -lcskk -o ./c_tests/lib_test
       - name: Run lib test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./tests/lib_test
+        run: LD_LIBRARY_PATH=./target/x86_64-unknown-linux-gnu/debug ./c_tests/lib_test
 #      - name: copy header file (MacOS intel)
 #        if: matrix.os == 'macos-12'
-#        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./tests/
+#        run: cp ./target/x86_64-apple-darwin/debug/libcskk.h ./c_tests/
 #      - name: link lib versioning (MacOS intel)
 #        if: matrix.os == 'macos-12'
 #        run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/x86_64-apple-darwin/debug/libcskk.dylib
@@ -138,13 +138,13 @@ jobs:
 #        run: ls -l ./target/x86_64-apple-darwin/debug/
 #      - name: Build lib test (MacOS intel)
 #        if: matrix.os == 'macos-12'
-#        run: gcc ./tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./tests/lib_test
+#        run: gcc ./c_tests/c_shared_lib_test.c -L./target/x86_64-apple-darwin/debug/ -lcskk -lxkbcommon -o ./c_tests/lib_test
 #      - name: Run lib test (MacOS intel)
 #        if: matrix.os == 'macos-12'
-#        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./tests/lib_test
+#        run: DYLD_LIBRARY_PATH=./target/x86_64-apple-darwin/debug/ ./c_tests/lib_test
       - name: copy header file (MacOS M1)
         if: matrix.os == 'macos-latest'
-        run: cp ./target/aarch64-apple-darwin/debug/libcskk.h ./tests/
+        run: cp ./target/aarch64-apple-darwin/debug/libcskk.h ./c_tests/
       - name: link lib versioning (MacOS M1)
         if: matrix.os == 'macos-latest'
         run: ln -fs libcskk.${{ steps.versions.outputs.version }}.dylib ./target/aarch64-apple-darwin/debug/libcskk.dylib
@@ -156,8 +156,8 @@ jobs:
         run: ls -l ./target/aarch64-apple-darwin/debug/
       - name: Build lib test (MacOS M1)
         if: matrix.os == 'macos-latest'
-        run: gcc ./tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ "-L$(brew --prefix)/lib/" -lcskk -lxkbcommon -o ./tests/lib_test
+        run: gcc ./c_tests/c_shared_lib_test.c -L./target/aarch64-apple-darwin/debug/ "-L$(brew --prefix)/lib/" -lcskk -lxkbcommon -o ./c_tests/lib_test
       - name: Run lib test (MacOS M1)
         if: matrix.os == 'macos-latest'
-        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/:$(brew --prefix)/lib/ ./tests/lib_test
+        run: DYLD_LIBRARY_PATH=./target/aarch64-apple-darwin/debug/:$(brew --prefix)/lib/ ./c_tests/lib_test
         
