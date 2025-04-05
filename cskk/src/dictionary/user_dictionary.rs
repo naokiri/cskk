@@ -1,10 +1,10 @@
 use crate::dictionary::candidate::Candidate;
 use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntries, FileDictionary};
-use crate::dictionary::lru_ordered_map::LruOrderedMap;
 use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::error::CskkError;
 use crate::error::CskkError::Error;
 use encoding_rs::{Encoder, EncoderResult, Encoding};
+use lru_ordered_map::LruOrderedMap;
 use std::fs::{rename, File};
 use std::io::{BufWriter, Write};
 

@@ -1,7 +1,7 @@
 use crate::dictionary::file_dictionary::{load_dictionary, DictionaryEntries, FileDictionary};
-use crate::dictionary::lru_ordered_map::LruOrderedMap;
 use crate::dictionary::{CompositeKey, DictEntry, Dictionary};
 use crate::CskkError;
+use lru_ordered_map::LruOrderedMap;
 
 #[derive(Debug)]
 pub(crate) struct StaticFileDict {

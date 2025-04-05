@@ -1,10 +1,10 @@
 use crate::dictionary::dictentry::DictEntry;
-use crate::dictionary::lru_ordered_map::LruOrderedMap;
 use crate::dictionary::{CompositeKey, Dictionary};
 use crate::error::CskkError;
 use encoding_rs::Encoding;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use log::warn;
+use lru_ordered_map::LruOrderedMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 

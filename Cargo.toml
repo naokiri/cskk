@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "cskk",
+    "lru_ordered_map",
 ]
 
 [workspace.package]
@@ -10,3 +11,6 @@ license = "GPL-3.0-or-later"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 repository = "https://github.com/naokiri/cskk"
 rust-version = "1.72"
+
+[profile.release]
+strip = "debuginfo"
