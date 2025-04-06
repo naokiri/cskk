@@ -21,6 +21,7 @@ use nom::character::complete::char;
 use nom::combinator::{all_consuming, map, opt};
 use nom::multi::many1;
 use nom::IResult;
+use nom::Parser;
 use std::collections::BTreeMap;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -41,7 +42,8 @@ pub(in crate::dictionary) fn entry(input: &str) -> IResult<&str, DictEntryProtot
         midashi,
         take_while1(|c| c == ' '),
         candidates,
-    )))(input)?;
+    )))
+    .parse(input)?;
 
     Ok((
         rest,
@@ -60,7 +62,8 @@ fn midashi(input: &str) -> IResult<&str, &str> {
 /// 先頭の'/'を含む'/'で囲われた候補リスト全体からcandidate全部
 fn candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype>>> {
     // Make sure starts with '/'
-    let (_, (_, parsed_cands)) = all_consuming(permutation((char('/'), many1(candidate))))(input)?;
+    let (_, (_, parsed_cands)) =
+        all_consuming(permutation((char('/'), many1(candidate)))).parse(input)?;
 
     let mut result = BTreeMap::<&str, Vec<CandidatePrototype>>::new();
     for mut cand_map in parsed_cands {
@@ -90,7 +93,8 @@ fn candidate(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype
             }),
         )),
         char('/'),
-    ))(input)?;
+    ))
+    .parse(input)?;
     Ok((i, result))
 }
 
@@ -105,7 +109,8 @@ fn strict_okuri_candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<Cand
             |(cand, _)| cand,
         )),
         char(']'),
-    ))(input)?;
+    ))
+    .parse(input)?;
     let mut result = BTreeMap::new();
 
     result.insert(okuri_kana, cands);
@@ -120,7 +125,8 @@ fn no_strict_okuri_candidate(input: &str) -> IResult<&str, CandidatePrototype> {
     let (i, annotation_opt) = opt(permutation((
         char(';'),
         take_till1(|c: char| is_annotation_illegal_char(&c)),
-    )))(i)?;
+    )))
+    .parse(i)?;
 
     if let Some((_, a)) = annotation_opt {
         Ok((

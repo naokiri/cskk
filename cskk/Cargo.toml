@@ -33,7 +33,7 @@ regex = "^1.5"
 lazy_static = "1.4"
 xdg = { version = "^2.4" }
 anyhow = { version = "^1.0.65" }
-nom = "^7.1.0"
+nom = "^8.0.0"
 serde_with = { version = "3.0.0", features = ["macros"] }
 lru_ordered_map = { path = "../lru_ordered_map" }
 
