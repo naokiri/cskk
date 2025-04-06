@@ -29,8 +29,8 @@ use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::{AsciiFormChanger, KanaFormChanger};
 use std::collections::BTreeMap;
 use std::fmt;
-use std::fmt::Display;
 use std::fmt::Formatter;
+use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use xkbcommon::xkb::Keysym;
 
@@ -1618,7 +1618,7 @@ impl Display for CskkState {
         );
         write!(f, "    unconverted:");
         for c in &self.pre_conversion {
-            write!(f, "{c}");
+            write!(f, "{}", c.name().unwrap_or("None"));
         }
         writeln!(f);
         writeln!(f, "}}");
@@ -1721,7 +1721,7 @@ mod unit_tests {
             .push_string_for_composition_mode("ほげ", CompositionMode::PreComposition);
         cskkcontext.enter_register_mode(CompositionMode::Direct);
         cskkcontext.append_converted("あか");
-        cskkcontext.append_unconverted(keysyms::KEY_s);
+        cskkcontext.append_unconverted(Keysym::from(keysyms::KEY_s));
         let actual = cskkcontext.get_preedit().unwrap_or_else(|| {
             panic!("No preedit. context: {:?}", cskkcontext.current_state_ref())
         });

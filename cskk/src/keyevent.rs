@@ -7,7 +7,7 @@ use std::fmt::{Debug, Display};
 use std::ops::BitAndAssign;
 use std::str::FromStr;
 use xkbcommon::xkb;
-use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms};
+use xkbcommon::xkb::{keysym_from_name, keysym_get_name, keysyms, Keysym};
 
 bitflags! {
     ///
@@ -110,7 +110,7 @@ impl CskkKeyEvent {
         };
 
         Self {
-            symbol: keysym,
+            symbol: Keysym::from(keysym),
             modifiers,
         }
     }
@@ -154,10 +154,10 @@ impl CskkKeyEvent {
         for word in words {
             let word = word.trim();
             let word_keysym = keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
-            if keysyms::KEY_NoSymbol == word_keysym {
+            if Keysym::NoSymbol == word_keysym {
                 for char in word.chars() {
                     let char_keysym = keysym_from_name(&char.to_string(), xkb::KEYSYM_NO_FLAGS);
-                    if keysyms::KEY_NoSymbol != char_keysym {
+                    if Keysym::NoSymbol != char_keysym {
                         result.push(char_keysym);
                     }
                 }
@@ -173,14 +173,20 @@ impl CskkKeyEvent {
     ///
     pub(crate) fn is_ascii_inputtable(&self) -> bool {
         //　ueno/libskkに倣っているが、Latin 1 全部に拡張可能？
-        xkb::keysyms::KEY_space <= self.symbol && self.symbol <= xkb::keysyms::KEY_asciitilde
+        match self.symbol.raw() {
+            keysyms::KEY_space..=keysyms::KEY_asciitilde => true,
+            _ => false,
+        }
     }
 
     ///
     /// いわゆるAsciiの大文字。
     ///
     pub(crate) fn is_upper(&self) -> bool {
-        xkb::keysyms::KEY_A <= self.symbol && self.symbol <= xkb::keysyms::KEY_Z
+        match self.symbol.raw() {
+            keysyms::KEY_A..=keysyms::KEY_Z => true,
+            _ => false,
+        }
     }
 
     ///
@@ -189,8 +195,9 @@ impl CskkKeyEvent {
     ///
     pub(crate) fn to_lower(&self) -> Self {
         let mut retval = self.clone();
-        if retval.is_upper() {
-            retval.symbol += 0x0020;
+        if self.is_upper() {
+            let lower = Keysym::from(self.symbol.raw() + 0x0020);
+            retval.symbol = lower;
         }
 
         retval
@@ -290,7 +297,7 @@ impl FromStr for CskkKeyEvent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut modifier: SkkKeyModifier = SkkKeyModifier::NONE;
-        let mut keysym: xkb::Keysym = keysyms::KEY_VoidSymbol;
+        let mut keysym: xkb::Keysym = Keysym::VoidSymbol;
         let key = s.trim();
         // parenで囲われているものはスペース区切りのModifierとkeysymのみ認める。
         // ddskkやlibskkテストケースをそのまま使うための措置。
@@ -351,9 +358,9 @@ impl FromStr for CskkKeyEvent {
             keysym = keysym_from_name(keyname, xkb::KEYSYM_NO_FLAGS);
         }
 
-        if keysym == xkb::keysyms::KEY_VoidSymbol {
+        if keysym == Keysym::VoidSymbol {
             Err(CskkError::ParseError("No str checked".to_owned()))
-        } else if keysym == xkb::keysyms::KEY_NoSymbol {
+        } else if keysym == Keysym::NoSymbol {
             Err(CskkError::ParseError(format!("Not a key symbol: {s}")))
         } else {
             Ok(CskkKeyEvent {
@@ -392,20 +399,28 @@ mod tests {
     #[test]
     fn keyevent_from_str() {
         let a = CskkKeyEvent::from_string_representation("a").unwrap();
-        assert_eq!(a.symbol, keysyms::KEY_a, "equals small a");
+        assert_eq!(a.symbol, Keysym::from(keysyms::KEY_a), "equals small a");
         assert_eq!(a.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
         let spacea = CskkKeyEvent::from_string_representation(" a").unwrap();
-        assert_eq!(spacea.symbol, keysyms::KEY_a, "equals small a");
+        assert_eq!(
+            spacea.symbol,
+            Keysym::from(keysyms::KEY_a),
+            "equals small a"
+        );
         assert_eq!(spacea.modifiers, SkkKeyModifier::NONE, "No modifier for a");
 
         let b = CskkKeyEvent::from_string_representation("B").unwrap();
-        assert_eq!(b.symbol, keysyms::KEY_B, "equals large B");
+        assert_eq!(b.symbol, Keysym::from(keysyms::KEY_B), "equals large B");
         assert_eq!(b.modifiers, SkkKeyModifier::NONE, "No modifier for B");
 
         let control_b = CskkKeyEvent::from_string_representation("(control b)").unwrap();
         let control_modifier: SkkKeyModifier = SkkKeyModifier::CONTROL;
-        assert_eq!(control_b.symbol, keysyms::KEY_b, "equals small b");
+        assert_eq!(
+            control_b.symbol,
+            Keysym::from(keysyms::KEY_b),
+            "equals small b"
+        );
         assert_eq!(
             control_b.modifiers, control_modifier,
             "long modifier control"
@@ -415,31 +430,43 @@ mod tests {
         assert!(not_u.is_err());
 
         let u = CskkKeyEvent::from_string_representation("uacute").unwrap();
-        assert_eq!(u.symbol, keysyms::KEY_uacute, "latin small u acute");
+        assert_eq!(
+            u.symbol,
+            Keysym::from(keysyms::KEY_uacute),
+            "latin small u acute"
+        );
 
         let short_ctrl_a = CskkKeyEvent::from_string_representation("C-a").unwrap();
-        assert_eq!(short_ctrl_a.symbol, keysyms::KEY_a, "C-a works");
+        assert_eq!(
+            short_ctrl_a.symbol,
+            Keysym::from(keysyms::KEY_a),
+            "C-a works"
+        );
         assert_eq!(short_ctrl_a.modifiers, control_modifier, "C-a works");
 
         let meta_left = CskkKeyEvent::from_string_representation("M-Left").unwrap();
         let meta_modifier: SkkKeyModifier = SkkKeyModifier::META;
-        assert_eq!(meta_left.symbol, keysyms::KEY_Left);
+        assert_eq!(meta_left.symbol, Keysym::from(keysyms::KEY_Left));
         assert_eq!(meta_left.modifiers, meta_modifier);
 
         let space = CskkKeyEvent::from_string_representation("space").unwrap();
-        assert_eq!(space.symbol, keysyms::KEY_space);
+        assert_eq!(space.symbol, Keysym::from(keysyms::KEY_space));
 
         let enter = CskkKeyEvent::from_string_representation("Return").unwrap();
-        assert_eq!(enter.symbol, keysyms::KEY_Return);
+        assert_eq!(enter.symbol, Keysym::from(keysyms::KEY_Return));
 
         let period = CskkKeyEvent::from_string_representation("period").unwrap();
-        assert_eq!(period.symbol, keysyms::KEY_period);
+        assert_eq!(period.symbol, Keysym::from(keysyms::KEY_period));
     }
 
     #[test]
     fn shift_tab() {
         let result = CskkKeyEvent::from_string_representation("(shift Tab)").unwrap();
-        assert_eq!(result.symbol, keysyms::KEY_Tab, "equals small a");
+        assert_eq!(
+            result.symbol,
+            Keysym::from(keysyms::KEY_Tab),
+            "equals small a"
+        );
         assert_eq!(result.modifiers, SkkKeyModifier::SHIFT, "No modifier for a");
     }
 
@@ -469,48 +496,60 @@ mod tests {
     #[test]
     fn from_keysym() {
         let modifier = SkkKeyModifier::L_SHIFT;
-        let result = CskkKeyEvent::from_keysym_strict(keysyms::KEY_s, modifier);
-        assert_eq!(result.symbol, keysyms::KEY_s);
+        let result = CskkKeyEvent::from_keysym_strict(Keysym::from(keysyms::KEY_s), modifier);
+        assert_eq!(result.symbol, Keysym::from(keysyms::KEY_s));
         assert_eq!(result.modifiers, modifier);
     }
 
     #[test]
     fn get_symbol_char() {
-        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_0, SkkKeyModifier::NONE);
+        let key_event =
+            CskkKeyEvent::from_keysym_strict(Keysym::from(keysyms::KEY_0), SkkKeyModifier::NONE);
         assert_eq!('0', key_event.get_symbol_char().unwrap());
 
-        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_C, SkkKeyModifier::NONE);
+        let key_event =
+            CskkKeyEvent::from_keysym_strict(Keysym::from(keysyms::KEY_C), SkkKeyModifier::NONE);
         assert_eq!('C', key_event.get_symbol_char().unwrap());
 
         // エラーにならず、1byte目を返してしまう。
-        let key_event =
-            CskkKeyEvent::from_keysym_strict(keysyms::KEY_BackSpace, SkkKeyModifier::NONE);
+        let key_event = CskkKeyEvent::from_keysym_strict(
+            Keysym::from(keysyms::KEY_BackSpace),
+            SkkKeyModifier::NONE,
+        );
         assert_eq!('\u{8}', key_event.get_symbol_char().unwrap());
     }
 
     #[test]
     fn get_symbol_char_no_display() {
-        let key_event = CskkKeyEvent::from_keysym_strict(keysyms::KEY_Home, SkkKeyModifier::NONE);
+        let key_event =
+            CskkKeyEvent::from_keysym_strict(Keysym::from(keysyms::KEY_Home), SkkKeyModifier::NONE);
         assert_eq!(None, key_event.get_symbol_char());
     }
 
     #[test]
     fn keysyms_from_string() {
         assert_eq!(
-            vec![keysyms::KEY_space],
+            vec![Keysym::from(keysyms::KEY_space)],
             CskkKeyEvent::keysyms_from_str("space 無視")
         );
         assert_eq!(
-            vec![keysyms::KEY_l, keysyms::KEY_k, keysyms::KEY_Shift_L],
+            vec![
+                Keysym::from(keysyms::KEY_l),
+                Keysym::from(keysyms::KEY_k),
+                Keysym::from(keysyms::KEY_Shift_L)
+            ],
             CskkKeyEvent::keysyms_from_str("lk Shift_L")
         );
         assert_eq!(
-            vec![keysyms::KEY_a, keysyms::KEY_b],
+            vec![Keysym::from(keysyms::KEY_a), Keysym::from(keysyms::KEY_b)],
             CskkKeyEvent::keysyms_from_str("ab")
         );
-        assert_eq!(vec![keysyms::KEY_at], CskkKeyEvent::keysyms_from_str("at"));
         assert_eq!(
-            vec![keysyms::KEY_question],
+            vec![Keysym::from(keysyms::KEY_at)],
+            CskkKeyEvent::keysyms_from_str("at")
+        );
+        assert_eq!(
+            vec![Keysym::from(keysyms::KEY_question)],
             CskkKeyEvent::keysyms_from_str("question")
         );
     }
