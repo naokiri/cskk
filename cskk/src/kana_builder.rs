@@ -116,12 +116,11 @@ impl KanaBuilder {
         combined
     }
 
-    /// 大文字を対応する小文字に変換する。
+    /// 大文字を対応する小文字に変換したKeysymを返す。
     fn uncapitalize(keysym: Keysym) -> Keysym {
-        if (keysyms::KEY_A..=keysyms::KEY_Z).contains(&keysym) {
-            keysym + 0x0020
-        } else {
-            keysym
+        match keysym.raw() {
+            keysyms::KEY_A..=keysyms::KEY_Z => Keysym::from(keysym.raw() + 0x0020),
+            _ => keysym,
         }
     }
 
@@ -202,19 +201,41 @@ mod tests {
         pub fn test_converter() -> Self {
             let mut process_list = SequenceTrie::new();
 
-            process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
-            process_list.insert(&[KEY_i], ("い".to_string(), vec![]));
-            process_list.insert(&[KEY_u], ("う".to_string(), vec![]));
-            process_list.insert(&[KEY_e], ("え".to_string(), vec![]));
-            process_list.insert(&[KEY_o], ("お".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_a)], ("あ".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_i)], ("い".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_u)], ("う".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_e)], ("え".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_o)], ("お".to_string(), vec![]));
 
-            process_list.insert(&[KEY_k, KEY_a], ("か".to_string(), vec![]));
-            process_list.insert(&[KEY_k, KEY_i], ("き".to_string(), vec![]));
-            process_list.insert(&[KEY_k, KEY_u], ("く".to_string(), vec![]));
-            process_list.insert(&[KEY_k, KEY_e], ("け".to_string(), vec![]));
-            process_list.insert(&[KEY_k, KEY_o], ("こ".to_string(), vec![]));
+            process_list.insert(
+                &[Keysym::from(KEY_k), Keysym::from(KEY_a)],
+                ("か".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_k), Keysym::from(KEY_i)],
+                ("き".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_k), Keysym::from(KEY_u)],
+                ("く".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_k), Keysym::from(KEY_e)],
+                ("け".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_k), Keysym::from(KEY_o)],
+                ("こ".to_string(), vec![]),
+            );
 
-            process_list.insert(&[KEY_t, KEY_s, KEY_u], ("つ".to_string(), vec![]));
+            process_list.insert(
+                &[
+                    Keysym::from(KEY_t),
+                    Keysym::from(KEY_s),
+                    Keysym::from(KEY_u),
+                ],
+                ("つ".to_string(), vec![]),
+            );
 
             KanaBuilder {
                 process_map: process_list,
@@ -225,12 +246,24 @@ mod tests {
         fn test_ant_converter() -> Self {
             let mut process_list = SequenceTrie::new();
 
-            process_list.insert(&[KEY_a], ("あ".to_string(), vec![]));
-            process_list.insert(&[KEY_n], ("ん".to_string(), vec![]));
-            process_list.insert(&[KEY_n, KEY_n], ("ん".to_string(), vec![]));
-            process_list.insert(&[KEY_n, KEY_n], ("な".to_string(), vec![]));
-            process_list.insert(&[KEY_t, KEY_a], ("た".to_string(), vec![]));
-            process_list.insert(&[KEY_t, KEY_t], ("っ".to_string(), vec![KEY_t]));
+            process_list.insert(&[Keysym::from(KEY_a)], ("あ".to_string(), vec![]));
+            process_list.insert(&[Keysym::from(KEY_n)], ("ん".to_string(), vec![]));
+            process_list.insert(
+                &[Keysym::from(KEY_n), Keysym::from(KEY_n)],
+                ("ん".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_n), Keysym::from(KEY_n)],
+                ("な".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_t), Keysym::from(KEY_a)],
+                ("た".to_string(), vec![]),
+            );
+            process_list.insert(
+                &[Keysym::from(KEY_t), Keysym::from(KEY_t)],
+                ("っ".to_string(), vec![Keysym::from(KEY_t)]),
+            );
 
             KanaBuilder {
                 process_map: process_list,
@@ -242,9 +275,9 @@ mod tests {
     fn combine_with_unprocessed() {
         let combined = KanaBuilder::combine_lower(
             &CskkKeyEvent::from_string_representation("a").unwrap(),
-            &[KEY_b],
+            &[Keysym::from(KEY_b)],
         );
-        assert_eq!(vec![KEY_b, KEY_a], combined);
+        assert_eq!(vec![Keysym::from(KEY_b), Keysym::from(KEY_a)], combined);
     }
 
     #[test]
@@ -253,7 +286,7 @@ mod tests {
             &CskkKeyEvent::from_string_representation("k").unwrap(),
             &[],
         );
-        assert_eq!(vec![KEY_k], combined);
+        assert_eq!(vec![Keysym::from(KEY_k)], combined);
     }
 
     #[test]
@@ -262,38 +295,55 @@ mod tests {
             &CskkKeyEvent::from_string_representation("B").unwrap(),
             &[],
         );
-        assert_eq!(vec![KEY_b], combined);
+        assert_eq!(vec![Keysym::from(KEY_b)], combined);
     }
 
     #[test]
     fn uncapitalize() {
         // 変換する
-        assert_eq!(KEY_a, KanaBuilder::uncapitalize(KEY_A));
-        assert_eq!(KEY_b, KanaBuilder::uncapitalize(KEY_B));
+        assert_eq!(
+            Keysym::from(KEY_a),
+            KanaBuilder::uncapitalize(Keysym::from(KEY_A))
+        );
+        assert_eq!(
+            Keysym::from(KEY_b),
+            KanaBuilder::uncapitalize(Keysym::from(KEY_B))
+        );
         // 変換しない
-        assert_eq!(KEY_7, KanaBuilder::uncapitalize(KEY_7));
+        assert_eq!(
+            Keysym::from(KEY_7),
+            KanaBuilder::uncapitalize(Keysym::from(KEY_7))
+        );
         // 大文字の境界
-        assert_eq!(KEY_at, KanaBuilder::uncapitalize(KEY_at));
-        assert_eq!(KEY_bracketleft, KanaBuilder::uncapitalize(KEY_bracketleft));
+        assert_eq!(
+            Keysym::from(KEY_at),
+            KanaBuilder::uncapitalize(Keysym::from(KEY_at))
+        );
+        assert_eq!(
+            Keysym::from(KEY_bracketleft),
+            KanaBuilder::uncapitalize(Keysym::from(KEY_bracketleft))
+        );
     }
 
     #[test]
     fn convert() {
         let converter = KanaBuilder::test_converter();
 
-        let result = converter.convert_greedy(&[KEY_k]);
+        let result = converter.convert_greedy(&[Keysym::from(KEY_k)]);
         assert_eq!(result, None);
     }
 
     #[test]
     fn ant_tree_convert() {
         let converter = KanaBuilder::test_ant_converter();
-        let result = converter.convert_greedy(&[KEY_t]);
+        let result = converter.convert_greedy(&[Keysym::from(KEY_t)]);
         assert_eq!(result, None);
 
-        let (kana, carry_over) = converter.convert_greedy(&[KEY_t, KEY_t]).unwrap();
+        let (kana, carry_over) = converter
+            .convert_greedy(&[Keysym::from(KEY_t), Keysym::from(KEY_t)])
+            .unwrap();
         assert_eq!("っ", kana);
-        assert_eq!(*carry_over, vec![KEY_t])
+        assert_eq!(*carry_over, vec![Keysym::from(KEY_t)])
     }
 
     #[test]
@@ -310,7 +360,7 @@ mod tests {
     #[test]
     fn can_continue_2of3letter() {
         let converter = KanaBuilder::test_converter();
-        let unprocessed = vec![KEY_t];
+        let unprocessed = vec![Keysym::from(KEY_t)];
         let actual = converter.can_continue(
             &CskkKeyEvent::from_string_representation("s").unwrap(),
             &unprocessed,
@@ -321,7 +371,7 @@ mod tests {
     #[test]
     fn can_continue_na() {
         let converter = KanaBuilder::test_ant_converter();
-        let unprocessed = vec![KEY_n];
+        let unprocessed = vec![Keysym::from(KEY_n)];
         let actual = converter.can_continue(
             &CskkKeyEvent::from_string_representation("a").unwrap(),
             &unprocessed,
