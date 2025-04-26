@@ -2,7 +2,7 @@
 
 ## deploy process
 Not automated yet.
-Cargo.tomlおよび.github/workflows/continuous_testing.yaml内の確認するバージョンを必要に応じて書き換え。
+Cargo.tomlのバージョンとcskk/Cargo.tomlのassetsのシンボリックリンクを必要に応じて書き換え。
 ChangelogのUnreleasedを新バージョンに書き替え。
 これらの変更をVersion bumpとしてメインラインにmergeする。
 githubでReleaseからDraft a new releaseしてvx.y.zのようなタグを作ってリリースする。
