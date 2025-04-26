@@ -42,7 +42,7 @@ jobs:
       - name: Install cargo-deb
         run: cargo install cargo-deb --force
       - name: Prepare deb file
-        run: cargo deb -p cskk --verbose
+        run: cargo deb -p cskk --target x86_64-unknown-linux-gnu --verbose
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
         with:
