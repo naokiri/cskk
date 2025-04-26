@@ -62,6 +62,9 @@ description = "SKK (Simple Kana Kanji) henkan library"
 subdirectory = "libcskk"
 asset = [{ from = "assets/**/*" }]
 
+[profile.release]
+strip = "debuginfo"
+
 [package.metadata.deb]
 name = "libcskk"
 features = ["capi"]
@@ -75,7 +78,7 @@ SKK stands for 'Simple Kana to Kanji conversion'.
 preserve-symlinks = true
 # x86_64 specific, depends on cargo-c too.
 # Includes development things like static link lib and header files too.
-assets = [["assets/**/*", "usr/local/share/libcskk", "644"],
+assets = [["../assets/**/*", "usr/local/share/libcskk", "644"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.3.2.0", "755"],
     ["deb_assets/libcskk.*", "usr/local/lib/cskk", "777"],
     ["target/x86_64-unknown-linux-gnu/release/libcskk.a", "usr/local/lib/cskk/", "644"],
