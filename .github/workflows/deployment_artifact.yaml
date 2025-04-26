@@ -18,8 +18,8 @@ jobs:
       - name: check version
         id: versions
         run: |
-          echo version=`bin/version.sh` >> ${GITHUB_OUTPUT}
-          echo major-version=`bin/major_version.sh` >> ${GITHUB_OUTPUT}
+          echo version=`deploy_scripts/version.sh` >> ${GITHUB_OUTPUT}
+          echo major-version=`deploy_scripts/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: Check tag matches version
         run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
       - name: Check changelog includes version
