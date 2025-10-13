@@ -41,13 +41,13 @@ impl UserDictionary {
 
 impl Dictionary for UserDictionary {
     fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
-        return if composite_key.has_okuri() {
+        if composite_key.has_okuri() {
             self.okuri_ari_dictionary
                 .peek(&composite_key.get_dict_key())
         } else {
             self.okuri_nashi_dictionary
                 .peek(&composite_key.get_dict_key())
-        };
+        }
     }
 
     fn is_read_only(&self) -> bool {

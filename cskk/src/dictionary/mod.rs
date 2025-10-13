@@ -203,20 +203,20 @@ fn get_all_candidates_inner(
     composite_key: &CompositeKey,
     is_numeric_re_lookup: bool,
 ) -> Vec<Candidate> {
-    let mut matched_numbers: Vec<String>;
+    let matched_numbers: Vec<String>;
 
-    let exact_match_candidates = get_candidates_in_order(dictionaries, &composite_key);
+    let exact_match_candidates = get_candidates_in_order(dictionaries, composite_key);
     let exact_match_candidates = dedup_candidates(exact_match_candidates);
     let mut all_candidates: Vec<Candidate> = exact_match_candidates
         .into_iter()
         .map(|dictionary_candidate| {
-            Candidate::from_dictionary_candidate(&composite_key, &dictionary_candidate)
+            Candidate::from_dictionary_candidate(composite_key, &dictionary_candidate)
         })
         .collect();
 
     if !is_numeric_re_lookup {
         let replaced_key;
-        (replaced_key, matched_numbers) = to_composite_to_numeric_dict_key(&composite_key);
+        (replaced_key, matched_numbers) = to_composite_to_numeric_dict_key(composite_key);
         if replaced_key != *composite_key {
             let numeric_replace_match_candidates =
                 get_candidates_in_order(dictionaries, &replaced_key);

@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- ルールファイルのインストールができていなかった問題の修正 (Github PR #285)
+
 ## [3.2.0] - 2025-04-26
 
 ### Fixed

@@ -29,8 +29,8 @@ use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::{AsciiFormChanger, KanaFormChanger};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::fmt::Display;
 use std::fmt::Formatter;
-use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use xkbcommon::xkb::Keysym;
 
@@ -787,7 +787,7 @@ impl CskkContext {
             .get_to_composite_string()
             .is_empty();
 
-        return if is_capital
+        if is_capital
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::Direct
         {
@@ -804,7 +804,7 @@ impl CskkContext {
             true
         } else {
             false
-        };
+        }
     }
 
     ///
