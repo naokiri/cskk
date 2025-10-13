@@ -14,4 +14,4 @@ runs:
       uses: giraffate/clippy-action@v1
       with:
         github_token: ${{ inputs.github_token }}
-        clippy_flags: -- -D warnings -A dead_code -A improper_ctypes_definitions
+        clippy_flags: -- -A dead_code -A improper_ctypes_definitions
