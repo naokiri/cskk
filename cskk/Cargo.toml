@@ -60,7 +60,7 @@ description = "SKK (Simple Kana Kanji) henkan library"
 
 [package.metadata.capi.install.data]
 subdirectory = "libcskk"
-asset = [{ from = "assets/**/*" }]
+asset = [{ from = "../assets/**/*" }]
 
 [profile.release]
 strip = "debuginfo"
@@ -86,4 +86,3 @@ assets = [["../assets/**/*", "usr/local/share/libcskk", "644"],
     ["target/release/libcskk.a", "usr/local/lib/cskk/", "644"],
     ["target/release/cskk.pc", "usr/local/lib/pkgconfig/", "644"],
     ["target/release/libcskk.h", "usr/local/include/cskk/", "644"]]
-
