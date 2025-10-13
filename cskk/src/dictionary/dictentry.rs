@@ -120,11 +120,11 @@ impl DictEntry {
         &self,
         strict_okuri: &Option<String>,
     ) -> Option<&Vec<DictionaryCandidate>> {
-        return if let Some(okuri) = strict_okuri {
+        if let Some(okuri) = strict_okuri {
             self.strict_okuri_candidate_map.get(okuri)
         } else {
             self.strict_okuri_candidate_map.get("")
-        };
+        }
     }
 
     ///

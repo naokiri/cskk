@@ -233,6 +233,15 @@ where
     value_map: HashMap<Rc<K>, Box<LruEntry<K, V>>>,
 }
 
+impl<K, V> Default for LruOrderedMap<K, V>
+where
+    K: Eq + Hash + Ord,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, V> Drop for LruOrderedMap<K, V>
 where
     K: Eq + Hash + Ord,
@@ -380,7 +389,7 @@ where
     ///
     /// keyのソート昇順のIteratorを返す。
     ///
-    pub fn iter_sorted(&self) -> SliceIter<K, V> {
+    pub fn iter_sorted(&self) -> SliceIter<'_, K, V> {
         SliceIter {
             start: 0,
             end: self.keys.len(),

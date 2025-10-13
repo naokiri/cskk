@@ -173,20 +173,17 @@ impl CskkKeyEvent {
     ///
     pub(crate) fn is_ascii_inputtable(&self) -> bool {
         //　ueno/libskkに倣っているが、Latin 1 全部に拡張可能？
-        match self.symbol.raw() {
-            keysyms::KEY_space..=keysyms::KEY_asciitilde => true,
-            _ => false,
-        }
+        matches!(
+            self.symbol.raw(),
+            keysyms::KEY_space..=keysyms::KEY_asciitilde
+        )
     }
 
     ///
     /// いわゆるAsciiの大文字。
     ///
     pub(crate) fn is_upper(&self) -> bool {
-        match self.symbol.raw() {
-            keysyms::KEY_A..=keysyms::KEY_Z => true,
-            _ => false,
-        }
+        matches!(self.symbol.raw(), keysyms::KEY_A..=keysyms::KEY_Z)
     }
 
     ///

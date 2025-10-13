@@ -31,13 +31,13 @@ impl Dictionary for StaticFileDict {
     // filedictで共通になってしまったのでuser_dictionaryと共通化する？
     /// 合致するDictEntryがあれば返す。lookupのみで、選択による副作用なし。
     fn lookup(&self, composite_key: &CompositeKey) -> Option<&DictEntry> {
-        return if composite_key.has_okuri() {
+        if composite_key.has_okuri() {
             self.okuri_ari_dictionary
                 .peek(&composite_key.get_dict_key())
         } else {
             self.okuri_nashi_dictionary
                 .peek(&composite_key.get_dict_key())
-        };
+        }
     }
 
     fn complete<'a>(

@@ -37,7 +37,7 @@ pub(in crate::dictionary) struct DictEntryPrototype<'a> {
 }
 
 /// 辞書のエントリを読む
-pub(in crate::dictionary) fn entry(input: &str) -> IResult<&str, DictEntryPrototype> {
+pub(in crate::dictionary) fn entry(input: &str) -> IResult<&str, DictEntryPrototype<'_>> {
     let (rest, (midashi, _, candidates)) = all_consuming(permutation((
         midashi,
         take_while1(|c| c == ' '),
@@ -60,7 +60,7 @@ fn midashi(input: &str) -> IResult<&str, &str> {
 }
 
 /// 先頭の'/'を含む'/'で囲われた候補リスト全体からcandidate全部
-fn candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype>>> {
+fn candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype<'_>>>> {
     // Make sure starts with '/'
     let (_, (_, parsed_cands)) =
         all_consuming(permutation((char('/'), many1(candidate)))).parse(input)?;
@@ -82,7 +82,7 @@ fn candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototyp
 
 /// 先頭の'/'を含まない部分から、Vec<CandidatePrototype>の厳密な送り仮名からのマップを返す。
 /// 通常のcandidateだと空文字列からのマップで1要素のもの、厳密送りだと再帰的に含まれるので複数要素。
-fn candidate(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype>>> {
+fn candidate(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype<'_>>>> {
     let (i, (result, _)) = permutation((
         alt((
             strict_okuri_candidates,
@@ -99,7 +99,9 @@ fn candidate(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype
 }
 
 /// 先頭の\[と末尾の\]を含む厳密な送り仮名候補列('かな文字列/候補/候補/')を受けてその文字列からの候補マップを返す
-fn strict_okuri_candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype>>> {
+fn strict_okuri_candidates(
+    input: &str,
+) -> IResult<&str, BTreeMap<&str, Vec<CandidatePrototype<'_>>>> {
     let (i, (_, okuri_kana, _, cands, _)) = permutation((
         char('['),
         take_while1(|c: char| ('ぁ'..'ゖ').contains(&c)),
@@ -119,7 +121,7 @@ fn strict_okuri_candidates(input: &str) -> IResult<&str, BTreeMap<&str, Vec<Cand
 
 /// 先頭の'/'を含まない候補部分から候補と存在するならばアノテーションを解釈する。厳密な送り仮名の候補は解釈できない。
 /// 候補と次の'/'から始まる残りの部分を返す。
-fn no_strict_okuri_candidate(input: &str) -> IResult<&str, CandidatePrototype> {
+fn no_strict_okuri_candidate(input: &str) -> IResult<&str, CandidatePrototype<'_>> {
     let (i, cand) = take_till1(|c: char| is_no_strict_okuri_candidate_illegal_char(&c))(input)?;
 
     let (i, annotation_opt) = opt(permutation((
