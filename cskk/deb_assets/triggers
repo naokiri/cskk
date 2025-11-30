@@ -1,3 +1,2 @@
 # See https://www.debian.org/doc/debian-policy/ch-sharedlibs.html
-# Unnecessary but no harm when installing to non standard directory.
 activate-noawait ldconfig
