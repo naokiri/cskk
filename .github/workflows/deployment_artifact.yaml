@@ -3,6 +3,7 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
 
 jobs:
   build_artifact:
@@ -21,8 +22,10 @@ jobs:
           echo version=`deploy_scripts/version.sh` >> ${GITHUB_OUTPUT}
           echo major-version=`deploy_scripts/major_version.sh` >> ${GITHUB_OUTPUT}
       - name: Check tag matches version
+        if: github.event_name == 'release'
         run: test "refs/tags/v${{ steps.versions.outputs.version }}" = ${{ github.ref }}
       - name: Check changelog includes version
+        if: github.event_name == 'release'
         run: |
           grep -F "[${{ steps.versions.outputs.version }}]" CHANGELOG.md
       - name: Install cargo
@@ -43,10 +46,24 @@ jobs:
         run: cargo install cargo-deb --force
       - name: Prepare deb file
         run: cargo deb -p cskk --target x86_64-unknown-linux-gnu --verbose
+      - name: Generate timestamp
+        if: github.event_name == 'workflow_dispatch'
+        id: timestamp
+        run: echo timestamp=$(date +%Y%m%d_%H%M%S) >> ${GITHUB_OUTPUT}
+      - name: Rename deb file with timestamp
+        if: github.event_name == 'workflow_dispatch'
+        run: mv target/x86_64-unknown-linux-gnu/debian/libcskk_${{ steps.versions.outputs.version }}_amd64.deb target/x86_64-unknown-linux-gnu/debian/libcskk_${{ steps.versions.outputs.version }}_amd64_${{ steps.timestamp.outputs.timestamp }}.deb
       - name: Upload release artifact
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/x86_64-unknown-linux-gnu/debian/libcskk_${{ steps.versions.outputs.version }}_amd64.deb            
-          
+            target/x86_64-unknown-linux-gnu/debian/libcskk_${{ steps.versions.outputs.version }}_amd64.deb
+      - name: Upload workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: libcskk_${{ steps.versions.outputs.version }}_amd64_${{ steps.timestamp.outputs.timestamp }}
+          path: target/x86_64-unknown-linux-gnu/debian/libcskk_${{ steps.versions.outputs.version }}_amd64_${{ steps.timestamp.outputs.timestamp }}.deb
+          retention-days: 30
 

@@ -1,3 +1,5 @@
 # This directory is preserved for artifact deployment
+
+# .so library symlinks are generated on release build
 *.so
 *.so.*

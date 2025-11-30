@@ -49,6 +49,7 @@ min_version = "0.9.6"
 
 [package.metadata.capi.library]
 install_subdir = "cskk"
+version_suffix_components = 1
 
 [package.metadata.capi.header]
 name = "libcskk"
@@ -81,6 +82,7 @@ preserve-symlinks = true
 assets = [["../assets/**/*", "usr/local/share/libcskk", "644"],
     ["target/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.3.2.0", "755"],
     ["deb_assets/libcskk.*", "usr/local/lib/cskk", "777"],
+    ["deb_assets/libcskk.conf", "etc/ld.so.conf.d/libcskk.conf", "644"],
     # FIXME: Static link lib (libcskk.a) is not generated for top release file, so we need to specify target like `--target x86_64-unknown-linux-gnu` for this to work.
     # We might have a better configuration for the deployment.
     ["target/release/libcskk.a", "usr/local/lib/cskk/", "644"],
