@@ -40,9 +40,9 @@ In Ubuntu e.g.
 
 ## Install
 
-When you have root priviledge, run the following.
+When you have root privilege, run the following.
 `cargo cbuild --release` 
-This installs the files generated under target/{arch}/release to proper system directories and the data under assets/ to proper proper data directory's libcskk/ direcotry.
+This installs the files generated under target/{arch}/release to proper system directories and the data under assets/ to proper data directory's libcskk/ directory.
 
 ```shell
     cargo cinstall --release

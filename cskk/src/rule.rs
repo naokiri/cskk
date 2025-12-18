@@ -34,7 +34,7 @@ pub(crate) struct CskkCommandRule {
     #[serde(default)]
     pre_composition: CskkCommandRuleInner,
     #[serde(default)]
-    pre_compisition_okurigana: CskkCommandRuleInner,
+    pre_composition_okurigana: CskkCommandRuleInner,
     #[serde(default)]
     composition_selection: CskkCommandRuleInner,
     #[serde(default)]
@@ -48,7 +48,7 @@ impl CskkCommandRule {
         Self {
             direct: CskkCommandRuleInner::new_empty(),
             pre_composition: CskkCommandRuleInner::new_empty(),
-            pre_compisition_okurigana: CskkCommandRuleInner::new_empty(),
+            pre_composition_okurigana: CskkCommandRuleInner::new_empty(),
             composition_selection: CskkCommandRuleInner::new_empty(),
             abbreviation: CskkCommandRuleInner::new_empty(),
             completion: CskkCommandRuleInner::new_empty(),
@@ -62,7 +62,7 @@ impl CskkCommandRule {
         match composition_mode {
             CompositionMode::Direct => Some(&self.direct),
             CompositionMode::PreComposition => Some(&self.pre_composition),
-            CompositionMode::PreCompositionOkurigana => Some(&self.pre_compisition_okurigana),
+            CompositionMode::PreCompositionOkurigana => Some(&self.pre_composition_okurigana),
             CompositionMode::CompositionSelection => Some(&self.composition_selection),
             CompositionMode::Abbreviation => Some(&self.abbreviation),
             CompositionMode::Completion => Some(&self.completion),
@@ -182,9 +182,9 @@ impl CskkRuleMetadata {
     /// 引数ruleのidのrule.tomlファイルを読み出す。
     ///
     pub(crate) fn load_rule(&self, rule: &str) -> Result<CskkRule, CskkError> {
-        let base_direcotry = &self.base_dir;
+        let base_directory = &self.base_dir;
         if let Some(rule) = &self.rules.get(rule) {
-            let mut file_path = base_direcotry.clone();
+            let mut file_path = base_directory.clone();
             file_path.push(&rule.path);
             file_path.push("rule.toml");
             let result = CskkRule::load_rule_file(file_path.as_path())?;

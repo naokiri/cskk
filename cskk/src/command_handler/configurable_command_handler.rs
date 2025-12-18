@@ -26,7 +26,7 @@ impl ConfigurableCommandHandler {
         &self,
         key_event: &CskkKeyEvent,
         current_input_mode: &InputMode,
-        current_compositon_mode: &CompositionMode,
+        current_composition_mode: &CompositionMode,
     ) -> Option<Vec<Instruction>> {
         let mut matching_key = key_event.clone();
         if matching_key.is_upper() {
@@ -35,7 +35,10 @@ impl ConfigurableCommandHandler {
                 .remove(SkkKeyModifier::SHIFT);
         }
 
-        if let Some(inner_rules) = self.command_rule.get_inner_ruleset(current_compositon_mode) {
+        if let Some(inner_rules) = self
+            .command_rule
+            .get_inner_ruleset(current_composition_mode)
+        {
             if let Some(command_map) = inner_rules.get_command_map(current_input_mode) {
                 return command_map.get(&matching_key).map(|x| x.to_owned());
             }

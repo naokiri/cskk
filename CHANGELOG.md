@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - ルールファイルのインストールができていなかった問題の修正 (Github PR #285)
+- コードベース内のタイポの修正に伴い、rulesファイルの形式変更 (pre_compisition_okurigana→pre_composition_okurigana)
 
 ## [3.2.0] - 2025-04-26
 
