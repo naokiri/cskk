@@ -176,3 +176,105 @@ fn test_memory_management() {
     // Now the count should be back to the original
     assert_eq!(Rc::strong_count(&value2), rc_count2);
 }
+
+#[test]
+fn test_iter_sorted_next_back() {
+    // This test exposes the critical off-by-one bug in SliceIter::next_back()
+    // It will PANIC when next_back() is called because it tries to access
+    // key_vec[keys.len()] which is out of bounds
+    let mut map: LruOrderedMap<String, i32> = LruOrderedMap::new();
+    map.push("a".to_string(), 1);
+    map.push("b".to_string(), 2);
+    map.push("c".to_string(), 3);
+
+    let mut iter = map.iter_sorted();
+
+    // This should return the last element "c" but will PANIC instead
+    let last = iter.next_back();
+    assert!(last.is_some());
+    let (key, value) = last.unwrap();
+    assert_eq!(**key.unwrap(), "c");
+    assert_eq!(*value.unwrap(), 3);
+
+    // Should get "b" next
+    let second = iter.next_back();
+    assert!(second.is_some());
+    let (key, value) = second.unwrap();
+    assert_eq!(**key.unwrap(), "b");
+    assert_eq!(*value.unwrap(), 2);
+
+    // Should get "a" last
+    let first = iter.next_back();
+    assert!(first.is_some());
+    let (key, value) = first.unwrap();
+    assert_eq!(**key.unwrap(), "a");
+    assert_eq!(*value.unwrap(), 1);
+
+    // No more elements
+    assert!(iter.next_back().is_none());
+}
+
+#[test]
+fn test_iter_sorted_reverse() {
+    // This test also exposes the bug using .rev()
+    // which internally calls next_back()
+    let mut map: LruOrderedMap<String, i32> = LruOrderedMap::new();
+    map.push("a".to_string(), 1);
+    map.push("b".to_string(), 2);
+    map.push("c".to_string(), 3);
+
+    // Collect in reverse order - will PANIC
+    let reversed: Vec<_> = map
+        .iter_sorted()
+        .rev()
+        .filter_map(|(key, value)| match (key, value) {
+            (Some(k), Some(v)) => Some((k.to_string(), *v)),
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(reversed.len(), 3);
+    assert_eq!(reversed[0].0, "c");
+    assert_eq!(reversed[1].0, "b");
+    assert_eq!(reversed[2].0, "a");
+}
+
+#[test]
+fn test_iter_sorted_bidirectional() {
+    // Test mixing forward and backward iteration
+    let mut map: LruOrderedMap<String, i32> = LruOrderedMap::new();
+    map.push("a".to_string(), 1);
+    map.push("b".to_string(), 2);
+    map.push("c".to_string(), 3);
+    map.push("d".to_string(), 4);
+
+    let mut iter = map.iter_sorted();
+
+    // Get first from front
+    let first = iter.next();
+    assert!(first.is_some());
+    let (key, _value) = first.unwrap();
+    assert_eq!(**key.unwrap(), "a");
+
+    // Get last from back
+    let last = iter.next_back();
+    assert!(last.is_some());
+    let (key, _value) = last.unwrap();
+    assert_eq!(**key.unwrap(), "d");
+
+    // Get second from front
+    let second = iter.next();
+    assert!(second.is_some());
+    let (key, _value) = second.unwrap();
+    assert_eq!(**key.unwrap(), "b");
+
+    // Get third from back
+    let third = iter.next_back();
+    assert!(third.is_some());
+    let (key, _value) = third.unwrap();
+    assert_eq!(**key.unwrap(), "c");
+
+    // Should be exhausted
+    assert!(iter.next().is_none());
+    assert!(iter.next_back().is_none());
+}

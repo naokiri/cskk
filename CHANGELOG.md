@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - ルールファイルのインストールができていなかった問題の修正 (Github PR #285)
+- lru_ordered_mapの`iter_sorted()`で後方イテレーションを行った際に即座にpanicする致命的なバグを修正 (Github PR #291)
+  - Critical bug fix: `SliceIter::next_back()` causing immediate panic on backward iteration
 
 ## [3.2.0] - 2025-04-26
 

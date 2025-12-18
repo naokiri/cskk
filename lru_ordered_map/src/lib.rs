@@ -199,8 +199,8 @@ where
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start < self.end {
-            let entry = self.val_map.get(self.key_vec.get(self.end).unwrap());
             self.end -= 1;
+            let entry = self.val_map.get(self.key_vec.get(self.end).unwrap());
 
             debug_assert!(entry.is_some());
 
