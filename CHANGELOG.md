@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - lru_ordered_mapの`remove()`メソッドでデータ構造の不整合を検出できず黙って失敗していた問題を修正
   - Fixed: `remove()` method silently failing when data structure invariants are violated, now panics with clear error message
   - Added comprehensive invariant tests to detect state corruption
+- コードベース内のタイポの修正に伴い、rulesファイルの形式変更 (pre_compisition_okurigana→pre_composition_okurigana)
 
 ## [3.2.0] - 2025-04-26
 
