@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - ルールファイルのインストールができていなかった問題の修正 (Github PR #285)
 - lru_ordered_mapの`iter_sorted()`で後方イテレーションを行った際に即座にpanicする致命的なバグを修正 (Github PR #291)
   - Critical bug fix: `SliceIter::next_back()` causing immediate panic on backward iteration
+- lru_ordered_mapの`remove()`メソッドでデータ構造の不整合を検出できず黙って失敗していた問題を修正
+  - Fixed: `remove()` method silently failing when data structure invariants are violated, now panics with clear error message
+  - Added comprehensive invariant tests to detect state corruption
 
 ## [3.2.0] - 2025-04-26
 

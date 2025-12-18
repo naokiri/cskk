@@ -173,12 +173,14 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start < self.end {
-            let entry = self.val_map.get(self.key_vec.get(self.start).unwrap());
+            let key = self.key_vec.get(self.start).unwrap();
+            let entry = self
+                .val_map
+                .get(key)
+                .expect("INVARIANT VIOLATION: Key in keys vector not found in value_map");
             self.start += 1;
 
-            debug_assert!(entry.is_some());
-
-            entry.map(|entry| (entry.key.as_ref(), entry.val.as_ref()))
+            Some((entry.key.as_ref(), entry.val.as_ref()))
         } else {
             None
         }
@@ -200,11 +202,13 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start < self.end {
             self.end -= 1;
-            let entry = self.val_map.get(self.key_vec.get(self.end).unwrap());
+            let key = self.key_vec.get(self.end).unwrap();
+            let entry = self
+                .val_map
+                .get(key)
+                .expect("INVARIANT VIOLATION: Key in keys vector not found in value_map");
 
-            debug_assert!(entry.is_some());
-
-            entry.map(|entry| (entry.key.as_ref(), entry.val.as_ref()))
+            Some((entry.key.as_ref(), entry.val.as_ref()))
         } else {
             None
         }
@@ -377,9 +381,11 @@ where
             Some(mut node_ref) => {
                 let node_ptr: *mut LruEntry<K, V> = &mut *node_ref;
                 self.detach(node_ptr);
-                if let Ok(idx) = self.keys.binary_search_by(|x| (**x).cmp(&k)) {
-                    self.keys.remove(idx);
-                }
+                let idx = self
+                    .keys
+                    .binary_search_by(|x| (**x).cmp(&k))
+                    .expect("INVARIANT VIOLATION: Key exists in value_map but not in keys vector");
+                self.keys.remove(idx);
                 node_ref.val
             }
             None => None,
@@ -505,5 +511,130 @@ mod test {
                 }
             }
         }
+    }
+
+    /// This test verifies that remove() detects corrupted state
+    ///
+    /// Verifies the fix for the bug where remove() silently failed when keys vector
+    /// was out of sync with value_map. Now it properly panics with a clear error.
+    ///
+    /// This test manually corrupts the state to trigger the bug condition, then calls
+    /// remove(). The fixed code should panic with "INVARIANT VIOLATION".
+    #[test]
+    #[should_panic(expected = "INVARIANT VIOLATION")]
+    fn test_remove_detects_corrupted_state() {
+        let mut target = LruOrderedMap::new();
+        target.push("a", 1);
+        target.push("b", 2);
+        target.push("c", 3);
+
+        // MANUALLY CORRUPT STATE: Remove "b" from keys vector but leave it in value_map
+        // This simulates a bug where push() or another operation failed to keep them in sync
+        if let Ok(idx) = target.keys.binary_search_by(|x| (**x).cmp("b")) {
+            target.keys.remove(idx);
+        }
+
+        // At this point:
+        // - value_map contains: {a: 1, b: 2, c: 3}
+        // - keys contains: [a, c]  (missing b!)
+        // - Data structure is CORRUPTED
+
+        // Now try to remove "b"
+        // Current behavior: remove() successfully removes from value_map,
+        //                   binary_search fails to find in keys,
+        //                   if let Ok silently continues
+        //                   Result: value_map doesn't have b, keys still doesn't have b
+        //                   TEST PASSES (bad!)
+        //
+        // Fixed behavior: remove() successfully removes from value_map,
+        //                binary_search fails to find in keys,
+        //                .expect() PANICS with "INVARIANT VIOLATION"
+        //                TEST FAILS with expected panic (good!)
+
+        target.remove("b");
+
+        // If we get here without panic, the bug exists (silent corruption)
+    }
+
+    /// Test that iter_sorted().next() detects corrupted state
+    ///
+    /// Verifies the fix where the iterator now panics with a clear error
+    /// when encountering corrupted state (key in keys vector but not in value_map).
+    ///
+    /// Previously: Silently returned None early (data loss)
+    /// Now: Panics with "INVARIANT VIOLATION"
+    #[test]
+    #[should_panic(expected = "INVARIANT VIOLATION")]
+    fn test_iter_sorted_next_detects_corrupted_state() {
+        let mut target = LruOrderedMap::new();
+        target.push("a", 1);
+        target.push("b", 2);
+        target.push("c", 3);
+
+        // MANUALLY CORRUPT: Remove "b" from value_map but leave it in keys
+        // This simulates a bug where remove() or another operation failed to keep them in sync
+        target.value_map.remove(&"b");
+
+        // State is now corrupted:
+        // - keys = ["a", "b", "c"]
+        // - value_map = {"a": 1, "c": 3}  (missing "b")
+
+        let mut iter = target.iter_sorted();
+
+        // First item should work
+        let first = iter.next();
+        assert!(first.is_some());
+
+        // Second item is "b" which doesn't exist in value_map
+        // Current behavior: iterator returns None, silently stops
+        // Fixed behavior: should panic with "INVARIANT VIOLATION"
+        let second = iter.next();
+
+        // If we get here, the bug exists (silent failure)
+        // The iterator returned None early instead of panicking
+        assert!(
+            second.is_some(),
+            "Iterator should panic, not return None early"
+        );
+    }
+
+    /// Test that iter_sorted().next_back() detects corrupted state
+    ///
+    /// Verifies the fix where the iterator now panics with a clear error
+    /// when encountering corrupted state during backward iteration.
+    ///
+    /// Previously: Silently returned None early (data loss)
+    /// Now: Panics with "INVARIANT VIOLATION"
+    #[test]
+    #[should_panic(expected = "INVARIANT VIOLATION")]
+    fn test_iter_sorted_next_back_detects_corrupted_state() {
+        let mut target = LruOrderedMap::new();
+        target.push("a", 1);
+        target.push("b", 2);
+        target.push("c", 3);
+
+        // MANUALLY CORRUPT: Remove "b" from value_map but leave it in keys
+        target.value_map.remove(&"b");
+
+        // State is now corrupted:
+        // - keys = ["a", "b", "c"]
+        // - value_map = {"a": 1, "c": 3}  (missing "b")
+
+        let mut iter = target.iter_sorted();
+
+        // First item from back should work
+        let first = iter.next_back();
+        assert!(first.is_some());
+
+        // Second item from back is "b" which doesn't exist in value_map
+        // Current behavior: iterator returns None, silently stops
+        // Fixed behavior: should panic with "INVARIANT VIOLATION"
+        let second = iter.next_back();
+
+        // If we get here, the bug exists (silent failure)
+        assert!(
+            second.is_some(),
+            "Iterator should panic, not return None early"
+        );
     }
 }
