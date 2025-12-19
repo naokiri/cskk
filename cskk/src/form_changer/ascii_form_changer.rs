@@ -1,8 +1,8 @@
-use crate::env::filepath_from_xdg_data_dir;
 use log::*;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 pub(crate) struct AsciiFormChanger {
     zenkaku_map: BTreeMap<String, String>,
@@ -18,20 +18,25 @@ struct AsciiFormMap {
 
 impl AsciiFormChanger {
     pub fn default_ascii_form_changer() -> Self {
-        let filepath = filepath_from_xdg_data_dir("libcskk/rule/ascii_form.toml");
+        let base_dirs = xdg::BaseDirectories::new();
 
-        if let Ok(filepath) = filepath {
-            AsciiFormChanger::from_file(&filepath)
+        if let Some(filepath) = base_dirs.find_data_file("libcskk/rule/ascii_form.toml") {
+            AsciiFormChanger::from_path(&filepath)
         } else {
             AsciiFormChanger::from_string("")
         }
     }
 
-    pub fn from_file(filename: &str) -> Self {
-        let mut file = File::open(filename).expect("file not found");
+    pub fn from_path(filepath: &Path) -> Self {
+        let mut file = File::open(filepath).expect("file not found");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
         AsciiFormChanger::from_string(&contents)
+    }
+
+    /// Kept for backward compatibility. Use from_path instead.
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_path(Path::new(filename))
     }
 
     fn from_string(contents: &str) -> Self {

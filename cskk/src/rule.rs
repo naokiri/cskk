@@ -1,4 +1,3 @@
-use crate::env::filepath_from_xdg_data_dir;
 use crate::{CompositionMode, CskkError, CskkKeyEvent, InputMode, Instruction};
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
@@ -118,8 +117,11 @@ impl CskkCommandRuleInner {
 impl CskkRule {
     #[allow(dead_code)]
     pub(crate) fn load_default_rule_file() -> Result<Self, CskkError> {
-        let filepath = filepath_from_xdg_data_dir("libcskk/rules/default/rule.toml")?;
-        Self::load_rule_file(Path::new(&filepath))
+        let base_dirs = xdg::BaseDirectories::new();
+        let filepath = base_dirs
+            .find_data_file("libcskk/rules/default/rule.toml")
+            .ok_or_else(|| CskkError::RuleError("Default rule file not found".to_string()))?;
+        Self::load_rule_file(&filepath)
     }
 
     pub(crate) fn load_rule_file(filepath: &Path) -> Result<Self, CskkError> {

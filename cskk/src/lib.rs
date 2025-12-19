@@ -41,7 +41,6 @@ mod command_handler;
 mod config;
 pub mod cskkstate;
 pub mod dictionary;
-mod env;
 pub mod error;
 mod form_changer;
 mod kana_builder;

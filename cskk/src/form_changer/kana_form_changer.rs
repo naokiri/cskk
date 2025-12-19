@@ -1,8 +1,8 @@
-use crate::env::filepath_from_xdg_data_dir;
 use crate::skk_modes::InputMode;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 pub(crate) struct KanaFormChanger {
     maps: KanaFormMap,
@@ -120,21 +120,26 @@ lazy_static! {
 }
 impl KanaFormChanger {
     pub fn default_kanaform_changer() -> Self {
-        let filepath = filepath_from_xdg_data_dir("libcskk/rule/kana_form.toml");
-        if let Ok(filepath) = filepath {
-            KanaFormChanger::from_file(&filepath)
+        let base_dirs = xdg::BaseDirectories::new();
+        if let Some(filepath) = base_dirs.find_data_file("libcskk/rule/kana_form.toml") {
+            KanaFormChanger::from_path(&filepath)
         } else {
             KanaFormChanger::from_string("")
         }
     }
 
     /// pub for e2e test. Use default_kanaform_changer instead.
-    pub fn from_file(filename: &str) -> Self {
+    pub fn from_path(filepath: &Path) -> Self {
         let mut file =
-            File::open(filename).unwrap_or_else(|_| panic!("file {} not found", filename));
+            File::open(filepath).unwrap_or_else(|_| panic!("file {} not found", filepath.display()));
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
         KanaFormChanger::from_string(&contents)
+    }
+
+    /// Kept for backward compatibility. Use from_path instead.
+    pub fn from_file(filename: &str) -> Self {
+        Self::from_path(Path::new(filename))
     }
 
     fn from_string(contents: &str) -> Self {
