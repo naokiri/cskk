@@ -18,7 +18,7 @@ crate-type = ["cdylib", "lib"]
 capi = []
 
 [dependencies]
-log = "^0.4.17"
+log = "^0.4.29"
 xkbcommon = "^0.8.0"
 bitflags = "2.10.0"
 enum-display-derive = "^0.1.0"
