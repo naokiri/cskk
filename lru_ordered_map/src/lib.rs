@@ -5,7 +5,11 @@ use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
 
-#[derive(Debug, Clone)]
+/// Entry in the LRU linked list
+///
+/// Note: This type intentionally does not implement Clone because cloning would
+/// duplicate the raw pointers (prev/next), which could break linked list invariants.
+#[derive(Debug)]
 pub struct LruEntry<K, V> {
     key: Option<Rc<K>>,
     val: Option<V>,
@@ -30,6 +34,23 @@ impl<K, V> LruEntry<K, V> {
             prev: ptr::null_mut(),
             next: ptr::null_mut(),
         }
+    }
+}
+
+impl<K, V> Drop for LruEntry<K, V> {
+    fn drop(&mut self) {
+        // Explicitly null out the raw pointers for clarity.
+        // These are non-owning pointers, so we don't free the memory they point to.
+        // The actual linked list cleanup is handled by LruOrderedMap::drop().
+        //
+        // This implementation serves as documentation that:
+        // 1. These pointers are non-owning references
+        // 2. Cleanup happens at the LruOrderedMap level
+        // 3. Individual entries don't manage the linked list structure
+        self.prev = ptr::null_mut();
+        self.next = ptr::null_mut();
+
+        // key and val are dropped automatically by their own Drop implementations
     }
 }
 
@@ -386,7 +407,8 @@ where
                     .binary_search_by(|x| (**x).cmp(&k))
                     .expect("INVARIANT VIOLATION: Key exists in value_map but not in keys vector");
                 self.keys.remove(idx);
-                node_ref.val
+
+                node_ref.val.take()
             }
             None => None,
         }
