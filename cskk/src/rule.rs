@@ -142,7 +142,7 @@ impl CskkRule {
 impl CskkRuleMetadata {
     /// Find which rules directory to use and load the metadata only.
     pub(crate) fn load_metadata() -> Result<Self, CskkError> {
-        let base_directory = xdg::BaseDirectories::new()?;
+        let base_directory = xdg::BaseDirectories::new();
         if let Some(rule_directory) = base_directory.find_data_file("libcskk/rules") {
             Self::load_metadata_from_path(&rule_directory)
         } else {
