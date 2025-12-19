@@ -63,9 +63,6 @@ description = "SKK (Simple Kana Kanji) henkan library"
 subdirectory = "libcskk"
 asset = [{ from = "../assets/**/*" }]
 
-[profile.release]
-strip = "debuginfo"
-
 [package.metadata.deb]
 name = "libcskk"
 features = ["capi"]

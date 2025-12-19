@@ -12,5 +12,8 @@ authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
 repository = "https://github.com/naokiri/cskk"
 rust-version = "1.72"
 
+[profile.release]
+strip = "debuginfo"
+
 
 
