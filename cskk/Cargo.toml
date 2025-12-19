@@ -20,7 +20,7 @@ capi = []
 [dependencies]
 log = "^0.4.17"
 xkbcommon = "^0.8.0"
-bitflags = "2.2.1"
+bitflags = "2.10.0"
 enum-display-derive = "^0.1.0"
 serde = "^1.0.228"
 serde_derive = "^1.0.228"
