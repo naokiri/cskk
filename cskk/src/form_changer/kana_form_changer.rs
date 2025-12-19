@@ -130,8 +130,8 @@ impl KanaFormChanger {
 
     /// pub for e2e test. Use default_kanaform_changer instead.
     pub fn from_path(filepath: &Path) -> Self {
-        let mut file =
-            File::open(filepath).unwrap_or_else(|_| panic!("file {} not found", filepath.display()));
+        let mut file = File::open(filepath)
+            .unwrap_or_else(|_| panic!("file {} not found", filepath.display()));
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("file read error");
         KanaFormChanger::from_string(&contents)

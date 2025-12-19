@@ -2,3 +2,5 @@
 **/*.rs.bk
 **/libcskk.h
 **/lib_test
+.claude/
+CLAUDE.md
