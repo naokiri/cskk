@@ -18,31 +18,31 @@ crate-type = ["cdylib", "lib"]
 capi = []
 
 [dependencies]
-log = "^0.4.17"
+log = "0.4.29"
 xkbcommon = "^0.8.0"
-bitflags = "2.2.1"
-enum-display-derive = "^0.1.0"
-serde = "^1.0"
-serde_derive = "^1.0"
+bitflags = "2.10.0"
+enum-display-derive = "0.1.1"
+serde = "1.0.228"
+serde_derive = "1.0.228"
 sequence_trie = { version = "^0.3.6", features = ["serde"] }
 encoding_rs = "0.8"
 encoding_rs_io = "0.1"
 toml = "0.8.20"
-thiserror = "2.0.12"
-regex = "^1.5"
-lazy_static = "1.4"
+thiserror = "2.0.17"
+regex = "1.12.2"
+lazy_static = "1.5.0"
 xdg = { version = "^2.4" }
-anyhow = { version = "^1.0.65" }
+anyhow = { version = "1.0.100" }
 nom = "^8.0.0"
-serde_with = { version = "3.0.0", features = ["macros"] }
+serde_with = { version = "3.16.1", features = ["macros"] }
 lru_ordered_map = { path = "../lru_ordered_map" }
 
 [dev-dependencies]
 env_logger = "0.11.8"
-tempfile = "^3.3"
+tempfile = "3.23.0"
 
 [build-dependencies]
-cargo-c = "^0.10.12"
+cargo-c = "0.10.19"
 
 [package.metadata.capi]
 min_version = "0.9.6"
