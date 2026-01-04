@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-01-04
+
 ### Fixed
 - ルールファイルのインストールができていなかった問題の修正 (Github PR #285)
 - lru_ordered_mapの`iter_sorted()`で後方イテレーションを行った際に即座にpanicする致命的なバグを修正 (Github PR #291)
