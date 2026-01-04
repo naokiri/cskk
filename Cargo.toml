@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.package]
-version = "3.2.0"
+version = "3.2.1"
 edition = "2018"
 license = "GPL-3.0-or-later"
 authors = ["Naoaki Iwakiri <naokiri@gmail.com>"]
