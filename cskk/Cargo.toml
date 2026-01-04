@@ -76,10 +76,10 @@ SKK stands for 'Simple Kana to Kanji conversion'.
 preserve-symlinks = true
 # x86_64 specific, depends on cargo-c too.
 # Includes development things like static link lib and header files too.
-assets = [["../assets/**/*", "usr/local/share/libcskk", "644"],
+assets = [["../assets/**/*", "usr/local/share/libcskk/", "644"],
     ["target/release/libcskk.so", "usr/local/lib/cskk/libcskk.so.3.2.1", "755"],
-    ["deb_assets/libcskk.so", "usr/local/lib/cskk", "777"],
-    ["deb_assets/libcskk.so.*", "usr/local/lib/cskk", "777"],
+    ["deb_assets/libcskk.so", "usr/local/lib/cskk/", "777"],
+    ["deb_assets/libcskk.so.*", "usr/local/lib/cskk/", "777"],
     ["deb_assets/libcskk.conf", "etc/ld.so.conf.d/libcskk.conf", "644"],
     # FIXME: Static link lib (libcskk.a) is not generated for top release file, so we need to specify target like `--target x86_64-unknown-linux-gnu` for this to work.
     # We might have a better configuration for the deployment.
