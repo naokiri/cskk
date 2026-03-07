@@ -1322,16 +1322,18 @@ impl CskkContext {
         initial_input_mode: InputMode,
     ) {
         if initial_composition_mode != CompositionMode::Completion {
-            self.output_converted_kana_if_any(initial_input_mode, initial_composition_mode);
-            self.update_completion_list();
-            if !self
+            if self
                 .current_state_ref()
                 .get_to_composite_string()
                 .is_empty()
-                && self.current_state_ref().get_candidate_list().is_empty()
             {
+                return;
+            }
+            self.output_converted_kana_if_any(initial_input_mode, initial_composition_mode);
+            self.update_completion_list();
+            if self.current_state_ref().get_candidate_list().is_empty() {
                 // 何もしない。
-            } else if !self.current_state_ref().get_candidate_list().is_empty() {
+            } else {
                 self.set_composition_mode(CompositionMode::Completion);
             }
         } else if !self.current_state_ref().get_candidate_list().has_next() {
