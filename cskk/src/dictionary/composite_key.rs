@@ -31,11 +31,10 @@ impl CompositeKey {
 
     /// Return the string that should be used in dictionary file's midashi.
     pub(in crate::dictionary) fn get_dict_key(&self) -> String {
-        if self.okuri.is_some() {
+        if let Some(okuri_str) = &self.okuri {
             // ローマ字ベースではない入力規則に対応するため、送り仮名の最初の文字はひらがなから対応表を引く。
-            if let Some(okuri) = KanaFormChanger::kana_to_okuri_prefix(
-                &self.okuri.as_ref().unwrap().chars().next().unwrap(),
-            )
+            if let Some(okuri) =
+                KanaFormChanger::kana_to_okuri_prefix(&okuri_str.chars().next().unwrap())
             //KanaFormChanger::kana_to_okuri_prefix(&self.okuri.unwrap())
             {
                 let mut result = self.get_to_composite().to_string();
