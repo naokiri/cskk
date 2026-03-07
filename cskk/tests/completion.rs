@@ -193,6 +193,22 @@ pub fn completion_mode_when_no_candidate() {
     );
 }
 
+// Github Issue #301
+#[test]
+pub fn completion_mode_when_precomposition_empty() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "slash Tab",
+        "▽",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
 #[test]
 pub fn completion_mode_disabled_dictionary() {
     init_test_logger();

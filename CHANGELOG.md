@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- 見出し語が空の状態で補完させると、補完候補リストが辞書全体を返してしまう問題を修正。空の状態での補完は入力が無視されるように。(Github Issue #301)
+
 ## [3.2.1] - 2026-01-04
 
 ### Fixed

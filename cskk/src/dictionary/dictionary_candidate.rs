@@ -46,12 +46,12 @@ impl DictionaryCandidate {
 
 impl Display for DictionaryCandidate {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.annotation.is_some() {
+        if let Some(annotation) = &self.annotation {
             write!(
                 f,
                 "{};{}",
                 DictEntry::escape_dictionary_string(&self.kouho_text),
-                DictEntry::escape_dictionary_string(self.annotation.as_ref().unwrap())
+                DictEntry::escape_dictionary_string(annotation)
             )
         } else {
             write!(
