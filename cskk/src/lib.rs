@@ -281,7 +281,7 @@ pub fn skk_context_select_candidate_at_rs(context: &mut CskkContext, i: i32) -> 
             .current_state()
             .consolidate_converted_to_to_composite();
         context.current_state().clear_candidate_list();
-        context.set_composition_mode(CompositionMode::PreComposition);
+        context.current_state().abort_to_previous_mode();
     } else if i >= len as i32 {
         context.current_state().set_candidate_pointer_index(len - 1);
         context.enter_register_mode(CompositionMode::CompositionSelection);
@@ -1261,7 +1261,7 @@ impl CskkContext {
                     } else if !self.current_state_ref().get_candidate_list().has_previous() {
                         self.current_state().consolidate_converted_to_to_composite();
                         self.current_state().clear_candidate_list();
-                        self.set_composition_mode(CompositionMode::PreComposition);
+                        self.current_state().abort_to_previous_mode();
                     } else {
                         self.current_state().backward_candidate();
                     }

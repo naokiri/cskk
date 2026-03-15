@@ -310,6 +310,56 @@ fn okuri_more_than_2_hiragana() {
     );
 }
 
+// Issue #302
+#[test]
+fn ctrl_g_after_previous_candidate_resets_to_direct() {
+    init_test_logger();
+    let mut context = default_test_context();
+    transition_check(
+        &mut context,
+        CompositionMode::Direct,
+        InputMode::Hiragana,
+        "A space x x C-g",
+        "",
+        "",
+        InputMode::Hiragana,
+    );
+}
+
+// Issue #302
+#[test]
+fn ctrl_g_after_select_candidate_at_negative_resets_to_direct() {
+    use crate::utils::test_context_with_dictionaries;
+    use cskk::dictionary::CskkDictionary;
+    use cskk::{
+        skk_context_select_candidate_at_rs, skk_context_set_composition_mode,
+        skk_context_set_input_mode_rs,
+    };
+    use std::sync::Arc;
+    init_test_logger();
+    let dict = CskkDictionary::new_static_dict(
+        "tests/data/dictionaries/select_candidate_at.dat",
+        "utf-8",
+        false,
+    )
+    .unwrap();
+    let mut context = test_context_with_dictionaries(vec![Arc::new(dict)]);
+    skk_context_set_composition_mode(&mut context, CompositionMode::Direct);
+    skk_context_set_input_mode_rs(&mut context, InputMode::Hiragana);
+    context.process_key_events_string("A i space");
+    skk_context_select_candidate_at_rs(&mut context, -1);
+    context.process_key_events_string("C-g");
+    let output = context.poll_output().unwrap_or_default();
+    let preedit = context.get_preedit().unwrap();
+    assert_eq!(preedit, "", "preedit should be empty after C-g");
+    assert_eq!(output, "", "output should be empty after C-g");
+    assert_eq!(
+        context.get_current_composition_mode(),
+        CompositionMode::Direct,
+        "composition mode should be Direct after C-g"
+    );
+}
+
 // Issue #257
 #[test]
 fn composition_select_with_command() {
