@@ -12,6 +12,9 @@ All notable changes to this project will be documented in this file.
 - 変換候補選択中に先頭候補で前候補キー('x')を押して前変換モードに戻った後、C-gで正しくDirect modeにリセットされない問題を修正。(Github Issue #302)
 - `skk_context_select_candidate_at_rs`に負のインデックスを渡した後、C-gで正しくDirect modeにリセットされない問題を修正。(Github Issue #302)
 
+### Changed
+- defaultルールファイルにてabbrebiationモード時にC-gでAbortするコマンドを追加。(Github Issue #302)。 インストール済みの場合は ~/.local/share/libcskk/rules へ反映しない限り追加されません。
+
 ## [3.2.1] - 2026-01-04
 
 ### Fixed
