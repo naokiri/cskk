@@ -58,5 +58,7 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           rustflags: ""
           override: true
+      - name: Verify Cargo.lock is up to date
+        run: cargo check --locked
       - name: Run rust test
         run: cargo test --features capi
