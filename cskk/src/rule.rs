@@ -1,14 +1,23 @@
 use crate::env::filepath_from_xdg_data_dir;
 use crate::{CompositionMode, CskkError, CskkKeyEvent, InputMode, Instruction};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use xkbcommon::xkb::{self, keysym_from_name, Keysym};
+
+#[derive(Deserialize, Default, Debug)]
+pub(crate) struct CskkRuleOptions {
+    #[serde(default)]
+    composition_triggers: Vec<String>,
+}
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct CskkRule {
     conversion: HashMap<String, (String, String)>,
+    #[serde(default)]
+    options: CskkRuleOptions,
     #[serde(flatten)]
     command: CskkCommandRule,
 }
@@ -127,6 +136,14 @@ impl CskkRule {
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let result = toml::from_str::<CskkRule>(&contents)?;
+        if result.options.composition_triggers.is_empty() && !result.conversion.is_empty() {
+            log::warn!(
+                "Rule {:?} has [conversion] entries but no [options] composition_triggers. \
+                 No key will trigger composition mode (▽ mode). \
+                 Add composition_triggers = [\"A\", ..., \"Z\"] to [options].",
+                filepath
+            );
+        }
         Ok(result)
     }
 
@@ -136,6 +153,25 @@ impl CskkRule {
 
     pub(crate) fn get_command_rule(&self) -> &CskkCommandRule {
         &self.command
+    }
+
+    pub(crate) fn get_henkan_trigger_keysyms(&self) -> HashSet<Keysym> {
+        self.options
+            .composition_triggers
+            .iter()
+            .filter_map(|name| {
+                let ks = keysym_from_name(name, xkb::KEYSYM_NO_FLAGS);
+                if ks == Keysym::NoSymbol || ks == Keysym::VoidSymbol {
+                    log::warn!(
+                        "composition_triggers: unrecognised keysym name {:?} — ignored",
+                        name
+                    );
+                    None
+                } else {
+                    Some(ks)
+                }
+            })
+            .collect()
     }
 }
 

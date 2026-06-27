@@ -157,14 +157,11 @@ pub(crate) fn numeric_to_thousand_separator(original: &str) -> String {
         if num_len < 4 {
             return num_char.to_string();
         }
-        let mut cnt = 3 - (num_len % 3);
-
-        for c in num_char.chars() {
+        for (cnt, c) in (3 - (num_len % 3)..).zip(num_char.chars()) {
             result.push(c);
             if cnt % 3 == 2 && cnt < num_len {
                 result.push(',');
             }
-            cnt += 1;
         }
     }
     result

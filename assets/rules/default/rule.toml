@@ -6,6 +6,14 @@ name = "default"
 # 説明文。必須。
 description = "default typing rule"
 
+[options]
+# PreCompositionモードに入るKeysym。
+# アルファベット以外でかな入力をする場合、ここにKeysymを追加することでそのかな文字での変換開始位置を指定する。
+composition_triggers = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+]
+
 # conversion:
 # Key-Valueの配列 ローマ字変換規則
 #

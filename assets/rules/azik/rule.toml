@@ -2,6 +2,12 @@
 name = "azik"
 description = "AZIK typing rule"
 
+[options]
+composition_triggers = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+]
+
 #
 # 拡張ローマ字入力 ＡＺＩＫ 総合解説書に基づく http://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm#itiran
 # ただしl前置拗音をxx前置拗音に置き換え

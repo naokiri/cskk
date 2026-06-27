@@ -2,10 +2,18 @@
 name = "default"
 description = "test typing rule"
 
+[options]
+composition_triggers = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "quotedbl"
+]
+
 [conversion]
 a = ["", "あ"]
 ba = ["", "ば"]
 tsU = ["", "ちいさいっ"]
+quotedbl = ["", "っ"]
 
 [command]
 # Hiraganaモード時のコマンド
