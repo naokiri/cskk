@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- ルールファイルに `composition_triggers` 配列を追加することで、変換トリガーキーを設定可能に。A-Z以外の記号キー（例: `exclam`）も変換トリガーに指定できる。デフォルトルールおよびAZIKルールはA-Zを明示的に列挙。詳細は `docs/henkan-trigger-extension.md` を参照。
+
+### Changed
+- **ルール作者向け破壊的変更**: `[options] composition_triggers` を省略したルールファイルでは、いかなるキーも見出し語入力状態（▽モード）に入らなくなる。カスタムルールを使用している場合は `[options]` セクションに `composition_triggers` を追加する必要がある（少なくとも `"A"` 〜 `"Z"` の26文字を列挙すること）。
+
 ## [3.3.0] - 2026-03-28
 
 ### Fixed

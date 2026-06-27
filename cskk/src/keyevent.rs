@@ -155,11 +155,16 @@ impl CskkKeyEvent {
             let word = word.trim();
             let word_keysym = keysym_from_name(word, xkb::KEYSYM_NO_FLAGS);
             if Keysym::NoSymbol == word_keysym {
+                let mut any_resolved = false;
                 for char in word.chars() {
                     let char_keysym = keysym_from_name(&char.to_string(), xkb::KEYSYM_NO_FLAGS);
                     if Keysym::NoSymbol != char_keysym {
                         result.push(char_keysym);
+                        any_resolved = true;
                     }
+                }
+                if !any_resolved && !word.is_empty() {
+                    log::warn!("rule: unrecognised keysym name {:?} — ignored", word);
                 }
             } else {
                 result.push(word_keysym);
@@ -184,6 +189,18 @@ impl CskkKeyEvent {
     ///
     pub(crate) fn is_upper(&self) -> bool {
         matches!(self.symbol.raw(), keysyms::KEY_A..=keysyms::KEY_Z)
+    }
+
+    ///
+    /// かな変換ルールのトライ木に渡すキーイベントを返す。
+    /// A-Zの大文字は小文字化する。それ以外はそのまま返す。
+    ///
+    pub(crate) fn to_kana_lookup(&self) -> Self {
+        if self.is_upper() {
+            self.to_lower()
+        } else {
+            self.clone()
+        }
     }
 
     ///

@@ -27,7 +27,7 @@ use crate::rule::{CskkRule, CskkRuleMetadata, CskkRuleMetadataEntry};
 use crate::skk_modes::{has_rom2kana_conversion, CompositionMode};
 use crate::skk_modes::{CommaStyle, InputMode, PeriodStyle};
 use form_changer::{AsciiFormChanger, KanaFormChanger};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -70,6 +70,7 @@ pub struct CskkContext {
     ascii_form_changer: AsciiFormChanger,
     dictionaries: Vec<Arc<CskkDictionary>>,
     config: CskkConfig,
+    composition_triggers: HashSet<Keysym>,
     //rule: CskkRuleMetadataEntry,
 }
 
@@ -775,26 +776,30 @@ impl CskkContext {
     ///
     /// done_transition_on_kana_build: 現在のkanabuildで既にモード変更を行っているかどうか。
     ///
-    fn transition_composition_mode_by_capital_letter(
+    fn is_henkan_trigger(&self, key_event: &CskkKeyEvent) -> bool {
+        self.composition_triggers.contains(&key_event.get_symbol())
+    }
+
+    fn transition_composition_mode_by_trigger_key(
         &mut self,
         key_event: &CskkKeyEvent,
         initial_kanainput_composition_mode: CompositionMode,
         done_transition_on_kana_build: bool,
     ) -> bool {
-        let is_capital = key_event.is_upper();
+        let is_trigger = self.is_henkan_trigger(key_event);
         let is_empty = self
             .current_state_ref()
             .get_to_composite_string()
             .is_empty();
 
-        if is_capital
+        if is_trigger
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::Direct
         {
             self.set_composition_mode(CompositionMode::PreComposition);
             self.current_state().set_capital_transition(true);
             true
-        } else if is_capital
+        } else if is_trigger
             && !is_empty
             && !done_transition_on_kana_build
             && initial_kanainput_composition_mode == CompositionMode::PreComposition
@@ -955,35 +960,45 @@ impl CskkContext {
             let converted_lower = self.kana_converter.convert_non_partial(&combined_lower);
             let initial_kanainput_composition_mode = self.current_state_ref().composition_mode;
 
-            if let Some((converted, carry_over)) =
-                self.kana_converter.convert_non_partial(&combined_raw)
-            {
-                // When input made a kana conversion in raw input.
-                // Even if matched in upper case, this won't try to change the composition mode.
-                let converted = converted.clone();
-                let carry_over = carry_over.clone();
+            // For non-letter henkan triggers (symbol keysyms listed in composition_triggers),
+            // combine_raw == combine_lower (uncapitalize is a no-op outside A-Z). Skipping the
+            // raw-path branches here lets the trigger branch below fire and change composition mode.
+            // For A-Z and unshifted inputs the raw branches run normally.
+            let is_non_letter_trigger = !key_event.is_upper() && self.is_henkan_trigger(key_event);
 
-                self.input_converted_kana(
-                    &converted,
-                    carry_over,
-                    false,
-                    initial_unprocessed_vector,
-                );
-                return true;
-            } else if key_event.is_upper() {
+            if !is_non_letter_trigger {
+                if let Some((converted, carry_over)) =
+                    self.kana_converter.convert_non_partial(&combined_raw)
+                {
+                    // When input made a kana conversion in raw input.
+                    // Even if matched in upper case (e.g. tsU), this won't change composition mode.
+                    let converted = converted.clone();
+                    let carry_over = carry_over.clone();
+
+                    self.input_converted_kana(
+                        &converted,
+                        carry_over,
+                        false,
+                        initial_unprocessed_vector,
+                    );
+                    return true;
+                }
+            }
+
+            if self.is_henkan_trigger(key_event) {
                 if let Some((converted, carry_over)) = converted_lower {
-                    // When input can make kana conversion in lowercase input.
+                    // When input can make kana conversion via the trigger lookup key.
                     // Try changing the composition mode and then insert kana.
 
                     let converted = converted.clone();
                     let carry_over = carry_over.clone();
 
-                    let did_change_mode = self.transition_composition_mode_by_capital_letter(
+                    let did_change_mode = self.transition_composition_mode_by_trigger_key(
                         key_event,
                         initial_kanainput_composition_mode,
                         self.current_state_ref().get_capital_transition(),
                     );
-                    // When input made a kana conversion when tried with lower letter.
+                    // When input made a kana conversion when tried with lookup key.
                     self.input_converted_kana(
                         &converted,
                         carry_over,
@@ -996,6 +1011,20 @@ impl CskkContext {
 
             // character input didn't make kana conversion in this else flow.
             let current_input_mode = self.current_state_ref().input_mode;
+
+            // Pre-compute alone_raw and alone_lower results (cloned to release kana_converter borrow).
+            // alone_raw is suppressed for non-letter triggers so the trigger/lower path fires instead.
+            let alone_raw_result: Option<(String, Vec<Keysym>)> = if !is_non_letter_trigger {
+                self.kana_converter
+                    .convert_non_partial(&alone_raw)
+                    .map(|(c, co)| (c.clone(), co.clone()))
+            } else {
+                None
+            };
+            let alone_lower_result: Option<(String, Vec<Keysym>)> = self
+                .kana_converter
+                .convert_non_partial(&alone_lower)
+                .map(|(c, co)| (c.clone(), co.clone()));
 
             if let Some(key_char) = key_event.get_symbol_char() {
                 // カンマピリオドは特殊な設定と処理がある。 TODO: これも一般化したい。
@@ -1030,31 +1059,29 @@ impl CskkContext {
                             return false;
                         }
                     }
-                } else if self
-                    .kana_converter
-                    .can_continue(key_event, &initial_unprocessed_vector)
+                } else if !is_non_letter_trigger
+                    && self
+                        .kana_converter
+                        .can_continue(key_event, &initial_unprocessed_vector)
                 {
                     // そのままでかな入力の続きとなれる入力なので、そのように処理
                     self.input_as_continuous_kana(key_event);
-                } else if key_event.is_upper()
+                } else if self.is_henkan_trigger(key_event)
                     && self
                         .kana_converter
                         .can_continue_lower(key_event, &initial_unprocessed_vector)
                 {
                     // モード変更として捉えればかな入力の続きとなれる入力。
-                    self.transition_composition_mode_by_capital_letter(
+                    self.transition_composition_mode_by_trigger_key(
                         key_event,
                         initial_kanainput_composition_mode,
                         self.current_state_ref().get_capital_transition(),
                     );
-                    let lower_key_event = key_event.to_lower();
-                    self.input_as_continuous_kana(&lower_key_event);
-                } else if let Some((converted, carry_over)) =
-                    self.kana_converter.convert_non_partial(&alone_raw)
-                {
+                    let lookup_key_event = key_event.to_kana_lookup();
+                    self.input_as_continuous_kana(&lookup_key_event);
+                } else if let Some((converted, carry_over)) = alone_raw_result {
                     // かな入力として成立しないが単純変換のある入力。続けて入力はできないがかな変換はできる文字。
-                    let converted = converted.to_owned();
-                    let carry_over = carry_over.clone();
+                    // (None when is_non_letter_trigger, so this branch is skipped for symbol triggers)
                     self.input_converted_kana(
                         &converted,
                         carry_over,
@@ -1062,14 +1089,10 @@ impl CskkContext {
                         initial_unprocessed_vector,
                     );
                     return true;
-                } else if let Some((converted, carry_over)) =
-                    self.kana_converter.convert_non_partial(&alone_lower)
-                {
+                } else if let Some((converted, carry_over)) = alone_lower_result {
                     // かな入力として成立しないがモード変更と捉えればかな単純変換の入力となる文字
-                    if key_event.is_upper() {
-                        let converted = converted.to_owned();
-                        let carry_over = carry_over.clone();
-                        let did_change_mode = self.transition_composition_mode_by_capital_letter(
+                    if self.is_henkan_trigger(key_event) {
+                        let did_change_mode = self.transition_composition_mode_by_trigger_key(
                             key_event,
                             initial_kanainput_composition_mode,
                             false,
@@ -1083,7 +1106,8 @@ impl CskkContext {
                         );
                         return true;
                     }
-                } else if self.kana_converter.can_continue(key_event, &[]) {
+                } else if !is_non_letter_trigger && self.kana_converter.can_continue(key_event, &[])
+                {
                     // かな入力として成立しない子音の連続等、続けては入力できないがkanabuilderで扱える文字。
                     // まずpre_convertedを整理してから入力として扱う。
                     self.output_converted_kana_if_any(
@@ -1095,12 +1119,12 @@ impl CskkContext {
                     self.input_as_continuous_kana(key_event);
                 } else if self.kana_converter.can_continue_lower(key_event, &[]) {
                     // 大文字をモード変更として捉えて小文字化すればkanabuilderで扱える入力
-                    self.transition_composition_mode_by_capital_letter(
+                    self.transition_composition_mode_by_trigger_key(
                         key_event,
                         initial_kanainput_composition_mode,
                         self.current_state_ref().get_capital_transition(),
                     );
-                    let lower_key_event = key_event.to_lower();
+                    let lookup_key_event = key_event.to_kana_lookup();
 
                     // TODO: この現在のステートのクリーンアップは上と同じであるべきなので、stateの整理ができたらメソッドにまとめる。
                     self.output_converted_kana_if_any(
@@ -1109,7 +1133,7 @@ impl CskkContext {
                     );
                     self.current_state().clear_preconverted_kanainputs();
 
-                    self.input_as_continuous_kana(&lower_key_event);
+                    self.input_as_continuous_kana(&lookup_key_event);
                 } else {
                     // kana builderですら扱えないキー。
                     // スペースや記号を想定。
@@ -1487,6 +1511,7 @@ impl CskkContext {
         let new_command_handler = ConfigurableCommandHandler::new(new_rule);
         self.kana_converter = new_kana_converter;
         self.command_handler = new_command_handler;
+        self.composition_triggers = new_rule.get_henkan_trigger_keysyms();
         Ok(())
     }
 
@@ -1503,6 +1528,7 @@ impl CskkContext {
 
         let kana_converter = Box::new(KanaBuilder::new(&default_rule));
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
+        let composition_triggers = default_rule.get_henkan_trigger_keysyms();
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
 
         Ok(Self {
@@ -1513,6 +1539,7 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
+            composition_triggers,
         })
     }
 
@@ -1554,6 +1581,7 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::default_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
+            composition_triggers: HashSet::new(),
         }
     }
 
@@ -1571,6 +1599,7 @@ impl CskkContext {
         let default_rule = rule_metadata.load_default_rule().unwrap();
         let kana_converter = Box::new(KanaBuilder::new(&default_rule));
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
+        let composition_triggers = default_rule.get_henkan_trigger_keysyms();
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
         Self {
@@ -1581,6 +1610,7 @@ impl CskkContext {
             ascii_form_changer: AsciiFormChanger::from_file(ascii_from_changer_filepath),
             dictionaries,
             config: CskkConfig::default(),
+            composition_triggers,
         }
     }
 
@@ -1648,6 +1678,7 @@ mod unit_tests {
 
         let kana_converter = Box::new(KanaBuilder::test_converter());
         let command_handler = ConfigurableCommandHandler::new(&default_rule);
+        let composition_triggers = default_rule.get_henkan_trigger_keysyms();
 
         let initial_stack = vec![CskkState::new(input_mode, composition_mode)];
         CskkContext {
@@ -1658,6 +1689,7 @@ mod unit_tests {
             ascii_form_changer: AsciiFormChanger::test_ascii_form_changer(),
             dictionaries,
             config: CskkConfig::default(),
+            composition_triggers,
             //rule_metadata,
         }
     }
