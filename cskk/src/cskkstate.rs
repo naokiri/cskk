@@ -25,7 +25,7 @@ pub(crate) struct CskkState {
     // State作成時のCompositionMode。fallback先。
     default_composition_mode: CompositionMode,
     // DirectモードからのCompositionMode遷移。Abort時に元に戻すmode。
-    compositon_mode_history: VecDeque<CompositionMode>,
+    composition_mode_history: VecDeque<CompositionMode>,
     // 入力文字で、かな確定済みでないものすべて
     pub(crate) pre_conversion: Vec<Keysym>,
     // 変換辞書のキーとなる部分。送りなし変換の場合はconverted_kana_to_composite と同じ。
@@ -142,7 +142,7 @@ impl CskkState {
             input_mode,
             composition_mode,
             default_composition_mode: composition_mode,
-            compositon_mode_history: VecDeque::new(),
+            composition_mode_history: VecDeque::new(),
             pre_conversion: vec![],
             raw_to_composite: "".to_string(),
             converted_kana_to_composite: "".to_string(),
@@ -196,7 +196,7 @@ impl CskkState {
     pub(crate) fn clear_all(&mut self) {
         self.confirmed.clear();
         self.clear_unconfirmed();
-        self.compositon_mode_history.clear();
+        self.composition_mode_history.clear();
     }
 
     /// 現在の確定済み文字列のみを消去する
@@ -489,7 +489,7 @@ impl CskkState {
     }
 
     pub(crate) fn abort_to_previous_mode(&mut self) {
-        if let Some(previous_mode) = self.compositon_mode_history.pop_back() {
+        if let Some(previous_mode) = self.composition_mode_history.pop_back() {
             if CompositionMode::PreCompositionOkurigana.eq(&previous_mode) {
                 self.consolidate_converted_to_to_composite();
                 self.composition_mode = CompositionMode::PreComposition;
@@ -504,15 +504,15 @@ impl CskkState {
     /// CompositionMode遷移履歴をなくし、デフォルトに戻す。
     /// 変換確定などの以前の状態に戻さない場合に用いる
     pub(crate) fn reset_to_default_composition_mode(&mut self) {
-        self.compositon_mode_history.clear();
+        self.composition_mode_history.clear();
         self.composition_mode = self.default_composition_mode;
     }
 
     pub(crate) fn change_composition_mode(&mut self, new_mode: CompositionMode) {
-        self.compositon_mode_history
+        self.composition_mode_history
             .push_back(self.composition_mode);
-        if self.compositon_mode_history.len() > COMPOSITION_MODE_HISTORY_MAX {
-            self.compositon_mode_history.pop_front();
+        if self.composition_mode_history.len() > COMPOSITION_MODE_HISTORY_MAX {
+            self.composition_mode_history.pop_front();
         }
         self.composition_mode = new_mode;
     }
@@ -524,9 +524,9 @@ impl CskkState {
         new_mode: CompositionMode,
         old_mode: CompositionMode,
     ) {
-        self.compositon_mode_history.push_back(old_mode);
-        if self.compositon_mode_history.len() > COMPOSITION_MODE_HISTORY_MAX {
-            self.compositon_mode_history.pop_front();
+        self.composition_mode_history.push_back(old_mode);
+        if self.composition_mode_history.len() > COMPOSITION_MODE_HISTORY_MAX {
+            self.composition_mode_history.pop_front();
         }
         self.composition_mode = new_mode;
     }
@@ -583,7 +583,7 @@ impl Debug for CskkState {
             .collect();
         f.debug_struct("CskkState")
             .field("Mode", &(&self.composition_mode, &self.input_mode))
-            .field("previous_modes stack", &self.compositon_mode_history)
+            .field("previous_modes stack", &self.composition_mode_history)
             .field("pre_conversion", &keysyms)
             .field("raw_to_composite", &self.raw_to_composite)
             .field(

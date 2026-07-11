@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **ルール作者向け破壊的変更**: `[options] composition_triggers` を省略したルールファイルでは、いかなるキーも見出し語入力状態（▽モード）に入らなくなる。カスタムルールを使用している場合は `[options]` セクションに `composition_triggers` を追加する必要がある（少なくとも `"A"` 〜 `"Z"` の26文字を列挙すること）。
+- **ルール作者向け破壊的変更**: rulesファイルの形式変更 (pre_compisition_okurigana→pre_composition_okurigana)
 
 ## [3.3.0] - 2026-03-28
 
