@@ -125,7 +125,7 @@ pub(in crate::dictionary) fn load_dictionary(
                             }
                         },
                         Err(_) => {
-                            warn!("Dict is ill formatted. Ignored line {}", &line);
+                            warn!("Dict is ill formatted. Ignored line {}", line);
                         }
                     }
                 }

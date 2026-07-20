@@ -744,7 +744,7 @@ impl CskkContext {
             match result {
                 Ok(_) => {}
                 Err(error) => {
-                    log::warn!("{}", &error.to_string());
+                    log::warn!("{}", error);
                 }
             }
         }
@@ -762,7 +762,7 @@ impl CskkContext {
             match result {
                 Ok(_) => {}
                 Err(error) => {
-                    log::warn!("{}", &error.to_string());
+                    log::warn!("{}", error);
                 }
             }
         }
@@ -1219,7 +1219,7 @@ impl CskkContext {
         initial_input_mode: InputMode,
     ) -> bool {
         for instruction in instructions {
-            log::debug!("{:?}", &instruction);
+            log::debug!("{:?}", instruction);
             match instruction {
                 Instruction::ChangeCompositionMode(composition_mode) => {
                     self.set_composition_mode(*composition_mode);
@@ -1304,7 +1304,7 @@ impl CskkContext {
                 }
                 #[allow(unreachable_patterns)]
                 _ => {
-                    log::debug!("unimplemented instruction: {:?}", &instruction);
+                    log::debug!("unimplemented instruction: {:?}", instruction);
                 }
             }
         }
@@ -1481,7 +1481,7 @@ impl CskkContext {
             if !processed {
                 log::debug!("Key event not processed: {:?}", key_event);
             }
-            log::debug!("State stack: {:#?}", &self.state_stack);
+            log::debug!("State stack: {:#?}", self.state_stack);
         }
         true
     }
