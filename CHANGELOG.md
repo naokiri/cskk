@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- ルールファイルに、候補選択中に'slash'で「候補を確定して次にabbreviationモードに移る」動作を追加。(Github Issue #308)
+
 ## [4.0.0] - 2026-09-19
 
 ### Added
